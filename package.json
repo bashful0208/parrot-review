@@ -1,0 +1,10 @@
+{
+  "name": "reviewer-root",
+  "private": true,
+  "scripts": {
+    "setup": "sh ./scripts/setup.sh",
+    "dev": "sh ./scripts/dev.sh",
+    "dev:web": "sh ./scripts/dev-web.sh",
+    "dev:worker": "sh ./scripts/dev-worker.sh"
+  }
+}
