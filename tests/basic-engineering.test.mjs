@@ -2,12 +2,64 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { access, readFile } from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-const rootDir = "/Users/bashful/work/code/reviewer/.claude/worktrees/p0-foundation";
+const testFileDir = path.dirname(fileURLToPath(import.meta.url));
+const rootDir = path.resolve(testFileDir, "..");
 
 async function readText(relativePath) {
   return readFile(path.join(rootDir, relativePath), "utf8");
 }
+
+test("[shared-eslint] workspace exposes a consumable shared ESLint package surface", async () => {
+  const packageJson = JSON.parse(await readText("packages/eslint-config/package.json"));
+
+  assert.equal(packageJson.name, "@reviewer/eslint-config");
+  assert.equal(packageJson.type, "module");
+  assert.deepEqual(packageJson.exports, {
+    "./base": {
+      import: "./base.mjs",
+    },
+    "./next": {
+      import: "./next.mjs",
+    },
+  });
+});
+
+test("[shared-eslint] web app imports and re-exports the shared next preset", async () => {
+  const eslintConfig = await readText("apps/web/eslint.config.mjs");
+  const importMatch = eslintConfig.match(
+    /^import\s+(\w+)\s+from\s+["']@reviewer\/eslint-config\/next["'];$/m,
+  );
+  const exportMatch = eslintConfig.match(/^export\s+default\s+(\w+);$/m);
+
+  assert.ok(importMatch, "expected a direct import from @reviewer/eslint-config/next");
+  assert.ok(exportMatch, "expected the config file to export the imported preset");
+  assert.equal(exportMatch[1], importMatch[1]);
+});
+
+test("[shared-eslint] worker app imports and re-exports the shared base preset", async () => {
+  const eslintConfig = await readText("apps/worker/eslint.config.mjs");
+  const importMatch = eslintConfig.match(
+    /^import\s+(\w+)\s+from\s+["']@reviewer\/eslint-config\/base["'];$/m,
+  );
+  const exportMatch = eslintConfig.match(/^export\s+default\s+(\w+);$/m);
+
+  assert.ok(importMatch, "expected a direct import from @reviewer/eslint-config/base");
+  assert.ok(exportMatch, "expected the config file to export the imported preset");
+  assert.equal(exportMatch[1], importMatch[1]);
+});
+
+test("[shared-eslint] worker lint uses ESLint instead of aliasing the tsc-based typecheck", async () => {
+  const packageJson = JSON.parse(await readText("apps/worker/package.json"));
+  const lintScript = packageJson.scripts.lint;
+  const typecheckScript = packageJson.scripts.typecheck;
+
+  assert.match(lintScript, /(^|\s)eslint(\s|$)/);
+  assert.equal(typecheckScript, "tsc --noEmit -p tsconfig.json");
+  assert.notEqual(lintScript, typecheckScript);
+  assert.doesNotMatch(lintScript, /\btsc\b/);
+});
 
 test("root package exposes unified engineering scripts", async () => {
   const packageJson = JSON.parse(await readText("package.json"));
