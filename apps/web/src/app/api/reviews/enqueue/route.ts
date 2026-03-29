@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { enqueueReviewJob } from "@reviewer/shared";
+import { enqueueReviewJob } from "@reviewer/core";
 
 export const runtime = "nodejs";
 

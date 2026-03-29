@@ -4,9 +4,9 @@ import {
   assertRedisReachable,
   buildWorkerConfig,
   createPlaceholderWorker,
-} from "@reviewer/shared";
+} from "@reviewer/core";
 
-export { buildWorkerConfig } from "@reviewer/shared";
+export { buildWorkerConfig } from "@reviewer/core";
 
 export async function main(env = process.env): Promise<void> {
   const config = buildWorkerConfig(env);
