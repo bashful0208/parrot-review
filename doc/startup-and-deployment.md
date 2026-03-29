@@ -36,8 +36,8 @@ reviewer/
 其中：
 
 - `apps/web` 本地开发可以直接启动
-- `apps/worker` 启动后会直接连接 Redis 并消费队列
-- 因此本地需要提供可访问的 Redis
+- `apps/worker` 默认支持 dry-run 启动，不强依赖 Redis
+- 如果要让 `apps/worker` 真正连接队列并消费任务，需要额外提供可访问的 Redis
 
 ## 4. 根目录统一命令
 
@@ -83,7 +83,7 @@ pnpm --dir apps/web run build
 pnpm --dir apps/web run start
 ```
 
-### 5.2 启动 Worker
+### 5.2 启动 Worker（默认 dry-run）
 
 如果已经执行过根目录安装，可以直接启动：
 
@@ -97,22 +97,20 @@ pnpm run dev:worker
 pnpm --dir apps/worker run dev
 ```
 
-通过根目录脚本启动时，会优先加载仓库根目录 `.env`；如果没有显式配置，则本地开发默认使用：
+当前实现里，`worker` 在没有设置 `WORKER_AUTOSTART=true` 时会进入 dry-run 模式，只打印启动信息，不连接 Redis，不消费队列。
 
-- `REDIS_URL=redis://127.0.0.1:6379`
-- `REVIEW_QUEUE_NAME=review-jobs`
-
-也就是说，直接执行根目录的 `pnpm run dev` 或 `pnpm run dev:worker` 时，worker 默认会连接本机 Redis 并消费队列。
+这适合在本地先确认基础工程是否可运行。
 
 ### 5.3 启动 Worker（连接真实 Redis）
 
-如果要覆盖默认的本地开发配置，可以在启动前提供环境变量。
+如果要让 Worker 连接真实 Redis，需要在启动前提供环境变量。
 
 示例：
 
 ```bash
 export REDIS_URL="redis://:your-password@your-redis-host:6379"
 export REVIEW_QUEUE_NAME="review-jobs"
+export WORKER_AUTOSTART="true"
 
 pnpm run dev:worker
 ```
@@ -121,6 +119,7 @@ pnpm run dev:worker
 
 - `REDIS_URL`：Redis 连接串
 - `REVIEW_QUEUE_NAME`：队列名，默认值是 `review-jobs`
+- `WORKER_AUTOSTART`：只有为 `true` 时，Worker 才会真正连接 Redis
 
 如果你要用构建产物运行：
 
@@ -128,6 +127,7 @@ pnpm run dev:worker
 pnpm --dir apps/worker run build
 export REDIS_URL="redis://:your-password@your-redis-host:6379"
 export REVIEW_QUEUE_NAME="review-jobs"
+export WORKER_AUTOSTART="true"
 pnpm --dir apps/worker run start
 ```
 
@@ -148,7 +148,7 @@ pnpm run dev
 
 - 如果两个服务都正常运行，脚本会持续驻留
 - 如果其中一个服务退出，脚本会主动终止另一个服务，避免残留孤儿进程
-- 如果需要覆盖默认配置，请在执行 `pnpm run dev` 前先导出 `REDIS_URL`、`REVIEW_QUEUE_NAME`
+- 如果需要让 Worker 连真实 Redis，请在执行 `pnpm run dev` 前先导出 `REDIS_URL`、`REVIEW_QUEUE_NAME`、`WORKER_AUTOSTART=true`
 
 如果你更希望分开调试，也可以分别执行：
 
@@ -186,6 +186,7 @@ pnpm --dir apps/worker run build
 ```bash
 export REDIS_URL="redis://:your-password@your-redis-host:6379"
 export REVIEW_QUEUE_NAME="review-jobs"
+export WORKER_AUTOSTART="true"
 pnpm --dir apps/worker run start
 ```
 
@@ -227,6 +228,7 @@ Worker 当前职责：
 部署时至少要配置：
 
 - `REDIS_URL`
+- `WORKER_AUTOSTART=true`
 - 可选的 `REVIEW_QUEUE_NAME`
 
 ## 8. 推荐部署流程
@@ -246,6 +248,7 @@ pnpm run setup
 pnpm --dir apps/worker run build
 export REDIS_URL="redis://:your-password@your-redis-host:6379"
 export REVIEW_QUEUE_NAME="review-jobs"
+export WORKER_AUTOSTART="true"
 pnpm --dir apps/worker run start
 ```
 

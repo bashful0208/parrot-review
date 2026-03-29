@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { Queue, QueueEvents } from "bullmq";
 
-import { createPlaceholderWorker, createRedisConnection } from "@reviewer/shared";
+import { createPlaceholderWorker, createRedisConnection } from "./index.js";
 
 const TEST_REDIS_URL = process.env.REDIS_URL;
 

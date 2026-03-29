@@ -3,7 +3,6 @@
   "private": true,
   "scripts": {
     "setup": "sh ./scripts/setup.sh",
-    "test": "node --test tests/*.test.mjs",
     "dev": "sh ./scripts/dev.sh",
     "dev:web": "sh ./scripts/dev-web.sh",
     "dev:worker": "sh ./scripts/dev-worker.sh"
