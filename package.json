@@ -7,6 +7,12 @@
     "build": "pnpm --dir apps/web run build && pnpm --dir apps/worker run build",
     "dev": "sh ./scripts/dev.sh",
     "dev:web": "sh ./scripts/dev-web.sh",
-    "dev:worker": "sh ./scripts/dev-worker.sh"
+    "dev:worker": "sh ./scripts/dev-worker.sh",
+    "lint": "pnpm -r run lint",
+    "typecheck": "pnpm -r run typecheck",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "prettier": "^3.6.2"
   }
 }
