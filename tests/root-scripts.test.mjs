@@ -16,6 +16,7 @@ test("root package.json exposes shell script entrypoints", async () => {
 
   assert.deepEqual(packageJson.scripts, {
     setup: "sh ./scripts/setup.sh",
+    test: "node --test tests/*.test.mjs",
     dev: "sh ./scripts/dev.sh",
     "dev:web": "sh ./scripts/dev-web.sh",
     "dev:worker": "sh ./scripts/dev-worker.sh",
@@ -37,7 +38,6 @@ test("single-service scripts forward to child apps", async () => {
   assert.match(workerScript, /exec pnpm --dir "\$REPO_ROOT\/apps\/worker" run dev/);
   assert.match(webScript, /REDIS_URL:=redis:\/\/127\.0\.0\.1:6379/);
   assert.match(webScript, /REVIEW_QUEUE_NAME:=review-jobs/);
-  assert.match(workerScript, /WORKER_AUTOSTART:=true/);
 });
 
 test("combined dev script starts both services and wires cleanup traps", async () => {
@@ -50,7 +50,6 @@ test("combined dev script starts both services and wires cleanup traps", async (
   assert.match(script, /kill -0 "\$worker_pid"/);
   assert.match(script, /REDIS_URL:=redis:\/\/127\.0\.0\.1:6379/);
   assert.match(script, /REVIEW_QUEUE_NAME:=review-jobs/);
-  assert.match(script, /WORKER_AUTOSTART:=true/);
 });
 
 test("combined dev script stops the sibling process when one service exits", async () => {

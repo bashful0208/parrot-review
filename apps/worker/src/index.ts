@@ -13,14 +13,6 @@ export async function main(env = process.env): Promise<void> {
   console.log(`[worker] queue=${config.queueName}`);
   console.log(`[worker] redis=${config.redisUrl}`);
 
-  // Default to a dry run so the scaffold can start locally before Redis exists.
-  if (!config.autoStart) {
-    console.log(
-      "[worker] bootstrap ready; set WORKER_AUTOSTART=true to connect to Redis and consume jobs.",
-    );
-    return;
-  }
-
   const { connection, worker } = createPlaceholderWorker(config);
 
   console.log("[worker] worker started and waiting for jobs.");

@@ -6,9 +6,7 @@ export const DEFAULT_REDIS_URL = "redis://127.0.0.1:6379";
 export const DEFAULT_JOB_NAME = "manual-review";
 
 export type QueueEnv = NodeJS.ProcessEnv &
-  Partial<
-    Record<"REDIS_URL" | "REVIEW_QUEUE_NAME" | "WORKER_AUTOSTART", string>
-  >;
+  Partial<Record<"REDIS_URL" | "REVIEW_QUEUE_NAME", string>>;
 
 export type QueueConnectionConfig = {
   host: string;
@@ -16,7 +14,6 @@ export type QueueConnectionConfig = {
 };
 
 export type WorkerConfig = {
-  autoStart: boolean;
   connection: QueueConnectionConfig;
   queueName: string;
   redisUrl: string;
@@ -40,7 +37,6 @@ export function buildWorkerConfig(env: Partial<QueueEnv> = process.env): WorkerC
   const port = parsedRedisUrl.port ? Number(parsedRedisUrl.port) : 6379;
 
   return {
-    autoStart: env.WORKER_AUTOSTART === "true",
     connection: {
       host: parsedRedisUrl.hostname || "127.0.0.1",
       port,

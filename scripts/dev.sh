@@ -12,8 +12,7 @@ fi
 
 : "${REDIS_URL:=redis://127.0.0.1:6379}"
 : "${REVIEW_QUEUE_NAME:=review-jobs}"
-: "${WORKER_AUTOSTART:=true}"
-export REDIS_URL REVIEW_QUEUE_NAME WORKER_AUTOSTART
+export REDIS_URL REVIEW_QUEUE_NAME
 
 cleanup() {
   trap - EXIT
