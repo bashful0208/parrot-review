@@ -28,6 +28,13 @@ cleanup() {
   wait 2>/dev/null || true
 }
 
+wait_for_exit() {
+  pid=$1
+
+  wait "$pid" || return $?
+  return 0
+}
+
 trap 'cleanup; exit 130' INT TERM
 trap 'cleanup' EXIT
 
@@ -39,16 +46,22 @@ echo "[dev] 启动 apps/worker ..."
 pnpm --dir "$REPO_ROOT/apps/worker" run dev &
 worker_pid=$!
 
+exit_code=0
+
 while :; do
   if ! kill -0 "$web_pid" 2>/dev/null; then
-    wait "$web_pid" 2>/dev/null || true
+    wait_for_exit "$web_pid"
+    exit_code=$?
     break
   fi
 
   if ! kill -0 "$worker_pid" 2>/dev/null; then
-    wait "$worker_pid" 2>/dev/null || true
+    wait_for_exit "$worker_pid"
+    exit_code=$?
     break
   fi
 
   sleep 1
 done
+
+exit "$exit_code"
