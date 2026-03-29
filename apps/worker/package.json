@@ -10,6 +10,7 @@
     "test": "tsx --test src/**/*.test.ts src/**/*.integration.test.ts"
   },
   "dependencies": {
+    "@reviewer/shared": "workspace:*",
     "bullmq": "^5.58.0",
     "ioredis": "^5.8.1"
   },
