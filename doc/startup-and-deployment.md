@@ -97,13 +97,19 @@ pnpm run dev:worker
 pnpm --dir apps/worker run dev
 ```
 
-当前实现里，`worker` 在没有设置 `WORKER_AUTOSTART=true` 时会进入 dry-run 模式，只打印启动信息，不连接 Redis，不消费队列。
+通过根目录脚本启动时，会优先加载仓库根目录 `.env`；如果没有显式配置，则本地开发默认使用：
 
-这适合在本地先确认基础工程是否可运行。
+- `REDIS_URL=redis://127.0.0.1:6379`
+- `REVIEW_QUEUE_NAME=review-jobs`
+- `WORKER_AUTOSTART=true`
+
+也就是说，直接执行根目录的 `pnpm run dev` 或 `pnpm run dev:worker` 时，worker 默认会连接本机 Redis 并消费队列。
+
+如果你绕过根目录脚本，直接执行 `pnpm --dir apps/worker run dev`，那么 `worker` 在没有设置 `WORKER_AUTOSTART=true` 时仍会进入 dry-run 模式，只打印启动信息，不连接 Redis，不消费队列。
 
 ### 5.3 启动 Worker（连接真实 Redis）
 
-如果要让 Worker 连接真实 Redis，需要在启动前提供环境变量。
+如果要覆盖默认的本地开发配置，可以在启动前提供环境变量。
 
 示例：
 
@@ -148,7 +154,7 @@ pnpm run dev
 
 - 如果两个服务都正常运行，脚本会持续驻留
 - 如果其中一个服务退出，脚本会主动终止另一个服务，避免残留孤儿进程
-- 如果需要让 Worker 连真实 Redis，请在执行 `pnpm run dev` 前先导出 `REDIS_URL`、`REVIEW_QUEUE_NAME`、`WORKER_AUTOSTART=true`
+- 如果需要覆盖默认配置，请在执行 `pnpm run dev` 前先导出 `REDIS_URL`、`REVIEW_QUEUE_NAME`、`WORKER_AUTOSTART`
 
 如果你更希望分开调试，也可以分别执行：
 

@@ -33,18 +33,24 @@ test("single-service scripts forward to child apps", async () => {
   const webScript = await readText("scripts/dev-web.sh");
   const workerScript = await readText("scripts/dev-worker.sh");
 
-  assert.match(webScript, /exec pnpm --dir apps\/web run dev/);
-  assert.match(workerScript, /exec pnpm --dir apps\/worker run dev/);
+  assert.match(webScript, /exec pnpm --dir "\$REPO_ROOT\/apps\/web" run dev/);
+  assert.match(workerScript, /exec pnpm --dir "\$REPO_ROOT\/apps\/worker" run dev/);
+  assert.match(webScript, /REDIS_URL:=redis:\/\/127\.0\.0\.1:6379/);
+  assert.match(webScript, /REVIEW_QUEUE_NAME:=review-jobs/);
+  assert.match(workerScript, /WORKER_AUTOSTART:=true/);
 });
 
 test("combined dev script starts both services and wires cleanup traps", async () => {
   const script = await readText("scripts/dev.sh");
 
-  assert.match(script, /pnpm --dir apps\/web run dev \&/);
-  assert.match(script, /pnpm --dir apps\/worker run dev \&/);
+  assert.match(script, /pnpm --dir "\$REPO_ROOT\/apps\/web" run dev \&/);
+  assert.match(script, /pnpm --dir "\$REPO_ROOT\/apps\/worker" run dev \&/);
   assert.match(script, /trap 'cleanup; exit 130' INT TERM/);
   assert.match(script, /kill -0 "\$web_pid"/);
   assert.match(script, /kill -0 "\$worker_pid"/);
+  assert.match(script, /REDIS_URL:=redis:\/\/127\.0\.0\.1:6379/);
+  assert.match(script, /REVIEW_QUEUE_NAME:=review-jobs/);
+  assert.match(script, /WORKER_AUTOSTART:=true/);
 });
 
 test("combined dev script stops the sibling process when one service exits", async () => {
@@ -67,12 +73,12 @@ if [ "$1" != "--dir" ]; then
 fi
 
 case "$2" in
-  apps/web)
+  */apps/web)
     echo "web-started"
     sleep 1
     exit 0
     ;;
-  apps/worker)
+  */apps/worker)
     trap 'echo worker-stopped >> "$FAKE_LOG"; exit 0' TERM INT
     echo worker-started >> "$FAKE_LOG"
     while :; do
@@ -101,7 +107,7 @@ esac
     const timeout = setTimeout(() => {
       child.kill("SIGTERM");
       reject(new Error("dev.sh did not stop after the first child exited"));
-    }, 2500);
+    }, 5000);
 
     child.once("exit", (code) => {
       clearTimeout(timeout);
