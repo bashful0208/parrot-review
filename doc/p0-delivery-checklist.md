@@ -22,12 +22,12 @@
 
 ## 1. 基础工程
 
-- [ ] 初始化 monorepo 结构：`apps/web`、`apps/worker`、`packages/ai`、`packages/core`、`packages/git`、`packages/db-types`
-- [ ] 建立统一环境变量规范：Supabase、Redis、Webhook Secret、模型默认路由
+- [x] 初始化 monorepo 结构：`apps/web`、`apps/worker`、`packages/ai`、`packages/core`、`packages/git`、`packages/db-types`
+- [x] 建立统一环境变量规范：Supabase、Redis、Webhook Secret、模型默认路由
 - [ ] 接入 `ESLint`、`TypeScript`、`Prettier`
-- [ ] 建立 `pnpm` workspace 和统一脚本：`dev:web`、`dev:worker`、`build`、`test`
-- [ ] 建立基础日志规范：请求 ID、任务 ID、组织 ID、仓库 ID
-- [ ] 建立错误分类：用户配置错误、平台回调错误、模型调用错误、规则解析错误、任务超时
+- [x] 建立 `pnpm` workspace 和统一脚本：`dev:web`、`dev:worker`、`build`、`test`
+- [x] 建立基础日志规范：请求 ID、任务 ID、组织 ID、仓库 ID
+- [x] 建立错误分类：用户配置错误、平台回调错误、模型调用错误、规则解析错误、任务超时
 
 ## 2. 数据库与表结构
 
