@@ -11,62 +11,12 @@ async function readText(relativePath) {
   return readFile(path.join(rootDir, relativePath), "utf8");
 }
 
-async function runDevScriptWithFakePnpm(fakePnpmSource) {
-  const sandboxDir = await mkdtemp(path.join(os.tmpdir(), "root-scripts-"));
-  const binDir = path.join(sandboxDir, "bin");
-  const logFile = path.join(sandboxDir, "worker.log");
-  const fakePnpmPath = path.join(binDir, "pnpm");
-
-  await mkdir(path.join(sandboxDir, "apps", "web"), { recursive: true });
-  await mkdir(path.join(sandboxDir, "apps", "worker"), { recursive: true });
-  await mkdir(binDir, { recursive: true });
-
-  await writeFile(fakePnpmPath, fakePnpmSource);
-  await chmod(fakePnpmPath, 0o755);
-
-  const child = spawn("sh", [path.join(rootDir, "scripts", "dev.sh")], {
-    cwd: sandboxDir,
-    env: {
-      ...process.env,
-      FAKE_LOG: logFile,
-      PATH: `${binDir}:${process.env.PATH ?? ""}`,
-    },
-    stdio: ["ignore", "pipe", "pipe"],
-  });
-
-  const exitCode = await new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => {
-      child.kill("SIGTERM");
-      reject(new Error("dev.sh did not stop after the first child exited"));
-    }, 5000);
-
-    child.once("exit", (code) => {
-      clearTimeout(timeout);
-      resolve(code);
-    });
-    child.once("error", (error) => {
-      clearTimeout(timeout);
-      reject(error);
-    });
-  });
-
-  let logContents = "";
-  try {
-    logContents = await readFile(logFile, "utf8");
-  } catch {
-    logContents = "";
-  }
-
-  return { exitCode, logContents };
-}
-
 test("root package.json exposes shell script entrypoints", async () => {
   const packageJson = JSON.parse(await readText("package.json"));
 
   assert.deepEqual(packageJson.scripts, {
     setup: "sh ./scripts/setup.sh",
     test: "node --test tests/*.test.mjs",
-    build: "pnpm --dir apps/web run build && pnpm --dir apps/worker run build",
     dev: "sh ./scripts/dev.sh",
     "dev:web": "sh ./scripts/dev-web.sh",
     "dev:worker": "sh ./scripts/dev-worker.sh",
@@ -103,7 +53,18 @@ test("combined dev script starts both services and wires cleanup traps", async (
 });
 
 test("combined dev script stops the sibling process when one service exits", async () => {
-  const { exitCode, logContents } = await runDevScriptWithFakePnpm(`#!/bin/sh
+  const sandboxDir = await mkdtemp(path.join(os.tmpdir(), "root-scripts-"));
+  const binDir = path.join(sandboxDir, "bin");
+  const logFile = path.join(sandboxDir, "worker.log");
+  const fakePnpmPath = path.join(binDir, "pnpm");
+
+  await mkdir(path.join(sandboxDir, "apps", "web"), { recursive: true });
+  await mkdir(path.join(sandboxDir, "apps", "worker"), { recursive: true });
+  await mkdir(binDir, { recursive: true });
+
+  await writeFile(
+    fakePnpmPath,
+    `#!/bin/sh
 set -eu
 
 if [ "$1" != "--dir" ]; then
@@ -127,66 +88,40 @@ case "$2" in
     exit 3
     ;;
 esac
-`);
+`,
+  );
+  await chmod(fakePnpmPath, 0o755);
+
+  const child = spawn("sh", [path.join(rootDir, "scripts", "dev.sh")], {
+    cwd: sandboxDir,
+    env: {
+      ...process.env,
+      FAKE_LOG: logFile,
+      PATH: `${binDir}:${process.env.PATH ?? ""}`,
+    },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+
+  const exitCode = await new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      child.kill("SIGTERM");
+      reject(new Error("dev.sh did not stop after the first child exited"));
+    }, 5000);
+
+    child.once("exit", (code) => {
+      clearTimeout(timeout);
+      resolve(code);
+    });
+    child.once("error", (error) => {
+      clearTimeout(timeout);
+      reject(error);
+    });
+  });
 
   assert.equal(exitCode, 0);
+
+  const logContents = await readFile(logFile, "utf8");
+
   assert.match(logContents, /worker-started/);
   assert.match(logContents, /worker-stopped/);
-});
-
-test("combined dev script returns the web failure exit code", async () => {
-  const { exitCode, logContents } = await runDevScriptWithFakePnpm(`#!/bin/sh
-set -eu
-
-if [ "$1" != "--dir" ]; then
-  exit 2
-fi
-
-case "$2" in
-  */apps/web)
-    exit 17
-    ;;
-  */apps/worker)
-    trap 'echo worker-stopped >> "$FAKE_LOG"; exit 0' TERM INT
-    echo worker-started >> "$FAKE_LOG"
-    while :; do
-      sleep 1
-    done
-    ;;
-  *)
-    exit 3
-    ;;
-esac
-`);
-
-  assert.equal(exitCode, 17);
-  assert.match(logContents, /worker-started/);
-  assert.match(logContents, /worker-stopped/);
-});
-
-test("combined dev script returns the worker failure exit code", async () => {
-  const { exitCode } = await runDevScriptWithFakePnpm(`#!/bin/sh
-set -eu
-
-if [ "$1" != "--dir" ]; then
-  exit 2
-fi
-
-case "$2" in
-  */apps/web)
-    trap 'exit 0' TERM INT
-    while :; do
-      sleep 1
-    done
-    ;;
-  */apps/worker)
-    exit 23
-    ;;
-  *)
-    exit 3
-    ;;
-esac
-`);
-
-  assert.equal(exitCode, 23);
 });

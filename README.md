@@ -37,11 +37,6 @@ pnpm run setup
 pnpm run dev
 ```
 
-- 这个命令会同时拉起 `apps/web` 和 `apps/worker`
-- 如果任一服务以非零状态退出，根脚本也会返回相同失败码
-- 默认会使用 `REDIS_URL=redis://127.0.0.1:6379` 与 `REVIEW_QUEUE_NAME=review-jobs`
-- Redis 不可达时，worker 会立即失败退出；详细说明见 `doc/startup-and-deployment.md`
-
 只启动 Web：
 
 ```bash
@@ -53,5 +48,3 @@ pnpm run dev:web
 ```bash
 pnpm run dev:worker
 ```
-
-- `pnpm run dev:worker` 同样会使用默认的本地 Redis 地址，除非你在启动前覆盖 `REDIS_URL`

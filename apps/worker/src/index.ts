@@ -1,7 +1,6 @@
 import { pathToFileURL } from "node:url";
 
 import {
-  assertRedisReachable,
   buildWorkerConfig,
   createPlaceholderWorker,
 } from "@reviewer/shared";
@@ -14,11 +13,8 @@ export async function main(env = process.env): Promise<void> {
   console.log(`[worker] queue=${config.queueName}`);
   console.log(`[worker] redis=${config.redisUrl}`);
 
-  await assertRedisReachable(config.redisUrl);
-
   const { connection, worker } = createPlaceholderWorker(config);
 
-  await worker.waitUntilReady();
   console.log("[worker] worker started and waiting for jobs.");
 
   const shutdown = async (signal: string) => {

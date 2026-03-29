@@ -53,21 +53,6 @@ export function createRedisConnection(redisUrl: string): Redis {
   });
 }
 
-export async function assertRedisReachable(redisUrl: string): Promise<void> {
-  const connection = new Redis(redisUrl, {
-    enableReadyCheck: false,
-    lazyConnect: true,
-    maxRetriesPerRequest: 0,
-  });
-
-  try {
-    await connection.connect();
-    await connection.ping();
-  } finally {
-    connection.disconnect();
-  }
-}
-
 export async function runPlaceholderJob(
   job: Job,
 ): Promise<PlaceholderJobResult> {
