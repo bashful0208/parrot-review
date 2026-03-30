@@ -37,7 +37,10 @@ export async function main(env = process.env): Promise<void> {
   await new Promise<void>(() => {});
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
   void main().catch((error: unknown) => {
     console.error("[worker] bootstrap failed", error);
     process.exitCode = 1;

@@ -13,14 +13,15 @@ export async function POST() {
       job,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown enqueue error";
+    const message =
+      error instanceof Error ? error.message : "Unknown enqueue error";
 
     return NextResponse.json(
       {
         ok: false,
         error: message,
       },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }

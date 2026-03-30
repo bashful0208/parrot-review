@@ -9,8 +9,16 @@
       "import": "./src/index.ts"
     }
   },
+  "scripts": {
+    "lint": "pnpm --dir ../.. exec eslint .",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
   "dependencies": {
     "bullmq": "^5.58.0",
     "ioredis": "^5.8.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.5.2",
+    "typescript": "^5.9.2"
   }
 }

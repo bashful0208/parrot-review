@@ -30,7 +30,9 @@ export type PlaceholderJobResult = {
   placeholder: true;
 };
 
-export function buildWorkerConfig(env: Partial<QueueEnv> = process.env): WorkerConfig {
+export function buildWorkerConfig(
+  env: Partial<QueueEnv> = process.env
+): WorkerConfig {
   const redisUrl = env.REDIS_URL?.trim() || DEFAULT_REDIS_URL;
   const queueName = env.REVIEW_QUEUE_NAME?.trim() || DEFAULT_QUEUE_NAME;
   const parsedRedisUrl = new URL(redisUrl);
@@ -69,9 +71,11 @@ export async function assertRedisReachable(redisUrl: string): Promise<void> {
 }
 
 export async function runPlaceholderJob(
-  job: Job,
+  job: Job
 ): Promise<PlaceholderJobResult> {
-  console.log(`[worker] received placeholder job ${job.name} (${job.id ?? "no-id"})`);
+  console.log(
+    `[worker] received placeholder job ${job.name} (${job.id ?? "no-id"})`
+  );
 
   return {
     handledAt: new Date().toISOString(),
@@ -95,7 +99,7 @@ export function createPlaceholderWorker({
   worker.on("failed", (job, error) => {
     console.error(
       `[worker] failed job ${job?.name ?? "unknown"} (${job?.id ?? "no-id"}):`,
-      error,
+      error
     );
   });
 
@@ -103,7 +107,7 @@ export function createPlaceholderWorker({
 }
 
 export async function enqueueReviewJob(
-  env: Partial<QueueEnv> = process.env,
+  env: Partial<QueueEnv> = process.env
 ): Promise<EnqueuedReviewJob> {
   const config = buildWorkerConfig(env);
   const connection = createRedisConnection(config.redisUrl);

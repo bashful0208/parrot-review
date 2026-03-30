@@ -16,13 +16,17 @@ test("buildWorkerConfig returns queue name and default redis url", () => {
 });
 
 test("buildWorkerConfig reads queue name from environment", () => {
-  const config = buildWorkerConfig({ REVIEW_QUEUE_NAME: "custom-review-queue" });
+  const config = buildWorkerConfig({
+    REVIEW_QUEUE_NAME: "custom-review-queue",
+  });
 
   assert.equal(config.queueName, "custom-review-queue");
 });
 
 test("buildWorkerConfig reads redis host and port from REDIS_URL", () => {
-  const config = buildWorkerConfig({ REDIS_URL: "redis://cache.internal:6381" });
+  const config = buildWorkerConfig({
+    REDIS_URL: "redis://cache.internal:6381",
+  });
 
   assert.equal(config.connection.host, "cache.internal");
   assert.equal(config.connection.port, 6381);
@@ -47,26 +51,32 @@ test(
       stderrChunks.push(String(chunk));
     });
 
-    const result = await new Promise<{ code: number | null; signal: NodeJS.Signals | null }>(
-      (resolve, reject) => {
-        const timeout = setTimeout(() => {
-          child.kill("SIGTERM");
-          reject(new Error("worker did not fail fast when Redis was unreachable"));
-        }, 5000);
+    const result = await new Promise<{
+      code: number | null;
+      signal: NodeJS.Signals | null;
+    }>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        child.kill("SIGTERM");
+        reject(
+          new Error("worker did not fail fast when Redis was unreachable")
+        );
+      }, 5000);
 
-        child.once("exit", (code, signal) => {
-          clearTimeout(timeout);
-          resolve({ code, signal });
-        });
-        child.once("error", (error) => {
-          clearTimeout(timeout);
-          reject(error);
-        });
-      },
-    );
+      child.once("exit", (code, signal) => {
+        clearTimeout(timeout);
+        resolve({ code, signal });
+      });
+      child.once("error", (error) => {
+        clearTimeout(timeout);
+        reject(error);
+      });
+    });
 
     assert.equal(result.signal, null);
     assert.notEqual(result.code, 0);
-    assert.match(stderrChunks.join(""), /bootstrap failed|ECONNREFUSED|connect/i);
-  },
+    assert.match(
+      stderrChunks.join(""),
+      /bootstrap failed|ECONNREFUSED|connect/i
+    );
+  }
 );

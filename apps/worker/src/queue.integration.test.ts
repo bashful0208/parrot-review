@@ -24,7 +24,9 @@ test(
       redisUrl: TEST_REDIS_URL,
     });
     const queue = new Queue(queueName, { connection: queueConnection });
-    const queueEvents = new QueueEvents(queueName, { connection: queueEventsConnection });
+    const queueEvents = new QueueEvents(queueName, {
+      connection: queueEventsConnection,
+    });
 
     t.after(async () => {
       await worker.close();
@@ -40,13 +42,20 @@ test(
     await queueEvents.waitUntilReady();
     await worker.waitUntilReady();
 
-    const job = await queue.add("integration-proof", { source: "queue.integration.test.ts" });
+    const job = await queue.add("integration-proof", {
+      source: "queue.integration.test.ts",
+    });
     const result = await job.waitUntilFinished(queueEvents, 10_000);
 
     assert.equal(result.placeholder, true);
     assert.equal(typeof result.handledAt, "string");
 
-    const jobCounts = await queue.getJobCounts("waiting", "active", "completed", "failed");
+    const jobCounts = await queue.getJobCounts(
+      "waiting",
+      "active",
+      "completed",
+      "failed"
+    );
 
     assert.equal(jobCounts.failed, 0);
     assert.equal(jobCounts.completed, 1);
@@ -59,7 +68,7 @@ test(
       "completed",
       "failed",
       "delayed",
-      "paused",
+      "paused"
     );
 
     assert.equal(cleanedJobCounts.waiting, 0);
@@ -68,5 +77,5 @@ test(
     assert.equal(cleanedJobCounts.failed, 0);
     assert.equal(cleanedJobCounts.delayed, 0);
     assert.equal(cleanedJobCounts.paused, 0);
-  },
+  }
 );

@@ -68,13 +68,16 @@ test("root package.json exposes shell script entrypoints", async () => {
   assert.deepEqual(packageJson.scripts, {
     setup: "sh ./scripts/setup.sh",
     test: "node --test tests/*.test.mjs",
-    build: "pnpm --dir packages/core run build && pnpm --dir apps/web run build && pnpm --dir apps/worker run build",
+    build:
+      "pnpm --dir packages/core run build && pnpm --dir apps/web run build && pnpm --dir apps/worker run build",
     dev: "sh ./scripts/dev.sh",
     "dev:web": "sh ./scripts/dev-web.sh",
     "dev:worker": "sh ./scripts/dev-worker.sh",
     lint: "pnpm -r run lint",
     typecheck: "pnpm -r run typecheck",
+    format: "prettier --write .",
     "format:check": "prettier --check .",
+    check: "pnpm lint && pnpm typecheck && pnpm test",
   });
 });
 
@@ -94,7 +97,10 @@ test("single-service scripts forward to child apps", async () => {
   const workerScript = await readText("scripts/dev-worker.sh");
 
   assert.match(webScript, /exec pnpm --dir "\$REPO_ROOT\/apps\/web" run dev/);
-  assert.match(workerScript, /exec pnpm --dir "\$REPO_ROOT\/apps\/worker" run dev/);
+  assert.match(
+    workerScript,
+    /exec pnpm --dir "\$REPO_ROOT\/apps\/worker" run dev/
+  );
   assert.match(webScript, /REDIS_URL:=redis:\/\/127\.0\.0\.1:6379/);
   assert.match(webScript, /REVIEW_QUEUE_NAME:=review-jobs/);
 });
@@ -102,8 +108,8 @@ test("single-service scripts forward to child apps", async () => {
 test("combined dev script starts both services and wires cleanup traps", async () => {
   const script = await readText("scripts/dev.sh");
 
-  assert.match(script, /pnpm --dir "\$REPO_ROOT\/apps\/web" run dev \&/);
-  assert.match(script, /pnpm --dir "\$REPO_ROOT\/apps\/worker" run dev \&/);
+  assert.match(script, /pnpm --dir "\$REPO_ROOT\/apps\/web" run dev &/);
+  assert.match(script, /pnpm --dir "\$REPO_ROOT\/apps\/worker" run dev &/);
   assert.match(script, /trap 'cleanup; exit 130' INT TERM/);
   assert.match(script, /kill -0 "\$web_pid"/);
   assert.match(script, /kill -0 "\$worker_pid"/);

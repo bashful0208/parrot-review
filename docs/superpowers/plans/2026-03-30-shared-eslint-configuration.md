@@ -38,6 +38,7 @@
 ### Task 1: Add Failing Engineering Tests
 
 **Files:**
+
 - Modify: `tests/basic-engineering.test.mjs`
 - Test: `tests/basic-engineering.test.mjs`
 
@@ -71,14 +72,20 @@ test("worker lint script runs eslint instead of tsc", async () => {
 test("web eslint config imports shared next config", async () => {
   const configSource = await readText("apps/web/eslint.config.mjs");
 
-  assert.match(configSource, /packages\/eslint-config|@reviewer\/eslint-config/);
+  assert.match(
+    configSource,
+    /packages\/eslint-config|@reviewer\/eslint-config/
+  );
   assert.match(configSource, /next/);
 });
 
 test("worker eslint config imports shared base config", async () => {
   const configSource = await readText("apps/worker/eslint.config.mjs");
 
-  assert.match(configSource, /packages\/eslint-config|@reviewer\/eslint-config/);
+  assert.match(
+    configSource,
+    /packages\/eslint-config|@reviewer\/eslint-config/
+  );
   assert.match(configSource, /base/);
 });
 ```
@@ -98,6 +105,7 @@ git commit -m "test: add shared eslint engineering checks"
 ### Task 2: Create Shared ESLint Config Package
 
 **Files:**
+
 - Create: `packages/eslint-config/package.json`
 - Create: `packages/eslint-config/base.mjs`
 - Create: `packages/eslint-config/next.mjs`
@@ -139,7 +147,14 @@ import tseslint from "typescript-eslint";
 
 export default tseslint.config(
   {
-    ignores: ["dist/**", "build/**", ".next/**", "out/**", "coverage/**", "node_modules/**"],
+    ignores: [
+      "dist/**",
+      "build/**",
+      ".next/**",
+      "out/**",
+      "coverage/**",
+      "node_modules/**",
+    ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
@@ -212,6 +227,7 @@ git commit -m "feat: add shared eslint config package"
 ### Task 3: Wire Web and Worker to Shared ESLint Config
 
 **Files:**
+
 - Modify: `apps/web/eslint.config.mjs`
 - Create: `apps/worker/eslint.config.mjs`
 - Modify: `apps/worker/package.json`
@@ -296,6 +312,7 @@ git commit -m "feat: share eslint config across apps"
 ### Task 4: Verify Real Lint Behavior and Update Checklist
 
 **Files:**
+
 - Modify: `doc/p0-delivery-checklist.md`
 - Test: `apps/web/eslint.config.mjs`
 - Test: `apps/worker/eslint.config.mjs`
