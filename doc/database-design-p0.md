@@ -113,15 +113,15 @@ organizations
 
 关键字段：
 
-| 字段 | 类型 | 说明 |
-| --- | --- | --- |
-| `name` | text | 组织名称 |
-| `slug` | text unique | 组织唯一标识 |
-| `status` | text | 组织状态 |
-| `plan_tier` | text | 套餐层级 |
-| `default_output_language` | output_language | 默认输出语言 |
-| `default_review_mode` | review_mode | 默认审查模式 |
-| `owner_user_id` | uuid | 对应 `auth.users.id` |
+| 字段                      | 类型            | 说明                 |
+| ------------------------- | --------------- | -------------------- |
+| `name`                    | text            | 组织名称             |
+| `slug`                    | text unique     | 组织唯一标识         |
+| `status`                  | text            | 组织状态             |
+| `plan_tier`               | text            | 套餐层级             |
+| `default_output_language` | output_language | 默认输出语言         |
+| `default_review_mode`     | review_mode     | 默认审查模式         |
+| `owner_user_id`           | uuid            | 对应 `auth.users.id` |
 
 索引与约束：
 
@@ -135,14 +135,14 @@ organizations
 
 关键字段：
 
-| 字段 | 类型 | 说明 |
-| --- | --- | --- |
-| `organization_id` | uuid fk | 组织 |
-| `user_id` | uuid fk | 对应 `auth.users.id` |
-| `role` | member_role | `owner/admin/member` |
-| `status` | text | `active/invited/disabled` |
-| `invited_by` | uuid nullable | 邀请人 |
-| `joined_at` | timestamptz nullable | 加入时间 |
+| 字段              | 类型                 | 说明                      |
+| ----------------- | -------------------- | ------------------------- |
+| `organization_id` | uuid fk              | 组织                      |
+| `user_id`         | uuid fk              | 对应 `auth.users.id`      |
+| `role`            | member_role          | `owner/admin/member`      |
+| `status`          | text                 | `active/invited/disabled` |
+| `invited_by`      | uuid nullable        | 邀请人                    |
+| `joined_at`       | timestamptz nullable | 加入时间                  |
 
 索引与约束：
 
@@ -160,19 +160,19 @@ organizations
 
 关键字段：
 
-| 字段 | 类型 | 说明 |
-| --- | --- | --- |
-| `organization_id` | uuid fk | 所属组织 |
-| `provider` | git_provider | 仓库平台 |
-| `provider_repo_id` | text | 平台仓库 ID |
-| `name` | text | 仓库名 |
-| `full_name` | text | 完整名，如 `org/repo` |
-| `default_branch` | text | 默认分支 |
-| `status` | repo_status | 启用状态 |
-| `default_output_language` | output_language | 仓库默认输出语言 |
-| `default_review_mode` | review_mode | 仓库默认审查模式 |
-| `default_ai_binding_id` | uuid nullable | 默认模型绑定 |
-| `last_synced_at` | timestamptz nullable | 最后同步时间 |
+| 字段                      | 类型                 | 说明                  |
+| ------------------------- | -------------------- | --------------------- |
+| `organization_id`         | uuid fk              | 所属组织              |
+| `provider`                | git_provider         | 仓库平台              |
+| `provider_repo_id`        | text                 | 平台仓库 ID           |
+| `name`                    | text                 | 仓库名                |
+| `full_name`               | text                 | 完整名，如 `org/repo` |
+| `default_branch`          | text                 | 默认分支              |
+| `status`                  | repo_status          | 启用状态              |
+| `default_output_language` | output_language      | 仓库默认输出语言      |
+| `default_review_mode`     | review_mode          | 仓库默认审查模式      |
+| `default_ai_binding_id`   | uuid nullable        | 默认模型绑定          |
+| `last_synced_at`          | timestamptz nullable | 最后同步时间          |
 
 索引与约束：
 
@@ -188,17 +188,17 @@ organizations
 
 关键字段：
 
-| 字段 | 类型 | 说明 |
-| --- | --- | --- |
-| `organization_id` | uuid fk | 所属组织 |
-| `repository_id` | uuid fk | 仓库 |
-| `provider` | git_provider | 平台 |
-| `installation_id` | text nullable | App 安装 ID |
-| `provider_owner_id` | text nullable | 平台 owner ID |
-| `credential_vault_secret_id` | uuid nullable | 如 provider 需要长期 token，则存 Vault 引用 |
-| `webhook_secret_vault_secret_id` | uuid nullable | webhook secret 引用 |
-| `status` | text | `active/error/revoked` |
-| `metadata` | jsonb | 安装信息、权限信息 |
+| 字段                             | 类型          | 说明                                        |
+| -------------------------------- | ------------- | ------------------------------------------- |
+| `organization_id`                | uuid fk       | 所属组织                                    |
+| `repository_id`                  | uuid fk       | 仓库                                        |
+| `provider`                       | git_provider  | 平台                                        |
+| `installation_id`                | text nullable | App 安装 ID                                 |
+| `provider_owner_id`              | text nullable | 平台 owner ID                               |
+| `credential_vault_secret_id`     | uuid nullable | 如 provider 需要长期 token，则存 Vault 引用 |
+| `webhook_secret_vault_secret_id` | uuid nullable | webhook secret 引用                         |
+| `status`                         | text          | `active/error/revoked`                      |
+| `metadata`                       | jsonb         | 安装信息、权限信息                          |
 
 索引与约束：
 
@@ -214,19 +214,19 @@ organizations
 
 关键字段：
 
-| 字段 | 类型 | 说明 |
-| --- | --- | --- |
-| `organization_id` | uuid nullable | 可在解析后回填 |
-| `repository_id` | uuid nullable | 可在解析后回填 |
-| `provider` | git_provider | 平台 |
-| `event_type` | text | 事件类型 |
-| `delivery_id` | text | 平台投递 ID |
-| `signature_valid` | boolean | 验签结果 |
-| `payload_hash` | text | 请求体 hash |
-| `status` | text | `received/processed/ignored/failed` |
-| `payload` | jsonb | 原始 payload |
-| `processed_at` | timestamptz nullable | 处理完成时间 |
-| `error_message` | text nullable | 失败原因 |
+| 字段              | 类型                 | 说明                                |
+| ----------------- | -------------------- | ----------------------------------- |
+| `organization_id` | uuid nullable        | 可在解析后回填                      |
+| `repository_id`   | uuid nullable        | 可在解析后回填                      |
+| `provider`        | git_provider         | 平台                                |
+| `event_type`      | text                 | 事件类型                            |
+| `delivery_id`     | text                 | 平台投递 ID                         |
+| `signature_valid` | boolean              | 验签结果                            |
+| `payload_hash`    | text                 | 请求体 hash                         |
+| `status`          | text                 | `received/processed/ignored/failed` |
+| `payload`         | jsonb                | 原始 payload                        |
+| `processed_at`    | timestamptz nullable | 处理完成时间                        |
+| `error_message`   | text nullable        | 失败原因                            |
 
 索引与约束：
 
@@ -244,24 +244,24 @@ organizations
 
 关键字段：
 
-| 字段 | 类型 | 说明 |
-| --- | --- | --- |
-| `organization_id` | uuid fk | 所属组织 |
-| `repository_id` | uuid fk | 仓库 |
-| `provider_pr_id` | text | 平台 PR ID |
-| `provider_pr_number` | integer | 平台 PR 编号 |
-| `title` | text | PR 标题 |
-| `description` | text nullable | PR 描述 |
-| `author_login` | text nullable | 作者账号 |
-| `base_branch` | text | 目标分支 |
-| `head_branch` | text | 来源分支 |
-| `base_sha` | text | 当前基准 sha |
-| `head_sha` | text | 当前 head sha |
-| `state` | text | `open/closed/merged` |
-| `opened_at` | timestamptz | 打开时间 |
-| `closed_at` | timestamptz nullable | 关闭时间 |
-| `merged_at` | timestamptz nullable | 合并时间 |
-| `latest_review_run_id` | uuid nullable | 最近一次审查 |
+| 字段                   | 类型                 | 说明                 |
+| ---------------------- | -------------------- | -------------------- |
+| `organization_id`      | uuid fk              | 所属组织             |
+| `repository_id`        | uuid fk              | 仓库                 |
+| `provider_pr_id`       | text                 | 平台 PR ID           |
+| `provider_pr_number`   | integer              | 平台 PR 编号         |
+| `title`                | text                 | PR 标题              |
+| `description`          | text nullable        | PR 描述              |
+| `author_login`         | text nullable        | 作者账号             |
+| `base_branch`          | text                 | 目标分支             |
+| `head_branch`          | text                 | 来源分支             |
+| `base_sha`             | text                 | 当前基准 sha         |
+| `head_sha`             | text                 | 当前 head sha        |
+| `state`                | text                 | `open/closed/merged` |
+| `opened_at`            | timestamptz          | 打开时间             |
+| `closed_at`            | timestamptz nullable | 关闭时间             |
+| `merged_at`            | timestamptz nullable | 合并时间             |
+| `latest_review_run_id` | uuid nullable        | 最近一次审查         |
 
 索引与约束：
 
@@ -278,15 +278,15 @@ organizations
 
 关键字段：
 
-| 字段 | 类型 | 说明 |
-| --- | --- | --- |
-| `organization_id` | uuid fk | 所属组织 |
-| `pull_request_id` | uuid fk | PR |
-| `commit_sha` | text | commit sha |
-| `parent_sha` | text nullable | 父 commit |
-| `author_name` | text nullable | 作者 |
-| `author_email` | text nullable | 作者邮箱 |
-| `committed_at` | timestamptz nullable | 提交时间 |
+| 字段              | 类型                 | 说明       |
+| ----------------- | -------------------- | ---------- |
+| `organization_id` | uuid fk              | 所属组织   |
+| `pull_request_id` | uuid fk              | PR         |
+| `commit_sha`      | text                 | commit sha |
+| `parent_sha`      | text nullable        | 父 commit  |
+| `author_name`     | text nullable        | 作者       |
+| `author_email`    | text nullable        | 作者邮箱   |
+| `committed_at`    | timestamptz nullable | 提交时间   |
 
 索引与约束：
 
@@ -302,18 +302,18 @@ organizations
 
 关键字段：
 
-| 字段 | 类型 | 说明 |
-| --- | --- | --- |
-| `organization_id` | uuid fk | 所属组织 |
-| `pull_request_id` | uuid fk | PR |
-| `review_run_id` | uuid fk | 审查 run |
-| `file_path` | text | 当前路径 |
-| `previous_path` | text nullable | rename 前路径 |
-| `change_type` | text | `added/modified/deleted/renamed` |
-| `additions` | integer | 新增行数 |
-| `deletions` | integer | 删除行数 |
-| `is_binary` | boolean | 是否二进制 |
-| `patch_excerpt` | text nullable | diff 摘要 |
+| 字段              | 类型          | 说明                             |
+| ----------------- | ------------- | -------------------------------- |
+| `organization_id` | uuid fk       | 所属组织                         |
+| `pull_request_id` | uuid fk       | PR                               |
+| `review_run_id`   | uuid fk       | 审查 run                         |
+| `file_path`       | text          | 当前路径                         |
+| `previous_path`   | text nullable | rename 前路径                    |
+| `change_type`     | text          | `added/modified/deleted/renamed` |
+| `additions`       | integer       | 新增行数                         |
+| `deletions`       | integer       | 删除行数                         |
+| `is_binary`       | boolean       | 是否二进制                       |
+| `patch_excerpt`   | text nullable | diff 摘要                        |
 
 索引与约束：
 
@@ -331,33 +331,33 @@ organizations
 
 关键字段：
 
-| 字段 | 类型 | 说明 |
-| --- | --- | --- |
-| `organization_id` | uuid fk | 所属组织 |
-| `repository_id` | uuid fk | 仓库 |
-| `pull_request_id` | uuid fk | PR |
-| `run_number` | integer | PR 内部递增编号 |
-| `trigger_type` | review_trigger | 触发来源 |
-| `trigger_event_id` | uuid nullable fk | 对应 `webhook_events` |
-| `review_mode` | review_mode | 审查模式 |
-| `output_language` | output_language | 输出语言 |
-| `status` | review_run_status | 状态机 |
-| `base_sha` | text | 本次比较 base |
-| `head_sha` | text | 本次比较 head |
-| `queue_job_id` | text nullable | BullMQ job id |
-| `ai_provider_config_id` | uuid nullable fk | 主模型配置 |
-| `ai_model_name` | text nullable | 主模型名 |
-| `fallback_provider_config_id` | uuid nullable fk | fallback 模型配置 |
-| `fallback_model_name` | text nullable | fallback 模型名 |
-| `rule_snapshot` | jsonb | 实际生效规则快照 |
-| `summary_md` | text nullable | PR 摘要 |
-| `analyzed_files_count` | integer default 0 | 分析文件数 |
-| `findings_count` | integer default 0 | 问题数 |
-| `security_findings_count` | integer default 0 | 安全问题数 |
-| `started_at` | timestamptz nullable | 开始时间 |
-| `finished_at` | timestamptz nullable | 结束时间 |
-| `error_code` | text nullable | 错误码 |
-| `error_message` | text nullable | 错误信息 |
+| 字段                          | 类型                 | 说明                  |
+| ----------------------------- | -------------------- | --------------------- |
+| `organization_id`             | uuid fk              | 所属组织              |
+| `repository_id`               | uuid fk              | 仓库                  |
+| `pull_request_id`             | uuid fk              | PR                    |
+| `run_number`                  | integer              | PR 内部递增编号       |
+| `trigger_type`                | review_trigger       | 触发来源              |
+| `trigger_event_id`            | uuid nullable fk     | 对应 `webhook_events` |
+| `review_mode`                 | review_mode          | 审查模式              |
+| `output_language`             | output_language      | 输出语言              |
+| `status`                      | review_run_status    | 状态机                |
+| `base_sha`                    | text                 | 本次比较 base         |
+| `head_sha`                    | text                 | 本次比较 head         |
+| `queue_job_id`                | text nullable        | BullMQ job id         |
+| `ai_provider_config_id`       | uuid nullable fk     | 主模型配置            |
+| `ai_model_name`               | text nullable        | 主模型名              |
+| `fallback_provider_config_id` | uuid nullable fk     | fallback 模型配置     |
+| `fallback_model_name`         | text nullable        | fallback 模型名       |
+| `rule_snapshot`               | jsonb                | 实际生效规则快照      |
+| `summary_md`                  | text nullable        | PR 摘要               |
+| `analyzed_files_count`        | integer default 0    | 分析文件数            |
+| `findings_count`              | integer default 0    | 问题数                |
+| `security_findings_count`     | integer default 0    | 安全问题数            |
+| `started_at`                  | timestamptz nullable | 开始时间              |
+| `finished_at`                 | timestamptz nullable | 结束时间              |
+| `error_code`                  | text nullable        | 错误码                |
+| `error_message`               | text nullable        | 错误信息              |
 
 索引与约束：
 
@@ -374,33 +374,33 @@ organizations
 
 关键字段：
 
-| 字段 | 类型 | 说明 |
-| --- | --- | --- |
-| `organization_id` | uuid fk | 所属组织 |
-| `repository_id` | uuid fk | 仓库 |
-| `pull_request_id` | uuid fk | PR |
-| `review_run_id` | uuid fk | 审查 run |
-| `fingerprint` | text | 规范化问题指纹 |
-| `issue_type` | issue_type | `quality/security` |
-| `category` | text nullable | 规则类型或分类 |
-| `title` | text | 问题标题 |
-| `summary` | text | 问题摘要 |
-| `severity` | severity | 严重级别 |
-| `confidence_score` | numeric(5,4) | 置信度 |
-| `fixability_score` | numeric(5,4) | 可修复度 |
-| `file_path` | text nullable | 文件路径 |
-| `start_line` | integer nullable | 起始行 |
-| `end_line` | integer nullable | 结束行 |
-| `code_excerpt` | text nullable | 代码片段 |
-| `suggestion_md` | text nullable | 修复建议 |
-| `root_cause` | text nullable | 根因 |
-| `impact_scope` | text nullable | 影响范围 |
-| `status` | issue_status | `open/resolved/ignored/confirmed` |
-| `first_seen_run_id` | uuid nullable | 首次出现 run |
-| `last_seen_run_id` | uuid nullable | 最近一次出现 run |
-| `resolved_in_run_id` | uuid nullable | 被标记解决的 run |
-| `ignored_by_user_id` | uuid nullable | 忽略人 |
-| `ignored_reason` | text nullable | 忽略原因 |
+| 字段                 | 类型             | 说明                              |
+| -------------------- | ---------------- | --------------------------------- |
+| `organization_id`    | uuid fk          | 所属组织                          |
+| `repository_id`      | uuid fk          | 仓库                              |
+| `pull_request_id`    | uuid fk          | PR                                |
+| `review_run_id`      | uuid fk          | 审查 run                          |
+| `fingerprint`        | text             | 规范化问题指纹                    |
+| `issue_type`         | issue_type       | `quality/security`                |
+| `category`           | text nullable    | 规则类型或分类                    |
+| `title`              | text             | 问题标题                          |
+| `summary`            | text             | 问题摘要                          |
+| `severity`           | severity         | 严重级别                          |
+| `confidence_score`   | numeric(5,4)     | 置信度                            |
+| `fixability_score`   | numeric(5,4)     | 可修复度                          |
+| `file_path`          | text nullable    | 文件路径                          |
+| `start_line`         | integer nullable | 起始行                            |
+| `end_line`           | integer nullable | 结束行                            |
+| `code_excerpt`       | text nullable    | 代码片段                          |
+| `suggestion_md`      | text nullable    | 修复建议                          |
+| `root_cause`         | text nullable    | 根因                              |
+| `impact_scope`       | text nullable    | 影响范围                          |
+| `status`             | issue_status     | `open/resolved/ignored/confirmed` |
+| `first_seen_run_id`  | uuid nullable    | 首次出现 run                      |
+| `last_seen_run_id`   | uuid nullable    | 最近一次出现 run                  |
+| `resolved_in_run_id` | uuid nullable    | 被标记解决的 run                  |
+| `ignored_by_user_id` | uuid nullable    | 忽略人                            |
+| `ignored_reason`     | text nullable    | 忽略原因                          |
 
 索引与约束：
 
@@ -424,23 +424,23 @@ organizations
 
 关键字段：
 
-| 字段 | 类型 | 说明 |
-| --- | --- | --- |
-| `organization_id` | uuid fk | 所属组织 |
-| `pull_request_id` | uuid fk | PR |
-| `review_run_id` | uuid fk | 审查 run |
-| `review_issue_id` | uuid fk | 问题 |
-| `provider` | git_provider nullable | 平台 |
-| `external_comment_id` | text nullable | 平台评论 ID |
-| `body_md` | text | 评论内容 |
-| `output_language` | output_language | 输出语言 |
-| `status` | comment_status | 评论状态 |
-| `is_inline` | boolean | 是否行内评论 |
-| `file_path` | text nullable | 评论文件 |
-| `line_number` | integer nullable | 评论行 |
-| `posted_at` | timestamptz nullable | 发布时间 |
-| `last_synced_at` | timestamptz nullable | 最近同步时间 |
-| `error_message` | text nullable | 发布失败原因 |
+| 字段                  | 类型                  | 说明         |
+| --------------------- | --------------------- | ------------ |
+| `organization_id`     | uuid fk               | 所属组织     |
+| `pull_request_id`     | uuid fk               | PR           |
+| `review_run_id`       | uuid fk               | 审查 run     |
+| `review_issue_id`     | uuid fk               | 问题         |
+| `provider`            | git_provider nullable | 平台         |
+| `external_comment_id` | text nullable         | 平台评论 ID  |
+| `body_md`             | text                  | 评论内容     |
+| `output_language`     | output_language       | 输出语言     |
+| `status`              | comment_status        | 评论状态     |
+| `is_inline`           | boolean               | 是否行内评论 |
+| `file_path`           | text nullable         | 评论文件     |
+| `line_number`         | integer nullable      | 评论行       |
+| `posted_at`           | timestamptz nullable  | 发布时间     |
+| `last_synced_at`      | timestamptz nullable  | 最近同步时间 |
+| `error_message`       | text nullable         | 发布失败原因 |
 
 索引与约束：
 
@@ -456,14 +456,14 @@ organizations
 
 关键字段：
 
-| 字段 | 类型 | 说明 |
-| --- | --- | --- |
-| `organization_id` | uuid fk | 所属组织 |
-| `review_issue_id` | uuid fk | 问题 |
-| `review_run_id` | uuid fk | 审查 run |
-| `user_id` | uuid fk | 对应 `auth.users.id` |
-| `feedback_type` | feedback_type | 反馈类型 |
-| `reason` | text nullable | 原因 |
+| 字段              | 类型          | 说明                 |
+| ----------------- | ------------- | -------------------- |
+| `organization_id` | uuid fk       | 所属组织             |
+| `review_issue_id` | uuid fk       | 问题                 |
+| `review_run_id`   | uuid fk       | 审查 run             |
+| `user_id`         | uuid fk       | 对应 `auth.users.id` |
+| `feedback_type`   | feedback_type | 反馈类型             |
+| `reason`          | text nullable | 原因                 |
 
 索引与约束：
 
@@ -479,21 +479,21 @@ organizations
 
 关键字段：
 
-| 字段 | 类型 | 说明 |
-| --- | --- | --- |
-| `organization_id` | uuid fk | 所属组织 |
-| `repository_id` | uuid fk | 仓库 |
-| `pull_request_id` | uuid fk | PR |
-| `review_run_id` | uuid fk | 审查 run |
-| `source_type` | text | `single_issue/multi_issue/security_bundle` |
-| `source_issue_ids` | uuid[] | 来源问题 |
-| `agent_kind` | text | 先固定 `generic` |
-| `output_language` | output_language | 输出语言 |
-| `prompt_md` | text | 提示词正文 |
-| `prompt_hash` | text | 内容 hash |
-| `generated_by_user_id` | uuid nullable | 触发人 |
-| `copied_count` | integer default 0 | 复制次数 |
-| `last_copied_at` | timestamptz nullable | 最近复制时间 |
+| 字段                   | 类型                 | 说明                                       |
+| ---------------------- | -------------------- | ------------------------------------------ |
+| `organization_id`      | uuid fk              | 所属组织                                   |
+| `repository_id`        | uuid fk              | 仓库                                       |
+| `pull_request_id`      | uuid fk              | PR                                         |
+| `review_run_id`        | uuid fk              | 审查 run                                   |
+| `source_type`          | text                 | `single_issue/multi_issue/security_bundle` |
+| `source_issue_ids`     | uuid[]               | 来源问题                                   |
+| `agent_kind`           | text                 | 先固定 `generic`                           |
+| `output_language`      | output_language      | 输出语言                                   |
+| `prompt_md`            | text                 | 提示词正文                                 |
+| `prompt_hash`          | text                 | 内容 hash                                  |
+| `generated_by_user_id` | uuid nullable        | 触发人                                     |
+| `copied_count`         | integer default 0    | 复制次数                                   |
+| `last_copied_at`       | timestamptz nullable | 最近复制时间                               |
 
 索引与约束：
 
@@ -511,15 +511,15 @@ organizations
 
 关键字段：
 
-| 字段 | 类型 | 说明 |
-| --- | --- | --- |
-| `organization_id` | uuid fk | 所属组织 |
-| `repository_id` | uuid fk | 仓库 |
-| `source_type` | rule_source_type | `platform_ui/repo_yaml` |
-| `name` | text | 规则集名称 |
-| `is_active` | boolean | 是否启用 |
-| `current_version_id` | uuid nullable | 当前版本 |
-| `last_applied_at` | timestamptz nullable | 最近生效时间 |
+| 字段                 | 类型                 | 说明                    |
+| -------------------- | -------------------- | ----------------------- |
+| `organization_id`    | uuid fk              | 所属组织                |
+| `repository_id`      | uuid fk              | 仓库                    |
+| `source_type`        | rule_source_type     | `platform_ui/repo_yaml` |
+| `name`               | text                 | 规则集名称              |
+| `is_active`          | boolean              | 是否启用                |
+| `current_version_id` | uuid nullable        | 当前版本                |
+| `last_applied_at`    | timestamptz nullable | 最近生效时间            |
 
 索引与约束：
 
@@ -534,18 +534,18 @@ organizations
 
 关键字段：
 
-| 字段 | 类型 | 说明 |
-| --- | --- | --- |
-| `organization_id` | uuid fk | 所属组织 |
-| `rule_set_id` | uuid fk | 规则集 |
-| `version_no` | integer | 版本号 |
-| `content_yaml` | text | YAML 原文 |
-| `content_json` | jsonb nullable | 解析后的结构化内容 |
-| `checksum` | text | 内容 hash |
-| `validation_status` | text | `valid/invalid` |
-| `validation_errors` | jsonb nullable | 校验错误 |
-| `source_commit_sha` | text nullable | 如来自仓库文件，可记录 commit sha |
-| `created_by_user_id` | uuid nullable | 创建人 |
+| 字段                 | 类型           | 说明                              |
+| -------------------- | -------------- | --------------------------------- |
+| `organization_id`    | uuid fk        | 所属组织                          |
+| `rule_set_id`        | uuid fk        | 规则集                            |
+| `version_no`         | integer        | 版本号                            |
+| `content_yaml`       | text           | YAML 原文                         |
+| `content_json`       | jsonb nullable | 解析后的结构化内容                |
+| `checksum`           | text           | 内容 hash                         |
+| `validation_status`  | text           | `valid/invalid`                   |
+| `validation_errors`  | jsonb nullable | 校验错误                          |
+| `source_commit_sha`  | text nullable  | 如来自仓库文件，可记录 commit sha |
+| `created_by_user_id` | uuid nullable  | 创建人                            |
 
 索引与约束：
 
@@ -563,17 +563,17 @@ organizations
 
 关键字段：
 
-| 字段 | 类型 | 说明 |
-| --- | --- | --- |
-| `organization_id` | uuid fk | 所属组织 |
-| `provider` | ai_provider | `openai/anthropic/alibaba` |
-| `display_name` | text | 后台展示名称 |
-| `vault_secret_id` | uuid | Supabase Vault 中的 secret ID |
-| `base_url` | text nullable | 自定义 endpoint |
-| `masked_key_suffix` | text nullable | 掩码展示，例如后四位 |
-| `is_active` | boolean | 是否启用 |
-| `created_by_user_id` | uuid nullable | 创建人 |
-| `metadata` | jsonb nullable | 额外配置 |
+| 字段                 | 类型           | 说明                          |
+| -------------------- | -------------- | ----------------------------- |
+| `organization_id`    | uuid fk        | 所属组织                      |
+| `provider`           | ai_provider    | `openai/anthropic/alibaba`    |
+| `display_name`       | text           | 后台展示名称                  |
+| `vault_secret_id`    | uuid           | Supabase Vault 中的 secret ID |
+| `base_url`           | text nullable  | 自定义 endpoint               |
+| `masked_key_suffix`  | text nullable  | 掩码展示，例如后四位          |
+| `is_active`          | boolean        | 是否启用                      |
+| `created_by_user_id` | uuid nullable  | 创建人                        |
+| `metadata`           | jsonb nullable | 额外配置                      |
 
 索引与约束：
 
@@ -594,17 +594,17 @@ organizations
 
 关键字段：
 
-| 字段 | 类型 | 说明 |
-| --- | --- | --- |
-| `organization_id` | uuid fk | 所属组织 |
-| `repository_id` | uuid nullable fk | 为空表示组织级默认 |
-| `task_type` | ai_task_type | 任务类型 |
-| `provider_config_id` | uuid fk | 主配置 |
-| `model_name` | text | 主模型名 |
-| `fallback_provider_config_id` | uuid nullable fk | fallback 配置 |
-| `fallback_model_name` | text nullable | fallback 模型名 |
-| `is_active` | boolean | 是否启用 |
-| `priority` | integer default 0 | 预留排序 |
+| 字段                          | 类型              | 说明               |
+| ----------------------------- | ----------------- | ------------------ |
+| `organization_id`             | uuid fk           | 所属组织           |
+| `repository_id`               | uuid nullable fk  | 为空表示组织级默认 |
+| `task_type`                   | ai_task_type      | 任务类型           |
+| `provider_config_id`          | uuid fk           | 主配置             |
+| `model_name`                  | text              | 主模型名           |
+| `fallback_provider_config_id` | uuid nullable fk  | fallback 配置      |
+| `fallback_model_name`         | text nullable     | fallback 模型名    |
+| `is_active`                   | boolean           | 是否启用           |
+| `priority`                    | integer default 0 | 预留排序           |
 
 索引与约束：
 
@@ -623,27 +623,27 @@ organizations
 
 关键字段：
 
-| 字段 | 类型 | 说明 |
-| --- | --- | --- |
-| `organization_id` | uuid fk | 所属组织 |
-| `repository_id` | uuid nullable fk | 仓库 |
-| `pull_request_id` | uuid nullable fk | PR |
-| `review_run_id` | uuid nullable fk | 审查 run |
-| `review_issue_id` | uuid nullable fk | 问题 |
-| `agent_prompt_id` | uuid nullable fk | 提示词 |
-| `event_type` | text | `ai_call/prompt_generated/prompt_copied` |
-| `task_type` | ai_task_type nullable | 模型任务 |
-| `provider_config_id` | uuid nullable fk | 使用的模型配置 |
-| `provider` | ai_provider nullable | 提供方 |
-| `model_name` | text nullable | 模型名 |
-| `input_tokens` | integer nullable | 输入 tokens |
-| `output_tokens` | integer nullable | 输出 tokens |
-| `latency_ms` | integer nullable | 延迟 |
-| `estimated_cost` | numeric(12,6) nullable | 估算成本 |
-| `success` | boolean nullable | 是否成功 |
-| `error_code` | text nullable | 错误码 |
-| `metadata` | jsonb nullable | 扩展字段 |
-| `occurred_at` | timestamptz | 事件发生时间 |
+| 字段                 | 类型                   | 说明                                     |
+| -------------------- | ---------------------- | ---------------------------------------- |
+| `organization_id`    | uuid fk                | 所属组织                                 |
+| `repository_id`      | uuid nullable fk       | 仓库                                     |
+| `pull_request_id`    | uuid nullable fk       | PR                                       |
+| `review_run_id`      | uuid nullable fk       | 审查 run                                 |
+| `review_issue_id`    | uuid nullable fk       | 问题                                     |
+| `agent_prompt_id`    | uuid nullable fk       | 提示词                                   |
+| `event_type`         | text                   | `ai_call/prompt_generated/prompt_copied` |
+| `task_type`          | ai_task_type nullable  | 模型任务                                 |
+| `provider_config_id` | uuid nullable fk       | 使用的模型配置                           |
+| `provider`           | ai_provider nullable   | 提供方                                   |
+| `model_name`         | text nullable          | 模型名                                   |
+| `input_tokens`       | integer nullable       | 输入 tokens                              |
+| `output_tokens`      | integer nullable       | 输出 tokens                              |
+| `latency_ms`         | integer nullable       | 延迟                                     |
+| `estimated_cost`     | numeric(12,6) nullable | 估算成本                                 |
+| `success`            | boolean nullable       | 是否成功                                 |
+| `error_code`         | text nullable          | 错误码                                   |
+| `metadata`           | jsonb nullable         | 扩展字段                                 |
+| `occurred_at`        | timestamptz            | 事件发生时间                             |
 
 索引与约束：
 
@@ -689,7 +689,7 @@ organizations
 
 建议补一个服务端安全函数：
 
-- `get_ai_provider_secret(provider_config_id uuid)`  
+- `get_ai_provider_secret(provider_config_id uuid)`
 
 用途：
 

@@ -16,7 +16,12 @@ test("root package exposes unified engineering scripts", async () => {
 
   assert.equal(packageJson.scripts.lint, "pnpm -r run lint");
   assert.equal(packageJson.scripts.typecheck, "pnpm -r run typecheck");
+  assert.equal(packageJson.scripts.format, "prettier --write .");
   assert.equal(packageJson.scripts["format:check"], "prettier --check .");
+  assert.equal(
+    packageJson.scripts.check,
+    "pnpm lint && pnpm typecheck && pnpm test"
+  );
 });
 
 test("workspace package stubs exist for P0 foundation", async () => {
@@ -51,7 +56,8 @@ test("core env helpers normalize required P0 settings", async () => {
 });
 
 test("core error catalog exposes stable codes", async () => {
-  const { AppError, ErrorCode } = await import("../packages/core/src/errors.ts");
+  const { AppError, ErrorCode } =
+    await import("../packages/core/src/errors.ts");
   const error = new AppError(ErrorCode.ModelInvocation, "model failed");
 
   assert.equal(error.code, "MODEL_INVOCATION_ERROR");
@@ -60,7 +66,9 @@ test("core error catalog exposes stable codes", async () => {
 
 test("core logger attaches standard context fields", async () => {
   const { createLogger } = await import("../packages/core/src/logging.ts");
-  const entry = createLogger({ requestId: "req-1", taskId: "task-1" }).info("worker ready");
+  const entry = createLogger({ requestId: "req-1", taskId: "task-1" }).info(
+    "worker ready"
+  );
 
   assert.equal(entry.level, "info");
   assert.equal(entry.message, "worker ready");
@@ -69,9 +77,8 @@ test("core logger attaches standard context fields", async () => {
 });
 
 test("core queue helpers expose shared runtime defaults", async () => {
-  const { DEFAULT_QUEUE_NAME, DEFAULT_REDIS_URL, buildWorkerConfig } = await import(
-    "../packages/core/src/review-queue.ts"
-  );
+  const { DEFAULT_QUEUE_NAME, DEFAULT_REDIS_URL, buildWorkerConfig } =
+    await import("../packages/core/src/review-queue.ts");
 
   const config = buildWorkerConfig({ REVIEW_QUEUE_NAME: "priority-reviews" });
 

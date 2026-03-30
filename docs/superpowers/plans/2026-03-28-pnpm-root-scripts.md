@@ -28,6 +28,7 @@
 ### Task 1: Add root package entrypoints
 
 **Files:**
+
 - Create: `package.json`
 
 - [ ] **Step 1: Write the failing verification expectation**
@@ -64,6 +65,7 @@ Expected: 输出 `setup,dev,dev:web,dev:worker`
 ### Task 2: Add shell scripts under scripts/
 
 **Files:**
+
 - Create: `scripts/setup.sh`
 - Create: `scripts/dev-web.sh`
 - Create: `scripts/dev-worker.sh`
@@ -152,6 +154,7 @@ Expected: 无输出且退出码为 0
 ### Task 3: Verify install and startup commands
 
 **Files:**
+
 - Verify: `package.json`
 - Verify: `scripts/setup.sh`
 - Verify: `scripts/dev.sh`
@@ -181,6 +184,7 @@ Expected: 同时看到 web 与 worker 的启动输出；手动终止后两个子
 ### Task 4: Update startup documentation
 
 **Files:**
+
 - Modify: `doc/startup-and-deployment.md`
 
 - [ ] **Step 1: Write the failing documentation expectation**
@@ -195,6 +199,7 @@ Expected: 能搜到旧描述
 - [ ] **Step 3: Update the document minimally**
 
 把文档更新为当前实际状态：
+
 - 根目录新增 `scripts/`
 - 可使用根目录 `pnpm run setup`
 - 可使用根目录 `pnpm run dev`
@@ -208,6 +213,7 @@ Expected: 能看到新的根目录入口说明
 ### Task 5: Final verification
 
 **Files:**
+
 - Verify all files above
 
 - [ ] **Step 1: Re-run shell syntax verification**

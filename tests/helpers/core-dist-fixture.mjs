@@ -69,7 +69,9 @@ export async function withCoreDistLock(callback) {
       }
 
       if (Date.now() >= deadline) {
-        throw new Error(`Timed out waiting for core dist test lock: ${coreDistLockDir}`);
+        throw new Error(
+          `Timed out waiting for core dist test lock: ${coreDistLockDir}`
+        );
       }
 
       await sleep(LOCK_RETRY_MS);
@@ -100,11 +102,15 @@ export async function restoreRenamedDir(hiddenDir) {
       path.dirname(resolvedCoreDistDir) !== corePackageDir ||
       path.relative(packagesDir, resolvedCoreDistDir).startsWith("..")
     ) {
-      throw new Error(`Refusing to remove unexpected dist path: ${resolvedCoreDistDir}`);
+      throw new Error(
+        `Refusing to remove unexpected dist path: ${resolvedCoreDistDir}`
+      );
     }
 
     if (!isHiddenCoreDistDir) {
-      throw new Error(`Refusing to restore unexpected hidden dist path: ${resolvedHiddenDir}`);
+      throw new Error(
+        `Refusing to restore unexpected hidden dist path: ${resolvedHiddenDir}`
+      );
     }
 
     if (await pathExists(coreDistDir)) {

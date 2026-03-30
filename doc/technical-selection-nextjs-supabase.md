@@ -26,21 +26,21 @@
 
 ### 2.2 最终选型表
 
-| 层 | 选型 | 角色 |
-| --- | --- | --- |
-| Web | `Next.js 16 + App Router + TypeScript` | 控制台、BFF、Webhook、管理后台 |
-| UI | `Tailwind CSS + shadcn/ui` | 后台界面和配置页面 |
-| Auth | `Supabase Auth + @supabase/ssr` | 控制台用户登录、组织成员会话 |
-| AI 接入 | `Vercel AI SDK` | 统一对接 OpenAI / Claude / Qwen 等模型 |
-| 密钥存储 | `Supabase Vault + 业务配置表` | 加密存储模型密钥及其绑定关系 |
-| 主数据库 | `Supabase Postgres` | 业务主库、多租户数据、规则、评论、任务状态 |
-| 队列 | `Redis + BullMQ` | PR 审查任务、重试任务、延迟任务、回放任务 |
-| 文件存储 | `Supabase Storage` | 审查快照、日志、导出文件、附件 |
-| 实时更新 | `Supabase Realtime` | 审查状态更新、结果推送 |
-| 向量检索 | `pgvector` | 知识库、规则语义召回、历史经验检索 |
-| 定时任务 | `Supabase Cron` | 重试、清理、超时补偿、日报统计 |
-| Worker | `Node.js LTS + TypeScript` | 长任务执行、Git 操作、模型调用 |
-| 本地开发 | `Supabase CLI` | 本地数据库、Auth、Storage、迁移、类型生成 |
+| 层       | 选型                                   | 角色                                       |
+| -------- | -------------------------------------- | ------------------------------------------ |
+| Web      | `Next.js 16 + App Router + TypeScript` | 控制台、BFF、Webhook、管理后台             |
+| UI       | `Tailwind CSS + shadcn/ui`             | 后台界面和配置页面                         |
+| Auth     | `Supabase Auth + @supabase/ssr`        | 控制台用户登录、组织成员会话               |
+| AI 接入  | `Vercel AI SDK`                        | 统一对接 OpenAI / Claude / Qwen 等模型     |
+| 密钥存储 | `Supabase Vault + 业务配置表`          | 加密存储模型密钥及其绑定关系               |
+| 主数据库 | `Supabase Postgres`                    | 业务主库、多租户数据、规则、评论、任务状态 |
+| 队列     | `Redis + BullMQ`                       | PR 审查任务、重试任务、延迟任务、回放任务  |
+| 文件存储 | `Supabase Storage`                     | 审查快照、日志、导出文件、附件             |
+| 实时更新 | `Supabase Realtime`                    | 审查状态更新、结果推送                     |
+| 向量检索 | `pgvector`                             | 知识库、规则语义召回、历史经验检索         |
+| 定时任务 | `Supabase Cron`                        | 重试、清理、超时补偿、日报统计             |
+| Worker   | `Node.js LTS + TypeScript`             | 长任务执行、Git 操作、模型调用             |
+| 本地开发 | `Supabase CLI`                         | 本地数据库、Auth、Storage、迁移、类型生成  |
 
 ## 3. 为什么选 Supabase
 
@@ -526,7 +526,7 @@ packages/
 ### 12.2 对外接口建议
 
 ```ts
-export type ReviewLanguage = 'zh-CN' | 'en-US' | 'es-ES';
+export type ReviewLanguage = "zh-CN" | "en-US" | "es-ES";
 
 export type ReviewTaskContext = {
   repoId: string;
@@ -540,7 +540,7 @@ export type ReviewTaskContext = {
 
 export type ReviewFinding = {
   title: string;
-  severity: 'low' | 'medium' | 'high' | 'critical';
+  severity: "low" | "medium" | "high" | "critical";
   confidence: number;
   summary: string;
   file?: string;
@@ -550,7 +550,9 @@ export type ReviewFinding = {
 export interface AiGateway {
   generateReviewSummary(input: ReviewTaskContext): Promise<string>;
   generateReviewFindings(input: ReviewTaskContext): Promise<ReviewFinding[]>;
-  generateFixPrompt(input: ReviewTaskContext & { findings: ReviewFinding[] }): Promise<string>;
+  generateFixPrompt(
+    input: ReviewTaskContext & { findings: ReviewFinding[] }
+  ): Promise<string>;
   embedKnowledge(input: { id: string; content: string }): Promise<number[]>;
 }
 ```
@@ -571,12 +573,12 @@ P0 建议固定三类 provider：
 
 任务建议：
 
-| 任务 | 默认模型策略 |
-| --- | --- |
-| PR 摘要 | `OpenAI` 或 `Qwen` |
-| 高价值问题识别 | `Anthropic` 优先 |
-| Agent 修复提示词 | `OpenAI` 或 `Anthropic` |
-| embedding | `OpenAI` 优先，后续可替换 |
+| 任务             | 默认模型策略              |
+| ---------------- | ------------------------- |
+| PR 摘要          | `OpenAI` 或 `Qwen`        |
+| 高价值问题识别   | `Anthropic` 优先          |
+| Agent 修复提示词 | `OpenAI` 或 `Anthropic`   |
+| embedding        | `OpenAI` 优先，后续可替换 |
 
 P0 不建议：
 
@@ -660,7 +662,7 @@ AI_REQUEST_TIMEOUT_MS=45000
 export type AiProviderConfig = {
   id: string;
   organizationId: string;
-  provider: 'openai' | 'anthropic' | 'alibaba';
+  provider: "openai" | "anthropic" | "alibaba";
   displayName: string;
   vaultSecretId: string;
   isActive: boolean;
@@ -669,7 +671,7 @@ export type AiProviderConfig = {
 
 ```ts
 // packages/ai/src/providers/openai.ts
-import { createOpenAI } from '@ai-sdk/openai';
+import { createOpenAI } from "@ai-sdk/openai";
 
 export function createOpenAIProvider(apiKey: string) {
   return createOpenAI({ apiKey });
@@ -678,7 +680,7 @@ export function createOpenAIProvider(apiKey: string) {
 
 ```ts
 // packages/ai/src/providers/anthropic.ts
-import { createAnthropic } from '@ai-sdk/anthropic';
+import { createAnthropic } from "@ai-sdk/anthropic";
 
 export function createAnthropicProvider(apiKey: string) {
   return createAnthropic({ apiKey });
@@ -687,7 +689,7 @@ export function createAnthropicProvider(apiKey: string) {
 
 ```ts
 // packages/ai/src/providers/alibaba.ts
-import { createAlibaba } from '@ai-sdk/alibaba';
+import { createAlibaba } from "@ai-sdk/alibaba";
 
 export function createAlibabaProvider(apiKey: string) {
   return createAlibaba({ apiKey });
@@ -696,9 +698,9 @@ export function createAlibabaProvider(apiKey: string) {
 
 ```ts
 // packages/ai/src/models.ts
-import { createAnthropicProvider } from './providers/anthropic';
-import { createOpenAIProvider } from './providers/openai';
-import { createAlibabaProvider } from './providers/alibaba';
+import { createAnthropicProvider } from "./providers/anthropic";
+import { createOpenAIProvider } from "./providers/openai";
+import { createAlibabaProvider } from "./providers/alibaba";
 
 export function getReviewModel(input: {
   provider?: string;
@@ -706,18 +708,20 @@ export function getReviewModel(input: {
   modelName?: string;
 }) {
   switch (input.provider ?? process.env.AI_DEFAULT_PROVIDER) {
-    case 'openai':
+    case "openai":
       return createOpenAIProvider(input.apiKey)(
-        input.modelName || process.env.AI_DEFAULT_REVIEW_MODEL || 'gpt-5-mini'
+        input.modelName || process.env.AI_DEFAULT_REVIEW_MODEL || "gpt-5-mini"
       );
-    case 'alibaba':
+    case "alibaba":
       return createAlibabaProvider(input.apiKey)(
-        input.modelName || process.env.AI_DEFAULT_REVIEW_MODEL || 'qwen-plus'
+        input.modelName || process.env.AI_DEFAULT_REVIEW_MODEL || "qwen-plus"
       );
-    case 'anthropic':
+    case "anthropic":
     default:
       return createAnthropicProvider(input.apiKey)(
-        input.modelName || process.env.AI_DEFAULT_REVIEW_MODEL || 'claude-sonnet-4-5'
+        input.modelName ||
+          process.env.AI_DEFAULT_REVIEW_MODEL ||
+          "claude-sonnet-4-5"
       );
   }
 }
@@ -725,13 +729,13 @@ export function getReviewModel(input: {
 
 ```ts
 // packages/ai/src/tasks/review-findings.ts
-import { generateObject } from 'ai';
-import { z } from 'zod';
-import { getReviewModel } from '../models';
+import { generateObject } from "ai";
+import { z } from "zod";
+import { getReviewModel } from "../models";
 
 const findingSchema = z.object({
   title: z.string(),
-  severity: z.enum(['low', 'medium', 'high', 'critical']),
+  severity: z.enum(["low", "medium", "high", "critical"]),
   confidence: z.number(),
   summary: z.string(),
   file: z.string().optional(),
@@ -742,7 +746,7 @@ export async function generateReviewFindings(input: {
   prompt: string;
   apiKey: string;
   modelName?: string;
-  provider?: 'openai' | 'anthropic' | 'alibaba';
+  provider?: "openai" | "anthropic" | "alibaba";
 }) {
   const result = await generateObject({
     model: getReviewModel({

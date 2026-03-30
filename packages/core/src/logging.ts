@@ -14,7 +14,11 @@ export type LogEntry = {
   repository_id?: string;
 };
 
-function createLogEntry(level: LogEntry["level"], message: string, context: LogContext): LogEntry {
+function createLogEntry(
+  level: LogEntry["level"],
+  message: string,
+  context: LogContext
+): LogEntry {
   return {
     level,
     message,
