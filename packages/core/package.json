@@ -11,7 +11,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "lint": "tsc --noEmit -p tsconfig.json",
+    "lint": "pnpm --dir ../.. exec eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "pnpm run build && node --test dist/index.test.js"
   },

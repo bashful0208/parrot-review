@@ -10,7 +10,7 @@
     }
   },
   "scripts": {
-    "lint": "tsc --noEmit -p tsconfig.json",
+    "lint": "pnpm --dir ../.. exec eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "devDependencies": {

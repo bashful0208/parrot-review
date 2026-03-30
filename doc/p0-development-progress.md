@@ -23,20 +23,20 @@
 - [x] 建立 `dev:worker` 脚本
 - [x] 建立统一 `build` 脚本
 - [x] 建立统一 `test` 脚本
-- [ ] 补齐根目录 `TypeScript` 配置基线
-- [ ] 明确 `apps/web` 的 `tsconfig` 继承链
-- [ ] 明确 `apps/worker` 的 `tsconfig` 继承链
-- [ ] 明确 `packages/*` 的 `tsconfig` 继承链
-- [ ] 接入根级 `ESLint`
-- [ ] 接入 workspace 级 `ESLint` 配置复用
-- [ ] 接入 `Prettier`
-- [ ] 增加 lint 脚本
-- [ ] 增加 typecheck 脚本
-- [ ] 增加 format/check 脚本
-- [ ] 确保根脚本可串行执行 `lint + typecheck + test`
-- [ ] 确保 `apps/web` 可独立通过 lint
-- [ ] 确保 `apps/worker` 可独立通过 lint
-- [ ] 确保 `packages/*` 可独立通过 lint
+- [x] 补齐根目录 `TypeScript` 配置基线
+- [x] 明确 `apps/web` 的 `tsconfig` 继承链
+- [x] 明确 `apps/worker` 的 `tsconfig` 继承链
+- [x] 明确 `packages/*` 的 `tsconfig` 继承链
+- [x] 接入根级 `ESLint`
+- [x] 接入 workspace 级 `ESLint` 配置复用
+- [x] 接入 `Prettier`
+- [x] 增加 lint 脚本
+- [x] 增加 typecheck 脚本
+- [x] 增加 format/check 脚本
+- [x] 确保根脚本可串行执行 `lint + typecheck + test`
+- [x] 确保 `apps/web` 可独立通过 lint
+- [x] 确保 `apps/worker` 可独立通过 lint
+- [x] 确保 `packages/*` 可独立通过 lint
 
 ### 0.2 环境变量与配置约束
 
