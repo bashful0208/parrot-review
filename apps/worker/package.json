@@ -4,10 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
-    "build": "tsc -p tsconfig.json",
+    "dev": "tsx --tsconfig tsconfig.dev.json watch src/index.ts",
+    "build": "pnpm --dir ../../packages/core run build && tsc -p tsconfig.json",
     "start": "node dist/index.js",
-    "test": "tsx --test src/**/*.test.ts src/**/*.integration.test.ts",
+    "test": "tsx --tsconfig tsconfig.dev.json --test src/**/*.test.ts src/**/*.integration.test.ts",
     "lint": "tsc --noEmit -p tsconfig.json",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },

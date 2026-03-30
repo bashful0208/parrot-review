@@ -5,6 +5,7 @@ node_modules/
 apps/web/.next/
 apps/web/out/
 apps/worker/dist/
+packages/core/dist/
 coverage/
 
 # Environment files
