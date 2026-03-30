@@ -4,8 +4,10 @@ import { chmod, mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { spawn } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
-const rootDir = "/Users/bashful/work/code/reviewer";
+const testFileDir = path.dirname(fileURLToPath(import.meta.url));
+const rootDir = path.resolve(testFileDir, "..");
 
 async function readText(relativePath) {
   return readFile(path.join(rootDir, relativePath), "utf8");
@@ -66,18 +68,25 @@ test("root package.json exposes shell script entrypoints", async () => {
   assert.deepEqual(packageJson.scripts, {
     setup: "sh ./scripts/setup.sh",
     test: "node --test tests/*.test.mjs",
-    build: "pnpm --dir apps/web run build && pnpm --dir apps/worker run build",
+    build: "pnpm --dir packages/core run build && pnpm --dir apps/web run build && pnpm --dir apps/worker run build",
     dev: "sh ./scripts/dev.sh",
     "dev:web": "sh ./scripts/dev-web.sh",
     "dev:worker": "sh ./scripts/dev-worker.sh",
+    lint: "pnpm -r run lint",
+    typecheck: "pnpm -r run typecheck",
+    "format:check": "prettier --check .",
   });
 });
 
-test("setup script installs web and worker with pnpm", async () => {
+test("setup script installs workspace packages with pnpm", async () => {
   const script = await readText("scripts/setup.sh");
 
   assert.match(script, /pnpm --dir apps\/web install/);
   assert.match(script, /pnpm --dir apps\/worker install/);
+  assert.match(script, /pnpm --dir packages\/core install/);
+  assert.match(script, /pnpm --dir packages\/ai install/);
+  assert.match(script, /pnpm --dir packages\/git install/);
+  assert.match(script, /pnpm --dir packages\/db-types install/);
 });
 
 test("single-service scripts forward to child apps", async () => {
