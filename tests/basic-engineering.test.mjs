@@ -1,9 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { access, readFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
 import path from "node:path";
 
-const rootDir = "/Users/bashful/work/code/reviewer/.claude/worktrees/p0-foundation";
+const testFileDir = path.dirname(fileURLToPath(import.meta.url));
+const rootDir = path.resolve(testFileDir, "..");
 
 async function readText(relativePath) {
   return readFile(path.join(rootDir, relativePath), "utf8");
