@@ -45,12 +45,12 @@
 - [x] 明确 `Redis` 相关变量
 - [x] 明确 webhook secret 相关变量
 - [x] 明确模型默认路由相关变量
-- [ ] 新增环境变量 schema 校验层
-- [ ] 区分 server-only 与 client-safe 配置
+- [x] 新增环境变量 schema 校验层
+- [x] 区分 server-only 与 client-safe 配置
 - [ ] 为 `apps/web` 增加启动期配置校验
 - [ ] 为 `apps/worker` 增加启动期配置校验
 - [ ] 为 `packages/ai` 明确 provider 相关配置入口
-- [ ] 缺失关键变量时快速失败并输出可读错误
+- [x] 缺失关键变量时快速失败并输出可读错误
 - [ ] 为本地开发提供 `.env.example` 基线
 - [ ] 为部署环境补充变量清单对照说明
 
