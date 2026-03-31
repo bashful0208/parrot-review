@@ -49,18 +49,20 @@ test("worker dev script uses tsx watch subcommand syntax", async () => {
   );
 });
 
-test("worker env validation keeps Supabase/webhook requirements but drops default model env", async () => {
+test("worker env validation keeps database/webhook requirements but drops default model env", async () => {
   const { validateWebEnv, validateWorkerEnv } = await import(
     "../packages/core/src/config/runtime.ts"
   );
 
   const workerEnv = validateWorkerEnv({
-    SUPABASE_URL: "https://example.supabase.co",
-    SUPABASE_ANON_KEY: "anon",
-    SUPABASE_SERVICE_ROLE_KEY: "service",
+    DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:5432/reviewer",
     WEBHOOK_SECRET: "secret",
   });
 
+  assert.equal(
+    workerEnv.database.url,
+    "postgresql://postgres:postgres@127.0.0.1:5432/reviewer"
+  );
   assert.equal(workerEnv.redis.url, "redis://127.0.0.1:6379");
   assert.equal(workerEnv.redis.queueName, "review-jobs");
 
@@ -68,7 +70,7 @@ test("worker env validation keeps Supabase/webhook requirements but drops defaul
     return (
       error instanceof Error &&
       /\[worker\][\s\S]*Missing:/.test(error.message) &&
-      /SUPABASE_URL/.test(error.message) &&
+      /DATABASE_URL/.test(error.message) &&
       /WEBHOOK_SECRET/.test(error.message) &&
       !/DEFAULT_MODEL_PROVIDER/.test(error.message) &&
       !/DEFAULT_MODEL_NAME/.test(error.message)
@@ -79,6 +81,7 @@ test("worker env validation keeps Supabase/webhook requirements but drops defaul
     return (
       error instanceof Error &&
       /\[web\][\s\S]*Missing:/.test(error.message) &&
+      /DATABASE_URL/.test(error.message) &&
       /DEFAULT_MODEL_PROVIDER/.test(error.message) &&
       /DEFAULT_MODEL_NAME/.test(error.message)
     );
@@ -94,23 +97,23 @@ test("core config schema applies defaults and reports missing keys clearly", asy
   );
 
   const env = loadServerEnv({
-    SUPABASE_URL: "https://example.supabase.co",
-    SUPABASE_ANON_KEY: "anon",
-    SUPABASE_SERVICE_ROLE_KEY: "service",
+    DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:5432/reviewer",
     WEBHOOK_SECRET: "secret",
     DEFAULT_MODEL_PROVIDER: "anthropic",
     DEFAULT_MODEL_NAME: "claude-3-7-sonnet",
   });
 
+  assert.equal(
+    env.database.url,
+    "postgresql://postgres:postgres@127.0.0.1:5432/reviewer"
+  );
   assert.equal(env.defaultModel.provider, "anthropic");
   assert.equal(env.ids.requestIdHeader, "x-request-id");
   assert.equal(env.redis.url, "redis://127.0.0.1:6379");
   assert.equal(env.redis.queueName, "review-jobs");
 
   const blankDefaults = loadServerEnv({
-    SUPABASE_URL: "https://example.supabase.co",
-    SUPABASE_ANON_KEY: "anon",
-    SUPABASE_SERVICE_ROLE_KEY: "service",
+    DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:5432/reviewer",
     REDIS_URL: "   ",
     REVIEW_QUEUE_NAME: "   ",
     WEBHOOK_SECRET: "secret",
@@ -124,18 +127,28 @@ test("core config schema applies defaults and reports missing keys clearly", asy
   assert.throws(
     () =>
       loadServerEnv({
-        SUPABASE_URL: "   ",
+        DATABASE_URL: "   ",
         DEFAULT_MODEL_PROVIDER: "anthropic",
       }),
     (error) => {
       const message = formatConfigError(error);
       return (
         /Missing:/.test(message) &&
-        /SUPABASE_URL/.test(message) &&
-        /SUPABASE_ANON_KEY/.test(message) &&
+        /DATABASE_URL/.test(message) &&
         /WEBHOOK_SECRET/.test(message)
       );
     }
+  );
+
+  assert.throws(
+    () =>
+      loadServerEnv({
+        DATABASE_URL: "https://example.com/reviewer",
+        WEBHOOK_SECRET: "secret",
+        DEFAULT_MODEL_PROVIDER: "anthropic",
+        DEFAULT_MODEL_NAME: "claude-3-7-sonnet",
+      }),
+    (error) => /Invalid:[\s\S]*DATABASE_URL/.test(formatConfigError(error))
   );
 
   assert.throws(() => validateWebEnv({}), /\[web\][\s\S]*Missing:/);
@@ -143,7 +156,7 @@ test("core config schema applies defaults and reports missing keys clearly", asy
     return (
       error instanceof Error &&
       /\[worker\][\s\S]*Missing:/.test(error.message) &&
-      /SUPABASE_URL/.test(error.message) &&
+      /DATABASE_URL/.test(error.message) &&
       /WEBHOOK_SECRET/.test(error.message) &&
       !/DEFAULT_MODEL_PROVIDER/.test(error.message) &&
       !/DEFAULT_MODEL_NAME/.test(error.message)

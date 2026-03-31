@@ -32,9 +32,9 @@ test("buildWorkerConfig reads redis host and port from REDIS_URL", () => {
   assert.equal(config.connection.port, 6381);
 });
 
-test("worker startup still requires Supabase and webhook env", async () => {
+test("worker startup still requires database and webhook env", async () => {
   await assert.rejects(() => main({ REDIS_URL: "redis://127.0.0.1:6399" }), {
-    message: /SUPABASE_URL|WEBHOOK_SECRET/,
+    message: /DATABASE_URL|WEBHOOK_SECRET/,
   });
 });
 
@@ -42,9 +42,7 @@ test("worker startup reaches Redis check without default model env", async () =>
   await assert.rejects(
     () =>
       main({
-        SUPABASE_URL: "https://example.supabase.co",
-        SUPABASE_ANON_KEY: "anon",
-        SUPABASE_SERVICE_ROLE_KEY: "service",
+        DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:5432/reviewer",
         WEBHOOK_SECRET: "secret",
         REDIS_URL: "redis://127.0.0.1:6399",
       }),
@@ -61,9 +59,7 @@ test(
       cwd: workerDir,
       env: {
         ...process.env,
-        SUPABASE_URL: "https://example.supabase.co",
-        SUPABASE_ANON_KEY: "anon",
-        SUPABASE_SERVICE_ROLE_KEY: "service",
+        DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:5432/reviewer",
         WEBHOOK_SECRET: "secret",
         REDIS_URL: "redis://127.0.0.1:6399",
       },
@@ -114,9 +110,7 @@ test(
       cwd: workerDir,
       env: {
         ...process.env,
-        SUPABASE_URL: "https://example.supabase.co",
-        SUPABASE_ANON_KEY: "anon",
-        SUPABASE_SERVICE_ROLE_KEY: "service",
+        DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:5432/reviewer",
         WEBHOOK_SECRET: "secret",
         REDIS_URL: "redis://127.0.0.1:6399",
       },

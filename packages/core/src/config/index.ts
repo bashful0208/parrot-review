@@ -1,11 +1,11 @@
-export { ConfigValidationError, formatConfigError } from "./errors.js";
-export { loadPublicEnv, type PublicEnv } from "./public.js";
+export { ConfigValidationError, formatConfigError } from "./errors.ts";
+export { loadPublicEnv, type PublicEnv } from "./public.ts";
 export {
   validateAiEnv,
   validateWebEnv,
   validateWorkerEnv,
   type AiRuntimeConfig,
-} from "./runtime.js";
+} from "./runtime.ts";
 export {
   defaultModelProviderSchema,
   queueEnvSchema,
@@ -18,7 +18,7 @@ export {
   type WorkerEnvSchema,
   type ServerEnvInput,
   type ServerEnvSchema,
-} from "./schema.js";
+} from "./schema.ts";
 export {
   loadQueueEnv,
   loadServerEnv,
@@ -26,4 +26,4 @@ export {
   type QueueRuntimeEnv,
   type WorkerRuntimeEnv,
   type RuntimeEnv,
-} from "./server.js";
+} from "./server.ts";

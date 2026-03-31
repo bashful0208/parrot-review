@@ -60,15 +60,13 @@ pnpm run setup
 
 建议先从仓库根目录 `.env.example` 复制出本地 `.env`，再按环境填入真实值。
 
-> 说明：下面的 `SUPABASE_*` 变量名只是当前代码配置校验里仍保留的历史命名，用于兼容现状，不代表目标架构仍然选择 `Supabase`。当前目标口径已经调整为“数据库底座使用自建 `PostgreSQL`，其它平台能力保持中性待定”。
+> 当前工程已统一使用自建 `PostgreSQL`：运行时通过 `DATABASE_URL` 连接，SQL 迁移目录使用 `postgres/migrations`。
 
 当前代码已经识别的变量如下：
 
 | 变量名 | 用途 | 归属 | 本地开发 | 部署环境 | 默认值 |
 | --- | --- | --- | --- | --- | --- |
-| `SUPABASE_URL` | 当前代码历史命名的数据库/后端地址变量 | web / worker | 必填 | 必填 | 无 |
-| `SUPABASE_ANON_KEY` | 当前代码历史命名的后端访问 key | web / worker | 必填 | 必填 | 无 |
-| `SUPABASE_SERVICE_ROLE_KEY` | 当前代码历史命名的服务端访问 key | web / worker | 必填 | 必填 | 无 |
+| `DATABASE_URL` | PostgreSQL 连接串 | web / worker | 必填 | 必填 | 无 |
 | `WEBHOOK_SECRET` | webhook 签名密钥 | web / worker | 必填 | 必填 | 无 |
 | `DEFAULT_MODEL_PROVIDER` | 默认模型 provider（legacy env fallback，当前 web 启动仍依赖） | web / ai | 必填（web） | 必填（web） | 无 |
 | `DEFAULT_MODEL_NAME` | 默认模型名称（legacy env fallback，当前 web 启动仍依赖） | web / ai | 必填（web） | 必填（web） | 无 |
@@ -77,10 +75,10 @@ pnpm run setup
 
 说明：
 
-- `web` 当前通过服务端模块早期校验 `SUPABASE_*`、`WEBHOOK_SECRET`、`DEFAULT_MODEL_*` 与默认队列配置；缺失关键变量时会直接报错
-- `worker` 在启动最前面会校验 `SUPABASE_*`、`WEBHOOK_SECRET` 与队列相关配置，再继续检查 Redis 可达性
+- `web` 当前通过服务端模块早期校验 `DATABASE_URL`、`WEBHOOK_SECRET`、`DEFAULT_MODEL_*` 与默认队列配置；缺失关键变量时会直接报错
+- `worker` 在启动最前面会校验 `DATABASE_URL`、`WEBHOOK_SECRET` 与队列相关配置，再继续检查 Redis 可达性
 - `packages/ai` 当前仍提供基于环境变量的 provider 配置入口，但默认模型已迁移到数据库；因此 `DEFAULT_MODEL_*` 已不再阻塞 worker 启动，不过当前 web 启动仍沿用这组 legacy fallback
-- 这些 `SUPABASE_*` 只代表当前代码现状与历史命名，后续在真正完成数据库与平台配套能力清理时，再统一替换为更贴合自建 `PostgreSQL` 口径的命名
+- 数据库 schema SQL 当前统一维护在 `postgres/migrations`
 
 ## 5. 本地启动
 
@@ -125,9 +123,7 @@ pnpm --dir apps/worker run dev
 
 通过根目录脚本启动时，会优先加载仓库根目录 `.env`；建议先复制 `.env.example`。`worker` 本地开发至少需要先提供当前代码校验仍要求的这些变量：
 
-- `SUPABASE_URL`
-- `SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY`
+- `DATABASE_URL`
 - `WEBHOOK_SECRET`
 
 如果没有显式配置 Redis 相关变量，则本地开发默认使用：
@@ -135,7 +131,7 @@ pnpm --dir apps/worker run dev
 - `REDIS_URL=redis://127.0.0.1:6379`
 - `REVIEW_QUEUE_NAME=review-jobs`
 
-`worker` 启动不再要求 `DEFAULT_MODEL_PROVIDER` / `DEFAULT_MODEL_NAME`，但仍会在配置校验阶段要求 `SUPABASE_*` 与 `WEBHOOK_SECRET`。
+`worker` 启动不再要求 `DEFAULT_MODEL_PROVIDER` / `DEFAULT_MODEL_NAME`，但仍会在配置校验阶段要求 `DATABASE_URL` 与 `WEBHOOK_SECRET`。
 
 也就是说，直接执行根目录的 `pnpm run dev` 或 `pnpm run dev:worker` 时，worker 会尝试连接本机 Redis 并消费队列；如果 Redis 不可达，worker 会立即失败退出，而不是进入静默 fallback。
 
@@ -146,9 +142,7 @@ pnpm --dir apps/worker run dev
 示例：
 
 ```bash
-export SUPABASE_URL="https://your-database-or-backend-host"
-export SUPABASE_ANON_KEY="your-backend-anon-key"
-export SUPABASE_SERVICE_ROLE_KEY="your-backend-service-role-key"
+export DATABASE_URL="postgresql://postgres:postgres@your-postgres-host:5432/reviewer"
 export WEBHOOK_SECRET="replace-with-webhook-secret"
 export REDIS_URL="redis://:your-password@your-redis-host:6379"
 export REVIEW_QUEUE_NAME="review-jobs"
@@ -158,7 +152,7 @@ pnpm run dev:worker
 
 说明：
 
-- `SUPABASE_URL` / `SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY` / `WEBHOOK_SECRET`：当前 worker 启动阶段必需的后端配置；其中 `SUPABASE_*` 只是历史命名，不代表目标架构仍然依赖 `Supabase`
+- `DATABASE_URL` / `WEBHOOK_SECRET`：当前 worker 启动阶段必需的后端配置
 - `REDIS_URL`：Redis 连接串；不显式配置时默认值是 `redis://127.0.0.1:6379`
 - `REVIEW_QUEUE_NAME`：队列名，默认值是 `review-jobs`
 - `DEFAULT_MODEL_PROVIDER` / `DEFAULT_MODEL_NAME`：当前仅保留给 `packages/ai` 的 legacy env fallback，不再阻塞 worker 启动
@@ -168,9 +162,7 @@ pnpm run dev:worker
 
 ```bash
 pnpm --dir apps/worker run build
-export SUPABASE_URL="https://your-database-or-backend-host"
-export SUPABASE_ANON_KEY="your-backend-anon-key"
-export SUPABASE_SERVICE_ROLE_KEY="your-backend-service-role-key"
+export DATABASE_URL="postgresql://postgres:postgres@your-postgres-host:5432/reviewer"
 export WEBHOOK_SECRET="replace-with-webhook-secret"
 export REDIS_URL="redis://:your-password@your-redis-host:6379"
 export REVIEW_QUEUE_NAME="review-jobs"
@@ -279,7 +271,7 @@ Worker 当前职责：
 
 部署要求：
 
-- `SUPABASE_URL`、`SUPABASE_ANON_KEY`、`SUPABASE_SERVICE_ROLE_KEY`、`WEBHOOK_SECRET` 需要在部署前完整配置；其中 `SUPABASE_*` 只是当前代码仍保留的历史命名，不代表目标架构仍然选择 `Supabase`
+- `DATABASE_URL`、`WEBHOOK_SECRET` 需要在部署前完整配置
 - `DEFAULT_MODEL_PROVIDER`、`DEFAULT_MODEL_NAME` 对 worker 启动已非必需，但当前 web 启动和 `packages/ai` 的 legacy env fallback 仍会读取它们
 - 目标环境中的 Redis 必须可达，否则 worker 会在启动时立即失败退出
 - 建议显式配置 `REDIS_URL`
@@ -301,9 +293,7 @@ pnpm --dir apps/web run start
 ```bash
 pnpm run setup
 pnpm --dir apps/worker run build
-export SUPABASE_URL="https://your-database-or-backend-host"
-export SUPABASE_ANON_KEY="your-backend-anon-key"
-export SUPABASE_SERVICE_ROLE_KEY="your-backend-service-role-key"
+export DATABASE_URL="postgresql://postgres:postgres@your-postgres-host:5432/reviewer"
 export WEBHOOK_SECRET="replace-with-webhook-secret"
 export REDIS_URL="redis://:your-password@your-redis-host:6379"
 export REVIEW_QUEUE_NAME="review-jobs"

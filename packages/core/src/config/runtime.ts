@@ -1,13 +1,6 @@
-import type { RuntimeEnv, WorkerRuntimeEnv } from "./server.js";
-
-const runtimeExtension = import.meta.url.endsWith(".ts") ? "ts" : "js";
-
-const { formatConfigError } = (await import(
-  new URL(`./errors.${runtimeExtension}`, import.meta.url).href
-)) as typeof import("./errors.js");
-const { loadServerEnv, loadWorkerEnv } = (await import(
-  new URL(`./server.${runtimeExtension}`, import.meta.url).href
-)) as typeof import("./server.js");
+import { formatConfigError } from "./errors.ts";
+import { loadServerEnv, loadWorkerEnv } from "./server.ts";
+import type { RuntimeEnv, WorkerRuntimeEnv } from "./server.ts";
 
 export type AiRuntimeConfig = RuntimeEnv["defaultModel"];
 

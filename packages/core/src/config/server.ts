@@ -1,19 +1,15 @@
+import {
+  ConfigValidationError,
+  formatConfigError as formatConfigErrorImpl,
+} from "./errors.ts";
+import type { ConfigValidationError as ConfigValidationErrorShape } from "./errors.ts";
 import type {
   DefaultModelProvider,
   QueueEnvInput,
   ServerEnvInput,
   WorkerEnvInput,
-} from "./schema.js";
-
-const runtimeExtension = import.meta.url.endsWith(".ts") ? "ts" : "js";
-
-const { ConfigValidationError, formatConfigError: formatConfigErrorImpl } =
-  (await import(
-    new URL(`./errors.${runtimeExtension}`, import.meta.url).href
-  )) as typeof import("./errors.js");
-const { queueEnvSchema, serverEnvSchema, workerEnvSchema } = (await import(
-  new URL(`./schema.${runtimeExtension}`, import.meta.url).href
-)) as typeof import("./schema.js");
+} from "./schema.ts";
+import { queueEnvSchema, serverEnvSchema, workerEnvSchema } from "./schema.ts";
 
 export function formatConfigError(error: unknown): string {
   return formatConfigErrorImpl(error);
@@ -27,10 +23,8 @@ export type QueueRuntimeEnv = {
 };
 
 export type WorkerRuntimeEnv = {
-  supabase: {
+  database: {
     url: string;
-    anonKey: string;
-    serviceRoleKey: string;
   };
   redis: {
     url: string;
@@ -42,10 +36,8 @@ export type WorkerRuntimeEnv = {
 };
 
 export type RuntimeEnv = {
-  supabase: {
+  database: {
     url: string;
-    anonKey: string;
-    serviceRoleKey: string;
   };
   redis: {
     url: string;
@@ -71,18 +63,32 @@ function isMissingIssue(issue: { code: string; input?: unknown }): boolean {
     return true;
   }
 
-  return issue.code === "too_small" || issue.input === undefined;
+  return issue.code === "too_small";
+}
+
+function isEmptyInput(value: unknown): boolean {
+  return (
+    value === undefined ||
+    value === null ||
+    (typeof value === "string" && value.trim() === "")
+  );
 }
 
 function collectConfigIssues(
-  issues: Array<{ code: string; input?: unknown; path: PropertyKey[] }>
-): ConfigValidationError {
+  issues: Array<{ code: string; input?: unknown; path: PropertyKey[] }>,
+  env: Partial<Record<string, unknown>>
+): ConfigValidationErrorShape {
   const missingKeys = new Set<string>();
   const invalidKeys = new Set<string>();
 
   for (const issue of issues) {
     const key = String(issue.path[0] ?? "unknown");
-    if (isMissingIssue(issue)) {
+    const rawValue = env[key];
+
+    if (
+      isMissingIssue(issue) ||
+      (issue.code === "invalid_value" && isEmptyInput(rawValue))
+    ) {
       missingKeys.add(key);
     } else {
       invalidKeys.add(key);
@@ -101,7 +107,7 @@ export function loadQueueEnv(
   const parsed = queueEnvSchema.safeParse(env);
 
   if (!parsed.success) {
-    throw collectConfigIssues(parsed.error.issues);
+    throw collectConfigIssues(parsed.error.issues, env);
   }
 
   return {
@@ -118,14 +124,12 @@ export function loadWorkerEnv(
   const parsed = workerEnvSchema.safeParse(env);
 
   if (!parsed.success) {
-    throw collectConfigIssues(parsed.error.issues);
+    throw collectConfigIssues(parsed.error.issues, env);
   }
 
   return {
-    supabase: {
-      url: parsed.data.SUPABASE_URL,
-      anonKey: parsed.data.SUPABASE_ANON_KEY,
-      serviceRoleKey: parsed.data.SUPABASE_SERVICE_ROLE_KEY,
+    database: {
+      url: parsed.data.DATABASE_URL,
     },
     redis: {
       url: parsed.data.REDIS_URL,
@@ -141,14 +145,12 @@ export function loadServerEnv(env: Partial<ServerEnvInput> = process.env): Runti
   const parsed = serverEnvSchema.safeParse(env);
 
   if (!parsed.success) {
-    throw collectConfigIssues(parsed.error.issues);
+    throw collectConfigIssues(parsed.error.issues, env);
   }
 
   return {
-    supabase: {
-      url: parsed.data.SUPABASE_URL,
-      anonKey: parsed.data.SUPABASE_ANON_KEY,
-      serviceRoleKey: parsed.data.SUPABASE_SERVICE_ROLE_KEY,
+    database: {
+      url: parsed.data.DATABASE_URL,
     },
     redis: {
       url: parsed.data.REDIS_URL,
