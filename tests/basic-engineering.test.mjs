@@ -84,7 +84,6 @@ test("worker env validation keeps Supabase/webhook requirements but drops defaul
     );
   });
 });
-
 test("core config schema applies defaults and reports missing keys clearly", async () => {
   const { validateAiEnv, validateWebEnv, validateWorkerEnv } = await import(
     "../packages/core/src/config/runtime.ts"
