@@ -26,6 +26,21 @@ begin
 end;
 $$;
 
+create table if not exists public.app_users (
+  id uuid primary key default gen_random_uuid(),
+  external_subject text null,
+  email text null,
+  display_name text null,
+  avatar_url text null,
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create unique index if not exists app_users_external_subject_uidx
+  on public.app_users (external_subject)
+  where external_subject is not null;
+
 create table if not exists public.organizations (
   id uuid primary key default gen_random_uuid(),
   name text not null,
@@ -34,7 +49,7 @@ create table if not exists public.organizations (
   plan_tier text not null default 'free',
   default_output_language public.output_language not null default 'zh-CN',
   default_review_mode public.review_mode not null default 'standard',
-  owner_user_id uuid null references auth.users (id) on delete set null,
+  owner_user_id uuid null references public.app_users (id) on delete set null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique (slug)
@@ -43,10 +58,10 @@ create table if not exists public.organizations (
 create table if not exists public.memberships (
   id uuid primary key default gen_random_uuid(),
   organization_id uuid not null references public.organizations (id) on delete cascade,
-  user_id uuid not null references auth.users (id) on delete cascade,
+  user_id uuid not null references public.app_users (id) on delete cascade,
   role public.member_role not null default 'member',
   status text not null default 'active',
-  invited_by uuid null references auth.users (id) on delete set null,
+  invited_by uuid null references public.app_users (id) on delete set null,
   joined_at timestamptz null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
@@ -189,7 +204,7 @@ create table if not exists public.rule_versions (
   validation_status text not null default 'valid',
   validation_errors jsonb null,
   source_commit_sha text null,
-  created_by_user_id uuid null references auth.users (id) on delete set null,
+  created_by_user_id uuid null references public.app_users (id) on delete set null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique (rule_set_id, version_no)
@@ -207,7 +222,7 @@ create table if not exists public.ai_provider_configs (
   base_url text null,
   masked_key_suffix text null,
   is_active boolean not null default true,
-  created_by_user_id uuid null references auth.users (id) on delete set null,
+  created_by_user_id uuid null references public.app_users (id) on delete set null,
   metadata jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
@@ -326,7 +341,7 @@ create table if not exists public.review_issues (
   first_seen_run_id uuid null references public.review_runs (id) on delete set null,
   last_seen_run_id uuid null references public.review_runs (id) on delete set null,
   resolved_in_run_id uuid null references public.review_runs (id) on delete set null,
-  ignored_by_user_id uuid null references auth.users (id) on delete set null,
+  ignored_by_user_id uuid null references public.app_users (id) on delete set null,
   ignored_reason text null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
@@ -378,7 +393,7 @@ create table if not exists public.review_feedback (
   organization_id uuid not null references public.organizations (id) on delete cascade,
   review_issue_id uuid not null references public.review_issues (id) on delete cascade,
   review_run_id uuid not null references public.review_runs (id) on delete cascade,
-  user_id uuid not null references auth.users (id) on delete cascade,
+  user_id uuid not null references public.app_users (id) on delete cascade,
   feedback_type public.feedback_type not null,
   reason text null,
   created_at timestamptz not null default now(),
@@ -401,7 +416,7 @@ create table if not exists public.agent_prompts (
   output_language public.output_language not null,
   prompt_md text not null,
   prompt_hash text not null,
-  generated_by_user_id uuid null references auth.users (id) on delete set null,
+  generated_by_user_id uuid null references public.app_users (id) on delete set null,
   copied_count integer not null default 0 check (copied_count >= 0),
   last_copied_at timestamptz null,
   created_at timestamptz not null default now(),
@@ -465,6 +480,10 @@ alter table public.pull_requests
   foreign key (latest_review_run_id)
   references public.review_runs (id)
   on delete set null;
+
+create trigger app_users_set_updated_at
+before update on public.app_users
+for each row execute function public.set_updated_at();
 
 create trigger organizations_set_updated_at
 before update on public.organizations

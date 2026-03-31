@@ -11,7 +11,7 @@
 - `Next.js 16 + App Router`
 - `Vercel AI SDK`
 
-> 当前代码中的 `SUPABASE_*` 仅为历史命名现状，不代表目标架构；当前数据库底座已切换为自建 PostgreSQL，但 Auth / Realtime / Secrets / Storage 仍是能力待定。
+> 当前工程已统一使用自建 PostgreSQL：运行时通过 `DATABASE_URL` 连接，迁移目录使用 `postgres/migrations`，业务库中的稳定用户主体由 `app_users` 承载。Auth / Realtime / Secrets / Storage 仍是能力待定。
 
 本文只覆盖 P0 范围：
 
@@ -41,7 +41,7 @@
 
 - 所有业务表统一使用 `UUID` 主键
 - 除 `organizations` 外，核心业务表统一带 `organization_id`
-- 用户身份表与登录体系保持解耦，但 P0 必须先定义稳定的用户主体标识契约；业务表中的 `user_id` / `owner_user_id` / `generated_by_user_id` 等字段都引用该稳定主体，组织切换、membership 校验与服务端权限判断也统一基于该主体，不预设具体 Auth 产品
+- 用户身份表与登录体系保持解耦，但 P0 在业务库中统一引入 `app_users` 作为稳定用户主体；业务表中的 `user_id` / `owner_user_id` / `generated_by_user_id` 等字段都引用 `app_users.id`，组织切换、membership 校验与服务端权限判断也统一基于该主体，不预设具体 Auth 产品
 - 密钥不明文存表，统一通过受控的 secret reference 机制引用
 - `repo_integrations` 只保存接入元数据、状态和 secret reference，不保存明文 token / secret
 - `review_run` 是审查链路的核心聚合实体
@@ -87,6 +87,14 @@
 ## 4. 核心实体关系
 
 ```txt
+app_users
+  ├── organizations
+  ├── memberships
+  ├── rule_versions
+  ├── ai_provider_configs
+  ├── review_feedback
+  └── agent_prompts
+
 organizations
   ├── memberships
   ├── repositories
@@ -107,9 +115,34 @@ organizations
   └── webhook_events
 ```
 
+说明：
+
+- 所有业务表中的 `*_user_id` 字段统一引用 `public.app_users.id`
+
 ## 5. 表设计
 
 ## 5.1 组织与成员
+
+### `app_users`
+
+用途：
+
+- 承载业务库内稳定用户主体
+- 与具体登录 / 会话供应商解耦
+
+关键字段：
+
+| 字段               | 类型          | 说明                           |
+| ------------------ | ------------- | ------------------------------ |
+| `external_subject` | text nullable | 外部认证主体标识，后续按接入方案映射 |
+| `email`            | text nullable | 用户邮箱                       |
+| `display_name`     | text nullable | 展示名称                       |
+| `avatar_url`       | text nullable | 头像地址                       |
+| `metadata`         | jsonb         | 扩展资料                       |
+
+索引与约束：
+
+- `unique(external_subject) where external_subject is not null`
 
 ### `organizations`
 

@@ -1,8 +1,6 @@
 # 基于 Next.js + 自建 PostgreSQL 的技术选型文档
 
-> 注意：当前仓库里仍可能存在 `SUPABASE_*` 历史命名、环境变量和配置校验。
-> 这些只代表现有代码遗留现状，不代表目标架构仍使用 Supabase。
-> 本文的目标架构口径以“数据库底座为 `self-hosted PostgreSQL`，其它平台能力保持中性待定”为准。
+> 当前工程已统一收敛到 `self-hosted PostgreSQL`：运行时通过 `DATABASE_URL` 连接，迁移目录使用 `postgres/migrations`，其它平台能力保持中性待定。
 
 ## 1. 文档目标
 
@@ -662,7 +660,7 @@ AI_REQUEST_TIMEOUT_MS=45000
 
 - 模型密钥不应通过环境变量作为主存储
 - `worker` 和 `next` 服务需要有权限读取密钥关联元数据，并通过后续选定的受保护能力完成实际使用
-- 当前代码里若仍存在 `SUPABASE_*` 变量，仅代表历史实现状态，不代表目标架构口径
+- 当前代码里数据库连接统一使用 `DATABASE_URL`，不再保留旧平台遗留环境变量
 
 ### 12.6 Provider 配置示例
 

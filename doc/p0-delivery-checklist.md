@@ -8,7 +8,7 @@
 - `独立 Worker`
 - `Vercel AI SDK`
 
-> 当前工程基础大多已完成。当前仓库仍保留 `SUPABASE_*` 历史命名，但这只是命名现状，不代表目标架构；当前数据库底座已切到自建 PostgreSQL，Auth / Realtime / Secrets / Storage 仍是能力待定与接口预留项。
+> 当前工程基础大多已完成。数据库配置已统一收敛到自建 PostgreSQL：运行时通过 `DATABASE_URL` 连接，迁移目录使用 `postgres/migrations`；Auth / Realtime / Secrets / Storage 仍是能力待定与接口预留项。
 
 目标范围只覆盖当前 P0：
 
@@ -38,7 +38,7 @@
 - [ ] 建立 `organizations`
 - [ ] 建立 `memberships`
 - [ ] 建立基础角色：`owner`、`admin`、`member`
-- [ ] 明确稳定的用户主体标识契约；业务表中的 `user_id` / `owner_user_id` / `generated_by_user_id` 等字段统一引用该主体，不锁定具体 Auth 产品
+- [ ] 建立 `app_users` 作为稳定用户主体；业务表中的 `user_id` / `owner_user_id` / `generated_by_user_id` 等字段统一引用该主体，不锁定具体 Auth 产品
 - [ ] 确保组织切换、membership 校验与权限判断统一基于该稳定主体
 - [ ] 为核心业务表补 `organization_id`
 - [ ] 按最终访问方案决定是否启用 `RLS`

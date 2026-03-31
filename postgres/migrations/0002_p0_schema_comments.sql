@@ -14,6 +14,16 @@ comment on type public.ai_provider is '模型提供商枚举 / AI provider enum'
 comment on type public.ai_task_type is 'AI 任务类型枚举 / AI task type enum';
 comment on type public.rule_source_type is '规则来源类型枚举 / Rule source type enum';
 
+comment on table public.app_users is '平台用户主体表 / Application users';
+comment on column public.app_users.id is '主键 ID / Primary key ID';
+comment on column public.app_users.external_subject is '外部认证主体标识 / External auth subject';
+comment on column public.app_users.email is '用户邮箱 / User email';
+comment on column public.app_users.display_name is '展示名称 / Display name';
+comment on column public.app_users.avatar_url is '头像地址 / Avatar URL';
+comment on column public.app_users.metadata is '扩展资料 JSON / Extended metadata JSON';
+comment on column public.app_users.created_at is '创建时间 / Created at';
+comment on column public.app_users.updated_at is '更新时间 / Updated at';
+
 comment on table public.organizations is '组织表 / Organizations';
 comment on column public.organizations.id is '主键 ID / Primary key ID';
 comment on column public.organizations.name is '组织名称 / Organization name';
@@ -22,17 +32,17 @@ comment on column public.organizations.status is '组织状态 / Organization st
 comment on column public.organizations.plan_tier is '套餐层级 / Subscription plan tier';
 comment on column public.organizations.default_output_language is '默认输出语言 / Default output language';
 comment on column public.organizations.default_review_mode is '默认审查模式 / Default review mode';
-comment on column public.organizations.owner_user_id is '组织拥有者用户 ID，对应 auth.users.id / Owner user ID referencing auth.users.id';
+comment on column public.organizations.owner_user_id is '组织拥有者用户 ID，对应 app_users.id / Owner user ID referencing app_users.id';
 comment on column public.organizations.created_at is '创建时间 / Created at';
 comment on column public.organizations.updated_at is '更新时间 / Updated at';
 
 comment on table public.memberships is '组织成员关系表 / Organization memberships';
 comment on column public.memberships.id is '主键 ID / Primary key ID';
 comment on column public.memberships.organization_id is '组织 ID / Organization ID';
-comment on column public.memberships.user_id is '用户 ID，对应 auth.users.id / User ID referencing auth.users.id';
+comment on column public.memberships.user_id is '用户 ID，对应 app_users.id / User ID referencing app_users.id';
 comment on column public.memberships.role is '成员角色 / Membership role';
 comment on column public.memberships.status is '成员状态 / Membership status';
-comment on column public.memberships.invited_by is '邀请人用户 ID / Invited by user ID';
+comment on column public.memberships.invited_by is '邀请人用户 ID，对应 app_users.id / Invited by user ID referencing app_users.id';
 comment on column public.memberships.joined_at is '加入时间 / Joined at';
 comment on column public.memberships.created_at is '创建时间 / Created at';
 comment on column public.memberships.updated_at is '更新时间 / Updated at';
@@ -139,7 +149,7 @@ comment on column public.rule_versions.checksum is '内容校验哈希 / Content
 comment on column public.rule_versions.validation_status is '校验状态 / Validation status';
 comment on column public.rule_versions.validation_errors is '校验错误 JSON / Validation errors JSON';
 comment on column public.rule_versions.source_commit_sha is '来源提交 SHA / Source commit SHA';
-comment on column public.rule_versions.created_by_user_id is '创建人用户 ID / Creator user ID';
+comment on column public.rule_versions.created_by_user_id is '创建人用户 ID，对应 app_users.id / Creator user ID referencing app_users.id';
 comment on column public.rule_versions.created_at is '创建时间 / Created at';
 comment on column public.rule_versions.updated_at is '更新时间 / Updated at';
 
@@ -152,7 +162,7 @@ comment on column public.ai_provider_configs.vault_secret_id is 'Vault 密钥 ID
 comment on column public.ai_provider_configs.base_url is '自定义接口基地址 / Custom base URL';
 comment on column public.ai_provider_configs.masked_key_suffix is '掩码密钥后缀 / Masked key suffix';
 comment on column public.ai_provider_configs.is_active is '是否启用 / Whether the provider config is active';
-comment on column public.ai_provider_configs.created_by_user_id is '创建人用户 ID / Creator user ID';
+comment on column public.ai_provider_configs.created_by_user_id is '创建人用户 ID，对应 app_users.id / Creator user ID referencing app_users.id';
 comment on column public.ai_provider_configs.metadata is '扩展配置 JSON / Extended config metadata JSON';
 comment on column public.ai_provider_configs.created_at is '创建时间 / Created at';
 comment on column public.ai_provider_configs.updated_at is '更新时间 / Updated at';
@@ -241,7 +251,7 @@ comment on column public.review_issues.status is '问题状态 / Issue status';
 comment on column public.review_issues.first_seen_run_id is '首次出现的运行 ID / First seen review run ID';
 comment on column public.review_issues.last_seen_run_id is '最近出现的运行 ID / Last seen review run ID';
 comment on column public.review_issues.resolved_in_run_id is '被解决的运行 ID / Resolved in review run ID';
-comment on column public.review_issues.ignored_by_user_id is '忽略人用户 ID / Ignored by user ID';
+comment on column public.review_issues.ignored_by_user_id is '忽略人用户 ID，对应 app_users.id / Ignored by user ID referencing app_users.id';
 comment on column public.review_issues.ignored_reason is '忽略原因 / Ignored reason';
 comment on column public.review_issues.created_at is '创建时间 / Created at';
 comment on column public.review_issues.updated_at is '更新时间 / Updated at';
@@ -271,7 +281,7 @@ comment on column public.review_feedback.id is '主键 ID / Primary key ID';
 comment on column public.review_feedback.organization_id is '所属组织 ID / Organization ID';
 comment on column public.review_feedback.review_issue_id is '审查问题 ID / Review issue ID';
 comment on column public.review_feedback.review_run_id is '审查运行 ID / Review run ID';
-comment on column public.review_feedback.user_id is '反馈用户 ID / Feedback user ID';
+comment on column public.review_feedback.user_id is '反馈用户 ID，对应 app_users.id / Feedback user ID referencing app_users.id';
 comment on column public.review_feedback.feedback_type is '反馈类型 / Feedback type';
 comment on column public.review_feedback.reason is '反馈原因 / Feedback reason';
 comment on column public.review_feedback.created_at is '创建时间 / Created at';
@@ -289,7 +299,7 @@ comment on column public.agent_prompts.agent_kind is 'Agent 类型 / Agent kind'
 comment on column public.agent_prompts.output_language is '输出语言 / Output language';
 comment on column public.agent_prompts.prompt_md is '提示词正文 Markdown / Prompt body in Markdown';
 comment on column public.agent_prompts.prompt_hash is '提示词内容哈希 / Prompt content hash';
-comment on column public.agent_prompts.generated_by_user_id is '生成人用户 ID / Generated by user ID';
+comment on column public.agent_prompts.generated_by_user_id is '生成人用户 ID，对应 app_users.id / Generated by user ID referencing app_users.id';
 comment on column public.agent_prompts.copied_count is '复制次数 / Copy count';
 comment on column public.agent_prompts.last_copied_at is '最近复制时间 / Last copied at';
 comment on column public.agent_prompts.created_at is '创建时间 / Created at';

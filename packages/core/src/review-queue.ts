@@ -1,17 +1,14 @@
 import { Queue, Worker, type Job } from "bullmq";
 import { Redis } from "ioredis";
 
-import type { QueueEnvInput } from "./config/schema.js";
+import {
+  DEFAULT_QUEUE_NAME,
+  DEFAULT_REDIS_URL,
+  queueEnvSchema,
+} from "./config/schema.ts";
+import type { QueueEnvInput } from "./config/schema.ts";
 
-const runtimeExtension = import.meta.url.endsWith(".ts") ? "ts" : "js";
-
-const schemaModule = (await import(
-  new URL(`./config/schema.${runtimeExtension}`, import.meta.url).href
-)) as typeof import("./config/schema.js");
-const { queueEnvSchema } = schemaModule;
-
-export const DEFAULT_QUEUE_NAME = schemaModule.DEFAULT_QUEUE_NAME;
-export const DEFAULT_REDIS_URL = schemaModule.DEFAULT_REDIS_URL;
+export { DEFAULT_QUEUE_NAME, DEFAULT_REDIS_URL } from "./config/schema.ts";
 export const DEFAULT_JOB_NAME = "manual-review";
 
 export type QueueEnv = NodeJS.ProcessEnv & Partial<QueueEnvInput>;
