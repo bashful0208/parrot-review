@@ -63,7 +63,13 @@ export async function withRedisErrorBoundary<T>(
         return await operation();
       } catch (error) {
         if (error instanceof Error) {
-          if (error.message.includes('ECONNREFUSED') || error.message.includes('ETIMEDOUT')) {
+          const lowerMessage = error.message.toLowerCase();
+          if (
+            lowerMessage.includes('econnrefused') ||
+            lowerMessage.includes('etimedout') ||
+            lowerMessage.includes('connection refused') ||
+            lowerMessage.includes('connection timeout')
+          ) {
             const appError = new AppError(
               ErrorCode.DependencyRedisConnection,
               'Redis connection failed',

@@ -29,16 +29,17 @@ export function mapPlatformCallbackError(
   let message = `Platform callback error from ${provider}`;
 
   if (error instanceof Error) {
-    if (error.message.includes('timeout')) {
+    const lowerMessage = error.message.toLowerCase();
+    if (lowerMessage.includes('timeout')) {
       code = ErrorCode.PlatformCallbackTimeout;
       message = `Platform callback timeout: ${provider}`;
-    } else if (error.message.includes('auth') || error.message.includes('unauthorized')) {
+    } else if (lowerMessage.includes('auth') || lowerMessage.includes('unauthorized')) {
       code = ErrorCode.PlatformCallbackAuthFailed;
       message = `Platform callback auth failed: ${provider}`;
-    } else if (error.message.includes('rate limit')) {
+    } else if (lowerMessage.includes('rate limit')) {
       code = ErrorCode.PlatformCallbackRateLimited;
       message = `Platform callback rate limited: ${provider}`;
-    } else if (error.message.includes('signature')) {
+    } else if (lowerMessage.includes('signature')) {
       code = ErrorCode.PlatformCallbackInvalidSignature;
       message = `Platform callback invalid signature: ${provider}`;
     }
@@ -60,16 +61,18 @@ export function mapModelInvocationError(
   let message = `Model invocation error from ${provider}`;
 
   if (error instanceof Error) {
-    if (error.message.includes('timeout')) {
+    const lowerMessage = error.message.toLowerCase();
+    const errorObj = error as unknown as Record<string, unknown>;
+    if (lowerMessage.includes('timeout')) {
       code = ErrorCode.ModelInvocationTimeout;
       message = `Model invocation timeout: ${provider}`;
-    } else if (error.message.includes('rate limit') || (error as any).status === 429) {
+    } else if (lowerMessage.includes('rate limit') || errorObj.status === 429) {
       code = ErrorCode.ModelInvocationRateLimit;
       message = `Model invocation rate limited: ${provider}`;
-    } else if ((error as any).status === 503) {
+    } else if (errorObj.status === 503) {
       code = ErrorCode.ModelInvocationProviderUnavailable;
       message = `Model provider unavailable: ${provider}`;
-    } else if (error.message.includes('quota')) {
+    } else if (lowerMessage.includes('quota')) {
       code = ErrorCode.ModelInvocationQuotaExceeded;
       message = `Model invocation quota exceeded: ${provider}`;
     }
@@ -91,16 +94,17 @@ export function mapRuleParseError(
   let message = `Rule parse error: ${ruleId}`;
 
   if (error instanceof Error) {
-    if (error.message.includes('syntax')) {
+    const lowerMessage = error.message.toLowerCase();
+    if (lowerMessage.includes('syntax')) {
       code = ErrorCode.RuleParseSyntaxError;
       message = `Rule syntax error: ${ruleId}`;
-    } else if (error.message.includes('schema')) {
+    } else if (lowerMessage.includes('schema')) {
       code = ErrorCode.RuleParseInvalidSchema;
       message = `Rule invalid schema: ${ruleId}`;
-    } else if (error.message.includes('validation')) {
+    } else if (lowerMessage.includes('validation')) {
       code = ErrorCode.RuleParseValidationFailed;
       message = `Rule validation failed: ${ruleId}`;
-    } else if (error.message.includes('circular')) {
+    } else if (lowerMessage.includes('circular')) {
       code = ErrorCode.RuleParseCircularReference;
       message = `Rule circular reference detected: ${ruleId}`;
     }

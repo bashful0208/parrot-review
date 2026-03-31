@@ -65,7 +65,8 @@ export function createLogger(context: LogContext = {}): Logger {
     },
 
     error(message: string, error?: Error | unknown, data?: Record<string, unknown>): void {
-      childLogger.error({ err: error, ...data }, message);
+      const errorObj = error instanceof Error ? error : error ? new Error(String(error)) : undefined;
+      childLogger.error({ err: errorObj, ...data }, message);
     },
 
     warn(message: string, data?: Record<string, unknown>): void {
