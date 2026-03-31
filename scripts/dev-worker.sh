@@ -4,6 +4,10 @@ set -eu
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 REPO_ROOT=$(dirname "$SCRIPT_DIR")
 
+if [ ! -f "$REPO_ROOT/.env" ] && [ -f "$REPO_ROOT/.env.example" ]; then
+  cp "$REPO_ROOT/.env.example" "$REPO_ROOT/.env"
+fi
+
 if [ -f "$REPO_ROOT/.env" ]; then
   set -a
   . "$REPO_ROOT/.env"
