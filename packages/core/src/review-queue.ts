@@ -1,12 +1,20 @@
 import { Queue, Worker, type Job } from "bullmq";
 import { Redis } from "ioredis";
 
-export const DEFAULT_QUEUE_NAME = "review-jobs";
-export const DEFAULT_REDIS_URL = "redis://127.0.0.1:6379";
+import type { QueueEnvInput } from "./config/schema.js";
+
+const runtimeExtension = import.meta.url.endsWith(".ts") ? "ts" : "js";
+
+const schemaModule = (await import(
+  new URL(`./config/schema.${runtimeExtension}`, import.meta.url).href
+)) as typeof import("./config/schema.js");
+const { queueEnvSchema } = schemaModule;
+
+export const DEFAULT_QUEUE_NAME = schemaModule.DEFAULT_QUEUE_NAME;
+export const DEFAULT_REDIS_URL = schemaModule.DEFAULT_REDIS_URL;
 export const DEFAULT_JOB_NAME = "manual-review";
 
-export type QueueEnv = NodeJS.ProcessEnv &
-  Partial<Record<"REDIS_URL" | "REVIEW_QUEUE_NAME", string>>;
+export type QueueEnv = NodeJS.ProcessEnv & Partial<QueueEnvInput>;
 
 export type QueueConnectionConfig = {
   host: string;
@@ -33,8 +41,9 @@ export type PlaceholderJobResult = {
 export function buildWorkerConfig(
   env: Partial<QueueEnv> = process.env
 ): WorkerConfig {
-  const redisUrl = env.REDIS_URL?.trim() || DEFAULT_REDIS_URL;
-  const queueName = env.REVIEW_QUEUE_NAME?.trim() || DEFAULT_QUEUE_NAME;
+  const parsed = queueEnvSchema.parse(env);
+  const redisUrl = parsed.REDIS_URL;
+  const queueName = parsed.REVIEW_QUEUE_NAME;
   const parsedRedisUrl = new URL(redisUrl);
   const port = parsedRedisUrl.port ? Number(parsedRedisUrl.port) : 6379;
 

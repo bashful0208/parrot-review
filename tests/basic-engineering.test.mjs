@@ -37,14 +37,15 @@ test("workspace package stubs exist for P0 foundation", async () => {
   }
 });
 
-test("core env helpers normalize required P0 settings", async () => {
-  const { loadRuntimeEnv } = await import("../packages/core/src/env.ts");
+test("core config schema applies defaults and reports missing keys clearly", async () => {
+  const { loadServerEnv, formatConfigError } = await import(
+    "../packages/core/src/config/server.ts"
+  );
 
-  const env = loadRuntimeEnv({
+  const env = loadServerEnv({
     SUPABASE_URL: "https://example.supabase.co",
     SUPABASE_ANON_KEY: "anon",
     SUPABASE_SERVICE_ROLE_KEY: "service",
-    REDIS_URL: "redis://127.0.0.1:6379",
     WEBHOOK_SECRET: "secret",
     DEFAULT_MODEL_PROVIDER: "anthropic",
     DEFAULT_MODEL_NAME: "claude-3-7-sonnet",
@@ -52,7 +53,39 @@ test("core env helpers normalize required P0 settings", async () => {
 
   assert.equal(env.defaultModel.provider, "anthropic");
   assert.equal(env.ids.requestIdHeader, "x-request-id");
+  assert.equal(env.redis.url, "redis://127.0.0.1:6379");
   assert.equal(env.redis.queueName, "review-jobs");
+
+  const blankDefaults = loadServerEnv({
+    SUPABASE_URL: "https://example.supabase.co",
+    SUPABASE_ANON_KEY: "anon",
+    SUPABASE_SERVICE_ROLE_KEY: "service",
+    REDIS_URL: "   ",
+    REVIEW_QUEUE_NAME: "   ",
+    WEBHOOK_SECRET: "secret",
+    DEFAULT_MODEL_PROVIDER: "anthropic",
+    DEFAULT_MODEL_NAME: "claude-3-7-sonnet",
+  });
+
+  assert.equal(blankDefaults.redis.url, "redis://127.0.0.1:6379");
+  assert.equal(blankDefaults.redis.queueName, "review-jobs");
+
+  assert.throws(
+    () =>
+      loadServerEnv({
+        SUPABASE_URL: "   ",
+        DEFAULT_MODEL_PROVIDER: "anthropic",
+      }),
+    (error) => {
+      const message = formatConfigError(error);
+      return (
+        /Missing:/.test(message) &&
+        /SUPABASE_URL/.test(message) &&
+        /SUPABASE_ANON_KEY/.test(message) &&
+        /WEBHOOK_SECRET/.test(message)
+      );
+    }
+  );
 });
 
 test("core error catalog exposes stable codes", async () => {
