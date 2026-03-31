@@ -16,7 +16,8 @@ fi
 
 : "${REDIS_URL:=redis://127.0.0.1:6379}"
 : "${REVIEW_QUEUE_NAME:=review-jobs}"
-export REDIS_URL REVIEW_QUEUE_NAME
+: "${DATABASE_URL:=postgresql://postgres:postgres@127.0.0.1:5432/reviewer}"
+export REDIS_URL REVIEW_QUEUE_NAME DATABASE_URL
 
 echo "[dev-worker] 启动 apps/worker ..."
 exec pnpm --dir "$REPO_ROOT/apps/worker" run dev
