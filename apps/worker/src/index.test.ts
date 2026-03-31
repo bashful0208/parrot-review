@@ -32,15 +32,28 @@ test("buildWorkerConfig reads redis host and port from REDIS_URL", () => {
   assert.equal(config.connection.port, 6381);
 });
 
-test("worker startup fails fast when required runtime env is missing", async () => {
+test("worker startup still requires Supabase and webhook env", async () => {
+  await assert.rejects(() => main({ REDIS_URL: "redis://127.0.0.1:6399" }), {
+    message: /SUPABASE_URL|WEBHOOK_SECRET/,
+  });
+});
+
+test("worker startup reaches Redis check without default model env", async () => {
   await assert.rejects(
-    () => main({ REDIS_URL: "redis://127.0.0.1:6379" }),
-    /Environment configuration is invalid\.|Missing:/
+    () =>
+      main({
+        SUPABASE_URL: "https://example.supabase.co",
+        SUPABASE_ANON_KEY: "anon",
+        SUPABASE_SERVICE_ROLE_KEY: "service",
+        WEBHOOK_SECRET: "secret",
+        REDIS_URL: "redis://127.0.0.1:6399",
+      }),
+    /ECONNREFUSED|connect/i
   );
 });
 
 test(
-  "worker process fails fast when Redis is unreachable",
+  "worker process reaches Redis check without default model env",
   { timeout: 15_000 },
   async () => {
     const workerEntry = path.join(workerDir, "src", "index.ts");
@@ -48,6 +61,10 @@ test(
       cwd: workerDir,
       env: {
         ...process.env,
+        SUPABASE_URL: "https://example.supabase.co",
+        SUPABASE_ANON_KEY: "anon",
+        SUPABASE_SERVICE_ROLE_KEY: "service",
+        WEBHOOK_SECRET: "secret",
         REDIS_URL: "redis://127.0.0.1:6399",
       },
       stdio: ["ignore", "pipe", "pipe"],
@@ -79,11 +96,64 @@ test(
       });
     });
 
+    const stderr = stderrChunks.join("");
+
     assert.equal(result.signal, null);
     assert.notEqual(result.code, 0);
-    assert.match(
-      stderrChunks.join(""),
-      /bootstrap failed|ECONNREFUSED|connect/i
-    );
+    assert.match(stderr, /ECONNREFUSED|connect/i);
+    assert.doesNotMatch(stderr, /DEFAULT_MODEL_PROVIDER|DEFAULT_MODEL_NAME/);
+  }
+);
+
+test(
+  "worker process fails fast when Redis is unreachable",
+  { timeout: 15_000 },
+  async () => {
+    const workerEntry = path.join(workerDir, "src", "index.ts");
+    const child = spawn("pnpm", ["exec", "tsx", workerEntry], {
+      cwd: workerDir,
+      env: {
+        ...process.env,
+        SUPABASE_URL: "https://example.supabase.co",
+        SUPABASE_ANON_KEY: "anon",
+        SUPABASE_SERVICE_ROLE_KEY: "service",
+        WEBHOOK_SECRET: "secret",
+        REDIS_URL: "redis://127.0.0.1:6399",
+      },
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+
+    const stderrChunks: string[] = [];
+    child.stderr.on("data", (chunk) => {
+      stderrChunks.push(String(chunk));
+    });
+
+    const result = await new Promise<{
+      code: number | null;
+      signal: NodeJS.Signals | null;
+    }>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        child.kill("SIGTERM");
+        reject(
+          new Error("worker did not fail fast when Redis was unreachable")
+        );
+      }, 5000);
+
+      child.once("exit", (code, signal) => {
+        clearTimeout(timeout);
+        resolve({ code, signal });
+      });
+      child.once("error", (error) => {
+        clearTimeout(timeout);
+        reject(error);
+      });
+    });
+
+    const stderr = stderrChunks.join("");
+
+    assert.equal(result.signal, null);
+    assert.notEqual(result.code, 0);
+    assert.match(stderr, /ECONNREFUSED|connect/i);
+    assert.doesNotMatch(stderr, /DEFAULT_MODEL_PROVIDER|DEFAULT_MODEL_NAME/);
   }
 );

@@ -68,16 +68,16 @@ pnpm run setup
 | `SUPABASE_ANON_KEY` | Supabase 匿名访问 key | web / worker | 必填 | 必填 | 无 |
 | `SUPABASE_SERVICE_ROLE_KEY` | 服务端 Supabase key | web / worker | 必填 | 必填 | 无 |
 | `WEBHOOK_SECRET` | webhook 签名密钥 | web / worker | 必填 | 必填 | 无 |
-| `DEFAULT_MODEL_PROVIDER` | 默认模型 provider | web / worker / ai | 必填 | 必填 | 无 |
-| `DEFAULT_MODEL_NAME` | 默认模型名称 | web / worker / ai | 必填 | 必填 | 无 |
+| `DEFAULT_MODEL_PROVIDER` | 默认模型 provider（legacy env fallback，当前 web 启动仍依赖） | web / ai | 必填（web） | 必填（web） | 无 |
+| `DEFAULT_MODEL_NAME` | 默认模型名称（legacy env fallback，当前 web 启动仍依赖） | web / ai | 必填（web） | 必填（web） | 无 |
 | `REDIS_URL` | Redis 连接串 | web / worker | 可选 | 建议必填 | `redis://127.0.0.1:6379` |
 | `REVIEW_QUEUE_NAME` | BullMQ 队列名 | web / worker | 可选 | 可选 | `review-jobs` |
 
 说明：
 
-- `web` 当前通过服务端模块早期校验上述变量；缺失关键变量时会直接报错
-- `worker` 在启动最前面校验上述变量，再继续检查 Redis 可达性
-- `packages/ai` 当前提供 provider 配置入口，复用 `DEFAULT_MODEL_PROVIDER` 与 `DEFAULT_MODEL_NAME`
+- `web` 当前通过服务端模块早期校验 `SUPABASE_*`、`WEBHOOK_SECRET`、`DEFAULT_MODEL_*` 与默认队列配置；缺失关键变量时会直接报错
+- `worker` 在启动最前面会校验 `SUPABASE_*`、`WEBHOOK_SECRET` 与队列相关配置，再继续检查 Redis 可达性
+- `packages/ai` 当前仍提供基于环境变量的 provider 配置入口，但默认模型已迁移到数据库；因此 `DEFAULT_MODEL_*` 已不再阻塞 worker 启动，不过当前 web 启动仍沿用这组 legacy fallback
 
 ## 5. 本地启动
 
@@ -120,10 +120,19 @@ pnpm run dev:worker
 pnpm --dir apps/worker run dev
 ```
 
-通过根目录脚本启动时，会优先加载仓库根目录 `.env`；建议先复制 `.env.example`。如果没有显式配置，则本地开发默认使用：
+通过根目录脚本启动时，会优先加载仓库根目录 `.env`；建议先复制 `.env.example`。`worker` 本地开发至少需要先提供：
+
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `WEBHOOK_SECRET`
+
+如果没有显式配置 Redis 相关变量，则本地开发默认使用：
 
 - `REDIS_URL=redis://127.0.0.1:6379`
 - `REVIEW_QUEUE_NAME=review-jobs`
+
+`worker` 启动不再要求 `DEFAULT_MODEL_PROVIDER` / `DEFAULT_MODEL_NAME`，但仍会在配置校验阶段要求 `SUPABASE_*` 与 `WEBHOOK_SECRET`。
 
 也就是说，直接执行根目录的 `pnpm run dev` 或 `pnpm run dev:worker` 时，worker 会尝试连接本机 Redis 并消费队列；如果 Redis 不可达，worker 会立即失败退出，而不是进入静默 fallback。
 
@@ -134,6 +143,10 @@ pnpm --dir apps/worker run dev
 示例：
 
 ```bash
+export SUPABASE_URL="https://your-project.supabase.co"
+export SUPABASE_ANON_KEY="your-supabase-anon-key"
+export SUPABASE_SERVICE_ROLE_KEY="your-supabase-service-role-key"
+export WEBHOOK_SECRET="replace-with-webhook-secret"
 export REDIS_URL="redis://:your-password@your-redis-host:6379"
 export REVIEW_QUEUE_NAME="review-jobs"
 
@@ -142,14 +155,20 @@ pnpm run dev:worker
 
 说明：
 
+- `SUPABASE_URL` / `SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY` / `WEBHOOK_SECRET`：worker 启动阶段必需的后端配置
 - `REDIS_URL`：Redis 连接串；不显式配置时默认值是 `redis://127.0.0.1:6379`
 - `REVIEW_QUEUE_NAME`：队列名，默认值是 `review-jobs`
+- `DEFAULT_MODEL_PROVIDER` / `DEFAULT_MODEL_NAME`：当前仅保留给 `packages/ai` 的 legacy env fallback，不再阻塞 worker 启动
 - 默认值只是减少本地开发配置，不代表 Redis 可以缺失；Redis 不可达时 worker 会 fail fast
 
 如果你要用构建产物运行：
 
 ```bash
 pnpm --dir apps/worker run build
+export SUPABASE_URL="https://your-project.supabase.co"
+export SUPABASE_ANON_KEY="your-supabase-anon-key"
+export SUPABASE_SERVICE_ROLE_KEY="your-supabase-service-role-key"
+export WEBHOOK_SECRET="replace-with-webhook-secret"
 export REDIS_URL="redis://:your-password@your-redis-host:6379"
 export REVIEW_QUEUE_NAME="review-jobs"
 pnpm --dir apps/worker run start
@@ -257,7 +276,8 @@ Worker 当前职责：
 
 部署要求：
 
-- `SUPABASE_URL`、`SUPABASE_ANON_KEY`、`SUPABASE_SERVICE_ROLE_KEY`、`WEBHOOK_SECRET`、`DEFAULT_MODEL_PROVIDER`、`DEFAULT_MODEL_NAME` 需要在部署前完整配置
+- `SUPABASE_URL`、`SUPABASE_ANON_KEY`、`SUPABASE_SERVICE_ROLE_KEY`、`WEBHOOK_SECRET` 需要在部署前完整配置
+- `DEFAULT_MODEL_PROVIDER`、`DEFAULT_MODEL_NAME` 对 worker 启动已非必需，但当前 web 启动和 `packages/ai` 的 legacy env fallback 仍会读取它们
 - 目标环境中的 Redis 必须可达，否则 worker 会在启动时立即失败退出
 - 建议显式配置 `REDIS_URL`
 - `REVIEW_QUEUE_NAME` 可选，默认值是 `review-jobs`
@@ -277,6 +297,10 @@ pnpm --dir apps/web run start
 ```bash
 pnpm run setup
 pnpm --dir apps/worker run build
+export SUPABASE_URL="https://your-project.supabase.co"
+export SUPABASE_ANON_KEY="your-supabase-anon-key"
+export SUPABASE_SERVICE_ROLE_KEY="your-supabase-service-role-key"
+export WEBHOOK_SECRET="replace-with-webhook-secret"
 export REDIS_URL="redis://:your-password@your-redis-host:6379"
 export REVIEW_QUEUE_NAME="review-jobs"
 pnpm --dir apps/worker run start

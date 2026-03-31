@@ -5,14 +5,14 @@ import {
   buildWorkerConfig,
   createPlaceholderWorker,
   formatConfigError,
-  loadServerEnv,
+  validateWorkerEnv,
 } from "@reviewer/core";
 
 export { buildWorkerConfig } from "@reviewer/core";
 
 export async function main(env = process.env): Promise<void> {
   try {
-    loadServerEnv(env);
+    validateWorkerEnv(env);
   } catch (error) {
     throw new Error(formatConfigError(error));
   }

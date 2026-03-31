@@ -49,6 +49,42 @@ test("worker dev script uses tsx watch subcommand syntax", async () => {
   );
 });
 
+test("worker env validation keeps Supabase/webhook requirements but drops default model env", async () => {
+  const { validateWebEnv, validateWorkerEnv } = await import(
+    "../packages/core/src/config/runtime.ts"
+  );
+
+  const workerEnv = validateWorkerEnv({
+    SUPABASE_URL: "https://example.supabase.co",
+    SUPABASE_ANON_KEY: "anon",
+    SUPABASE_SERVICE_ROLE_KEY: "service",
+    WEBHOOK_SECRET: "secret",
+  });
+
+  assert.equal(workerEnv.redis.url, "redis://127.0.0.1:6379");
+  assert.equal(workerEnv.redis.queueName, "review-jobs");
+
+  assert.throws(() => validateWorkerEnv({}), (error) => {
+    return (
+      error instanceof Error &&
+      /\[worker\][\s\S]*Missing:/.test(error.message) &&
+      /SUPABASE_URL/.test(error.message) &&
+      /WEBHOOK_SECRET/.test(error.message) &&
+      !/DEFAULT_MODEL_PROVIDER/.test(error.message) &&
+      !/DEFAULT_MODEL_NAME/.test(error.message)
+    );
+  });
+
+  assert.throws(() => validateWebEnv({}), (error) => {
+    return (
+      error instanceof Error &&
+      /\[web\][\s\S]*Missing:/.test(error.message) &&
+      /DEFAULT_MODEL_PROVIDER/.test(error.message) &&
+      /DEFAULT_MODEL_NAME/.test(error.message)
+    );
+  });
+});
+
 test("core config schema applies defaults and reports missing keys clearly", async () => {
   const { validateAiEnv, validateWebEnv, validateWorkerEnv } = await import(
     "../packages/core/src/config/runtime.ts"
@@ -103,7 +139,16 @@ test("core config schema applies defaults and reports missing keys clearly", asy
   );
 
   assert.throws(() => validateWebEnv({}), /\[web\][\s\S]*Missing:/);
-  assert.throws(() => validateWorkerEnv({}), /\[worker\][\s\S]*Missing:/);
+  assert.throws(() => validateWorkerEnv({}), (error) => {
+    return (
+      error instanceof Error &&
+      /\[worker\][\s\S]*Missing:/.test(error.message) &&
+      /SUPABASE_URL/.test(error.message) &&
+      /WEBHOOK_SECRET/.test(error.message) &&
+      !/DEFAULT_MODEL_PROVIDER/.test(error.message) &&
+      !/DEFAULT_MODEL_NAME/.test(error.message)
+    );
+  });
   assert.throws(() => validateAiEnv({}), /\[ai\][\s\S]*Missing:/);
 });
 

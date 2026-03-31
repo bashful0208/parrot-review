@@ -27,6 +27,15 @@ export const queueEnvSchema = z.object({
   REVIEW_QUEUE_NAME: defaultedString(DEFAULT_QUEUE_NAME),
 });
 
+export const workerEnvSchema = z
+  .object({
+    SUPABASE_URL: requiredString.url(),
+    SUPABASE_ANON_KEY: requiredString,
+    SUPABASE_SERVICE_ROLE_KEY: requiredString,
+    WEBHOOK_SECRET: requiredString,
+  })
+  .extend(queueEnvSchema.shape);
+
 export const serverEnvSchema = z
   .object({
     SUPABASE_URL: requiredString.url(),
@@ -40,6 +49,8 @@ export const serverEnvSchema = z
 
 export type QueueEnvInput = z.input<typeof queueEnvSchema>;
 export type QueueEnvSchema = z.output<typeof queueEnvSchema>;
+export type WorkerEnvInput = z.input<typeof workerEnvSchema>;
+export type WorkerEnvSchema = z.output<typeof workerEnvSchema>;
 export type ServerEnvInput = z.input<typeof serverEnvSchema>;
 export type ServerEnvSchema = z.output<typeof serverEnvSchema>;
 export type DefaultModelProvider = z.infer<typeof defaultModelProviderSchema>;
