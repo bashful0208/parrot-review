@@ -39,6 +39,7 @@ pnpm run dev
 
 - 这个命令会同时拉起 `apps/web` 和 `apps/worker`
 - 如果任一服务以非零状态退出，根脚本也会返回相同失败码
+- 数据库配置统一使用 `DATABASE_URL`
 - 默认会使用 `REDIS_URL=redis://127.0.0.1:6379` 与 `REVIEW_QUEUE_NAME=review-jobs`
 - 其他必填环境变量可先复制根目录 `.env.example`，完整说明见 `doc/startup-and-deployment.md`
 - Redis 不可达时，worker 会立即失败退出；详细说明见 `doc/startup-and-deployment.md`

@@ -1,2 +1,2 @@
-export { loadServerEnv as loadRuntimeEnv } from "./config/server.js";
-export type { RuntimeEnv } from "./config/server.js";
+export { loadServerEnv as loadRuntimeEnv } from "./config/server.ts";
+export type { RuntimeEnv } from "./config/server.ts";

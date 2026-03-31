@@ -2,12 +2,16 @@
 
 基于当前技术栈：
 
-- `Supabase Postgres`
-- `Supabase Auth`
-- `Supabase Vault`
+- `self-hosted PostgreSQL`
+- Auth 能力待定
+- Realtime 能力待定
+- Secret 管理能力待定
+- Storage 能力待定
 - `Redis + BullMQ`
 - `Next.js 16 + App Router`
 - `Vercel AI SDK`
+
+> 当前工程已统一使用自建 PostgreSQL：运行时通过 `DATABASE_URL` 连接，迁移目录使用 `postgres/migrations`，业务库中的稳定用户主体由 `app_users` 承载。Auth / Realtime / Secrets / Storage 仍是能力待定。
 
 本文只覆盖 P0 范围：
 
@@ -24,22 +28,25 @@
 ## 1. 设计目标
 
 - 支撑多组织、多仓库、多 PR 的审查链路
-- 支撑 `GitHub / GitLab / Gitee` 三类仓库接入
+- 数据模型与接入抽象按 `GitHub / GitLab / Gitee` 三类仓库平台设计
+- P0 最小可工作闭环允许先打通单一平台，其他平台作为兼容预留，不要求三平台同时完成上线闭环
 - 支撑一次 PR 多次增量审查
 - 支撑问题去重、状态流转、反馈闭环
+- 支撑低噪声排序，默认优先展示高价值问题
 - 支撑组织级 / 仓库级模型绑定
-- 支撑密钥入库但不明文存储
-- 支撑前端 `RLS` 安全访问和服务端全量处理
+- 支撑密钥引用入库但不明文存储
+- 支撑基于服务端权限边界的安全访问；是否启用 PostgreSQL 行级权限（RLS）按最终访问方案决定
 
 ## 2. 设计原则
 
 - 所有业务表统一使用 `UUID` 主键
 - 除 `organizations` 外，核心业务表统一带 `organization_id`
-- 用户身份直接复用 `auth.users`
-- 密钥不明文存表，统一通过 `Supabase Vault` 存储
+- 用户身份表与登录体系保持解耦，但 P0 在业务库中统一引入 `app_users` 作为稳定用户主体；业务表中的 `user_id` / `owner_user_id` / `generated_by_user_id` 等字段都引用 `app_users.id`，组织切换、membership 校验与服务端权限判断也统一基于该主体，不预设具体 Auth 产品
+- 密钥不明文存表，统一通过受控的 secret reference 机制引用
+- `repo_integrations` 只保存接入元数据、状态和 secret reference，不保存明文 token / secret
 - `review_run` 是审查链路的核心聚合实体
 - 一个 PR 可以有多次 `review_run`
-- 一个问题在每次 `review_run` 中都是一次独立命中，但通过 `fingerprint` 跨 run 去重
+- 一个问题在每次 `review_run` 中都是一次独立命中，但通过 `fingerprint` 跨 run 去重与继承状态
 - Redis 负责队列，不负责业务状态存储
 
 ## 3. 统一约定
@@ -80,6 +87,14 @@
 ## 4. 核心实体关系
 
 ```txt
+app_users
+  ├── organizations
+  ├── memberships
+  ├── rule_versions
+  ├── ai_provider_configs
+  ├── review_feedback
+  └── agent_prompts
+
 organizations
   ├── memberships
   ├── repositories
@@ -100,9 +115,34 @@ organizations
   └── webhook_events
 ```
 
+说明：
+
+- 所有业务表中的 `*_user_id` 字段统一引用 `public.app_users.id`
+
 ## 5. 表设计
 
 ## 5.1 组织与成员
+
+### `app_users`
+
+用途：
+
+- 承载业务库内稳定用户主体
+- 与具体登录 / 会话供应商解耦
+
+关键字段：
+
+| 字段               | 类型          | 说明                           |
+| ------------------ | ------------- | ------------------------------ |
+| `external_subject` | text nullable | 外部认证主体标识，后续按接入方案映射 |
+| `email`            | text nullable | 用户邮箱                       |
+| `display_name`     | text nullable | 展示名称                       |
+| `avatar_url`       | text nullable | 头像地址                       |
+| `metadata`         | jsonb         | 扩展资料                       |
+
+索引与约束：
+
+- `unique(external_subject) where external_subject is not null`
 
 ### `organizations`
 
@@ -115,13 +155,13 @@ organizations
 
 | 字段                      | 类型            | 说明                 |
 | ------------------------- | --------------- | -------------------- |
-| `name`                    | text            | 组织名称             |
-| `slug`                    | text unique     | 组织唯一标识         |
-| `status`                  | text            | 组织状态             |
-| `plan_tier`               | text            | 套餐层级             |
-| `default_output_language` | output_language | 默认输出语言         |
-| `default_review_mode`     | review_mode     | 默认审查模式         |
-| `owner_user_id`           | uuid            | 对应 `auth.users.id` |
+| `name`                    | text            | 组织名称               |
+| `slug`                    | text unique     | 组织唯一标识           |
+| `status`                  | text            | 组织状态               |
+| `plan_tier`               | text            | 套餐层级               |
+| `default_output_language` | output_language | 默认输出语言           |
+| `default_review_mode`     | review_mode     | 默认审查模式           |
+| `owner_user_id`           | uuid            | 对应用户主体 ID        |
 
 索引与约束：
 
@@ -138,7 +178,7 @@ organizations
 | 字段              | 类型                 | 说明                      |
 | ----------------- | -------------------- | ------------------------- |
 | `organization_id` | uuid fk              | 组织                      |
-| `user_id`         | uuid fk              | 对应 `auth.users.id`      |
+| `user_id`         | uuid fk              | 对应用户主体 ID           |
 | `role`            | member_role          | `owner/admin/member`      |
 | `status`          | text                 | `active/invited/disabled` |
 | `invited_by`      | uuid nullable        | 邀请人                    |
@@ -184,26 +224,31 @@ organizations
 用途：
 
 - 保存仓库接入配置
-- 保存安装信息、授权信息、同步元数据
+- 保存安装信息、授权边界、状态与同步/健康检查元数据
+- 只保存 secret reference，不保存明文 token / secret
 
 关键字段：
 
 | 字段                             | 类型          | 说明                                        |
 | -------------------------------- | ------------- | ------------------------------------------- |
-| `organization_id`                | uuid fk       | 所属组织                                    |
-| `repository_id`                  | uuid fk       | 仓库                                        |
-| `provider`                       | git_provider  | 平台                                        |
-| `installation_id`                | text nullable | App 安装 ID                                 |
-| `provider_owner_id`              | text nullable | 平台 owner ID                               |
-| `credential_vault_secret_id`     | uuid nullable | 如 provider 需要长期 token，则存 Vault 引用 |
-| `webhook_secret_vault_secret_id` | uuid nullable | webhook secret 引用                         |
-| `status`                         | text          | `active/error/revoked`                      |
-| `metadata`                       | jsonb         | 安装信息、权限信息                          |
+| `organization_id`                | uuid fk       | 所属组织                                             |
+| `repository_id`                  | uuid fk       | 仓库                                                 |
+| `provider`                       | git_provider  | 平台                                                 |
+| `installation_id`                | text nullable | App 安装 ID                                          |
+| `provider_owner_id`              | text nullable | 平台 owner ID                                        |
+| `credential_vault_secret_id`     | uuid nullable | provider 长期凭证的 secret reference ID；字段名沿用历史/通用命名，不代表 Vault 方案已定 |
+| `webhook_secret_vault_secret_id` | uuid nullable | webhook secret 的 secret reference ID；字段名沿用历史/通用命名，不代表 Vault 方案已定 |
+| `status`                         | text          | `active/error/revoked`                               |
+| `last_health_check_at`           | timestamptz nullable | 最近健康检查时间                              |
+| `last_health_check_result`       | text nullable | 最近健康检查结果摘要                                 |
+| `last_synced_at`                 | timestamptz nullable | 最近同步时间                                   |
+| `metadata`                       | jsonb         | 安装信息、权限信息、附加接入元数据                   |
 
 索引与约束：
 
 - `unique(repository_id, provider)`
 - `index(organization_id, provider)`
+- `index(status, last_health_check_at desc)`
 
 ### `webhook_events`
 
@@ -265,7 +310,7 @@ organizations
 
 索引与约束：
 
-- `unique(repository_id, provider_pr_number)`
+- `unique(repository_id, provider_pr_id)`
 - `index(repository_id, state)`
 - `index(repository_id, head_sha)`
 
@@ -299,6 +344,7 @@ organizations
 
 - 每次 `review_run` 的变更文件快照
 - 支撑增量审查、文件级筛选、文件定位
+- 不承担与 PR 或其他实体的模糊“关联键”语义，主语义就是一次 run 的文件变更快照
 
 关键字段：
 
@@ -371,6 +417,7 @@ organizations
 
 - 审查命中的标准问题实体
 - 支撑去重、排序、过滤、状态流转
+- 通过 `severity`、`confidence_score`、`fixability_score` 等字段支撑低噪声排序，默认优先展示高价值问题
 
 关键字段：
 
@@ -411,7 +458,9 @@ organizations
 
 说明：
 
-- `fingerprint` 用于跨 run 识别同一类问题
+- `fingerprint` 用于跨 `review_run` 识别同类问题、做去重与状态继承
+- P0 最小定义建议由仓库、规则类型、语义归一化后的问题特征、文件路径或代码定位信息组成
+- 具体算法可后续迭代，但 P0 必须保证同类问题可稳定归并、不同问题不被过度合并
 - 同一 PR、不同 run 可以出现相同 `fingerprint`
 - 去重和“已解决/重复评论”判断主要依赖 `pull_request_id + fingerprint`
 
@@ -452,18 +501,21 @@ organizations
 
 用途：
 
-- 收集“有帮助 / 无帮助 / 误报 / 忽略”反馈
+- 保存每个用户对每个问题的当前反馈记录 / 闭环记录
+- 用于承载“有帮助 / 无帮助 / 误报 / 忽略”等当前反馈结论
+- 可作为后续排序优化和分析输入
+- 不承担完整事件流；问题状态流转与忽略原因仍以 `review_issues.status/ignored_by_user_id/ignored_reason` 为准
 
 关键字段：
 
 | 字段              | 类型          | 说明                 |
 | ----------------- | ------------- | -------------------- |
-| `organization_id` | uuid fk       | 所属组织             |
-| `review_issue_id` | uuid fk       | 问题                 |
-| `review_run_id`   | uuid fk       | 审查 run             |
-| `user_id`         | uuid fk       | 对应 `auth.users.id` |
-| `feedback_type`   | feedback_type | 反馈类型             |
-| `reason`          | text nullable | 原因                 |
+| `organization_id`    | uuid fk       | 所属组织                    |
+| `review_issue_id`    | uuid fk       | 问题                        |
+| `review_run_id`      | uuid fk       | 最近一次更新该反馈的审查 run |
+| `user_id`            | uuid fk       | 对应用户主体 ID             |
+| `feedback_type`      | feedback_type | 当前反馈类型                |
+| `reason`             | text nullable | 当前反馈原因                |
 
 索引与约束：
 
@@ -559,21 +611,22 @@ organizations
 用途：
 
 - 记录组织下可用的模型提供方配置
-- 通过 `vault_secret_id` 指向加密密钥
+- 通过 `vault_secret_id` 指向受控 secret reference
+- `vault_secret_id` 仅是历史字段命名或通用 secret reference 语义，不代表 Vault 方案已定
 
 关键字段：
 
 | 字段                 | 类型           | 说明                          |
 | -------------------- | -------------- | ----------------------------- |
-| `organization_id`    | uuid fk        | 所属组织                      |
-| `provider`           | ai_provider    | `openai/anthropic/alibaba`    |
-| `display_name`       | text           | 后台展示名称                  |
-| `vault_secret_id`    | uuid           | Supabase Vault 中的 secret ID |
-| `base_url`           | text nullable  | 自定义 endpoint               |
-| `masked_key_suffix`  | text nullable  | 掩码展示，例如后四位          |
-| `is_active`          | boolean        | 是否启用                      |
-| `created_by_user_id` | uuid nullable  | 创建人                        |
-| `metadata`           | jsonb nullable | 额外配置                      |
+| `organization_id`    | uuid fk        | 所属组织                       |
+| `provider`           | ai_provider    | `openai/anthropic/alibaba`     |
+| `display_name`       | text           | 后台展示名称                   |
+| `vault_secret_id`    | uuid           | 指向受控 secret reference 的 ID；字段名沿用历史/通用命名，不代表 Vault 方案已定 |
+| `base_url`           | text nullable  | 自定义 endpoint                |
+| `masked_key_suffix`  | text nullable  | 掩码展示，例如后四位           |
+| `is_active`          | boolean        | 是否启用                       |
+| `created_by_user_id` | uuid nullable  | 创建人                         |
+| `metadata`           | jsonb nullable | 额外配置                       |
 
 索引与约束：
 
@@ -678,13 +731,22 @@ organizations
 - 它既不是 issue，也不是 comment
 - 需要统计生成次数和复制次数
 
+## 6.5 为什么 `review_feedback` 不做完整事件流
+
+- P0 只需要支撑每个用户对每个问题的当前反馈闭环
+- `review_feedback` 保存的是每用户对每问题的当前反馈状态，可直接作为后续排序优化和分析输入
+- `unique(review_issue_id, user_id)` 明确了一人对同一问题只保留一条当前反馈记录
+- 若后续需要完整事件审计或事件流，再新增独立事件表，不在 P0 强行扩展
+
 ## 7. 密钥设计
 
 推荐方案：
 
 - `ai_provider_configs` 只保存 `vault_secret_id`
-- 真实密钥存入 `Supabase Vault`
-- 服务端或 Worker 通过受控 RPC 或服务端查询读取
+- `repo_integrations` 只保存接入元数据、状态和 secret reference，不保存明文 token / secret
+- `vault_secret_id` 等字段仅表示历史字段命名或通用 secret reference，不代表 Vault 方案已定
+- 真实密钥存入受控 secret 管理能力
+- 服务端或 Worker 通过受控服务端机制解析 secret reference 后安全读取
 - 前端永远不返回原始密钥
 
 建议补一个服务端安全函数：
@@ -695,11 +757,13 @@ organizations
 
 - 校验当前组织是否有权使用该配置
 - 返回解密后的密钥给服务端 / Worker
-- 避免业务代码直接读 Vault 系统表
+- 避免业务代码直接读底层 secret 存储
 
 ## 8. RLS 建议
 
-浏览器可读表：
+适用前提：仅在选择支持 PostgreSQL 行级权限控制的访问方案时启用，默认仍以服务端访问边界为主。P0 必交付的是可工作的最小能力边界与接口预留，不预设 Auth / Realtime / Secrets / Storage 的具体供应商或产品。
+
+浏览器侧可暴露的只读业务数据：
 
 - `organizations`
 - `memberships`
@@ -729,11 +793,11 @@ RLS 核心规则：
 - 用户必须存在有效 `memberships`
 - 只能访问自己所属 `organization_id` 的数据
 - `owner/admin` 才能修改规则和模型配置
-- `service_role` 可全量访问
+- 服务端受控角色可全量访问
 
 ## 9. 存储与数据库边界
 
-以下内容不直接入库正文，入 `Supabase Storage`，数据库只存引用或摘要：
+以下内容不直接入库正文，入对象存储 / 文件存储服务，数据库只存引用或摘要：
 
 - 大体积 diff 原文
 - 审查日志文件
@@ -746,13 +810,13 @@ RLS 核心规则：
 - `review-logs/{organization_id}/{review_run_id}/...`
 - `exports/{organization_id}/{agent_prompt_id}.md`
 
-P0 阶段可以先把 Storage 路径放在对应实体的 `metadata jsonb` 中，不额外拆表。
+P0 阶段可以先把对象存储路径放在对应实体的 `metadata jsonb` 中，不额外拆表。
 
 ## 10. 建索引重点
 
 - [ ] `memberships(organization_id, user_id)` 唯一
 - [ ] `repositories(organization_id, provider, provider_repo_id)` 唯一
-- [ ] `pull_requests(repository_id, provider_pr_number)` 唯一
+- [ ] `pull_requests(repository_id, provider_pr_id)` 唯一
 - [ ] `pr_commits(pull_request_id, commit_sha)` 唯一
 - [ ] `webhook_events(provider, delivery_id)` 唯一
 - [ ] `review_runs(pull_request_id, run_number)` 唯一
@@ -782,8 +846,8 @@ P0 阶段可以先把 Storage 路径放在对应实体的 `metadata jsonb` 中�
 - [ ] 建 `review_feedback`
 - [ ] 建 `agent_prompts`
 - [ ] 建 `usage_events`
-- [ ] 配置 `RLS`
-- [ ] 配置 `Vault` 读取方案
+- [ ] 配置 `RLS`（如采用 PostgreSQL 行级权限方案）
+- [ ] 配置 secret reference 读取方案
 
 ## 12. P0 暂不单独建表
 
