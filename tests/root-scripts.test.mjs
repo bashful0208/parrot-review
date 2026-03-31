@@ -105,7 +105,7 @@ test("single-service scripts forward to child apps", async () => {
   assert.match(webScript, /REVIEW_QUEUE_NAME:=review-jobs/);
   assert.match(
     workerScript,
-    /DATABASE_URL:=postgresql:\/\/postgres:postgres@127\.0\.0\.1:5432\/reviewer/
+    /DATABASE_URL:=postgresql:\/\/postgres:Ccc12345\.\.@127\.0\.0\.1:5432\/postgres/
   );
 });
 

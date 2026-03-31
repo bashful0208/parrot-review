@@ -16,7 +16,7 @@ fi
 
 : "${REDIS_URL:=redis://127.0.0.1:6379}"
 : "${REVIEW_QUEUE_NAME:=review-jobs}"
-: "${DATABASE_URL:=postgresql://postgres:postgres@127.0.0.1:5432/reviewer}"
+: "${DATABASE_URL:=postgresql://postgres:Ccc12345..@127.0.0.1:5432/postgres}"
 export REDIS_URL REVIEW_QUEUE_NAME DATABASE_URL
 
 echo "[dev-worker] 启动 apps/worker ..."
