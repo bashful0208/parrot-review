@@ -38,6 +38,17 @@ test("workspace package stubs exist for P0 foundation", async () => {
   }
 });
 
+test("worker dev script uses tsx watch subcommand syntax", async () => {
+  const workerPackageJson = JSON.parse(
+    await readText("apps/worker/package.json")
+  );
+
+  assert.equal(
+    workerPackageJson.scripts.dev,
+    "tsx watch --tsconfig tsconfig.dev.json src/index.ts"
+  );
+});
+
 test("core config schema applies defaults and reports missing keys clearly", async () => {
   const { validateAiEnv, validateWebEnv, validateWorkerEnv } = await import(
     "../packages/core/src/config/runtime.ts"
