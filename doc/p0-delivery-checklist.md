@@ -3,10 +3,12 @@
 基于当前技术栈：
 
 - `Next.js 16 + App Router + TypeScript`
-- `Supabase Postgres + Auth + Storage + Realtime + Vault`
+- `self-hosted PostgreSQL`
 - `Redis + BullMQ`
 - `独立 Worker`
 - `Vercel AI SDK`
+
+> 当前工程基础大多已完成。当前仓库仍保留 `SUPABASE_*` 历史命名，但这只是命名现状，不代表目标架构；当前数据库底座已切到自建 PostgreSQL，Auth / Realtime / Secrets / Storage 仍是能力待定与接口预留项。
 
 目标范围只覆盖当前 P0：
 
@@ -23,8 +25,8 @@
 ## 1. 基础工程
 
 - [x] 初始化 monorepo 结构：`apps/web`、`apps/worker`、`packages/ai`、`packages/core`、`packages/git`、`packages/db-types`
-- [x] 建立统一环境变量规范：Supabase、Redis、Webhook Secret、模型默认路由
-- [ ] 接入 `ESLint`、`TypeScript`、`Prettier`
+- [x] 建立统一环境变量规范：数据库、Redis、Webhook Secret、模型默认路由
+- [x] 接入 `ESLint`、`TypeScript`、`Prettier`
 - [x] 建立 `pnpm` workspace 和统一脚本：`dev:web`、`dev:worker`、`build`、`test`
 - [x] 建立基础日志规范：请求 ID、任务 ID、组织 ID、仓库 ID
 - [x] 建立错误分类：用户配置错误、平台回调错误、模型调用错误、规则解析错误、任务超时
@@ -36,23 +38,27 @@
 - [ ] 建立 `organizations`
 - [ ] 建立 `memberships`
 - [ ] 建立基础角色：`owner`、`admin`、`member`
+- [ ] 明确稳定的用户主体标识契约；业务表中的 `user_id` / `owner_user_id` / `generated_by_user_id` 等字段统一引用该主体，不锁定具体 Auth 产品
+- [ ] 确保组织切换、membership 校验与权限判断统一基于该稳定主体
 - [ ] 为核心业务表补 `organization_id`
-- [ ] 开启 `RLS`
+- [ ] 按最终访问方案决定是否启用 `RLS`
 - [ ] 确保用户只能访问自己组织的数据
 
 ### 2.2 仓库与 PR 主数据
 
 - [ ] 建立 `repositories`
-- [ ] 建立 `repo_integrations`
-- [ ] 建立 `pull_requests`
+- [ ] 建立 `repo_integrations`，包含接入元数据、状态、最近健康检查时间/结果、最近同步时间和 secret reference
+- [ ] 建立 `pull_requests`，并以 `repository_id + provider_pr_id` 作为外部平台稳定标识唯一约束
 - [ ] 建立 `pr_commits`
-- [ ] 建立 `changed_files`
+- [ ] 建立 `changed_files`，明确它是每次 `review_run` 的变更文件快照
 - [ ] 建立仓库默认语言、审查严格度、默认模型绑定字段
 
 ### 2.3 审查结果数据
 
 - [ ] 建立 `review_runs`
-- [ ] 建立 `review_issues`
+- [ ] 建立 `review_issues`，统一使用 `issue_type: quality/security` 表达问题类型
+- [ ] 为 `review_issues.fingerprint` 统一最小定义：用于跨 `review_run` 去重与状态继承，建议由仓库 / 规则类型 / 语义归一化后的问题特征 / 文件路径或代码定位信息组成
+- [ ] P0 保证同类问题可稳定归并、不同问题不被过度合并，具体算法可后续迭代
 - [ ] 建立 `review_comments`
 - [ ] 建立 `review_feedback`
 - [ ] 建立 `agent_prompts`
@@ -65,21 +71,23 @@
 - [ ] 建立 `rule_versions`
 - [ ] 建立 `ai_provider_configs`
 - [ ] 建立 `ai_provider_bindings`
-- [ ] 业务表只保存 `vault_secret_id` 和元数据，不保存明文密钥
+- [ ] 业务表只保存 `vault_secret_id` 等 secret reference 和元数据；这些字段名仅表示历史命名或通用 secret reference 语义，不代表 Vault 方案已定
+- [ ] `repo_integrations` 只保存接入元数据、状态和 secret reference，不保存明文 token / secret
 
 ## 3. 密钥与安全
 
-- [ ] 使用 `Supabase Vault` 存储模型密钥
-- [ ] 后台支持录入 `OpenAI / Anthropic / Alibaba(Qwen)` 密钥
+- [ ] 使用受控 secret 管理能力存储模型密钥
+- [ ] 后台支持录入 `OpenAI / Anthropic / Alibaba(Qwen)` 配置元数据，并只保存 secret reference，不保存明文密钥
 - [ ] 前端只显示掩码后的模型配置
 - [ ] 禁止前端读取原始密钥
-- [ ] `worker` 调模型前按组织 / 仓库读取对应 provider 密钥
+- [ ] `worker` 调模型前通过受控服务端机制解析 secret reference 并读取对应 provider 密钥
 - [ ] 日志、错误栈、审计记录中不打印完整密钥
 - [ ] 支持禁用失效的 provider 配置
+- [ ] P0 必交付密钥能力边界与最小可工作实现，不锁定具体供应商或产品
 
 ## 4. 控制台与账号体系
 
-- [ ] 基于 `Supabase Auth` 完成登录
+- [ ] 明确并落地 P0 登录能力
 - [ ] 完成组织切换
 - [ ] 完成成员管理基础页面
 - [ ] 完成仓库列表页
@@ -93,9 +101,9 @@
 
 ### 5.1 平台接入
 
-- [ ] 支持 `GitHub` 接入
-- [ ] 支持 `GitLab` 接入
-- [ ] 支持 `Gitee` 接入
+- [ ] 按 `GitHub / GitLab / Gitee` 设计统一数据模型与 provider 接入抽象
+- [ ] P0 最小可工作闭环先打通单一平台即可
+- [ ] 其他平台作为兼容预留，不要求三平台同时完成上线闭环
 - [ ] 统一抽象 provider 接口：安装信息、仓库列表、PR 拉取、diff 拉取、评论回写
 
 ### 5.2 接入流程
@@ -138,7 +146,7 @@
 - [ ] 构造模型输入
 - [ ] 调用 AI 生成摘要、问题、修复提示词
 - [ ] 写回审查结果
-- [ ] 推送审查状态更新
+- [ ] 预留 `review_run` 状态同步能力边界，并交付轮询或待定实时机制中的一种可工作最小实现
 
 ### 6.3 稳定性
 
@@ -197,6 +205,7 @@
 - [ ] 每条问题带置信度
 - [ ] 每条问题带文件定位信息
 - [ ] 每条问题带修复建议
+- [ ] 每条问题通过 `issue_type: quality/security` 区分类型
 
 ### 8.3 展示
 
@@ -224,7 +233,8 @@
 - [ ] 建立 `confidence` 评分
 - [ ] 建立 `fixability` 评分
 - [ ] 建立总排序规则
-- [ ] 默认只展示高价值问题
+- [ ] 默认优先展示高价值问题
+- [ ] 为排序结果保留可解释信息
 
 ### 10.2 去重
 
@@ -239,6 +249,10 @@
 - [ ] 支持标记“无帮助”
 - [ ] 支持标记“误报”
 - [ ] 支持填写忽略原因
+- [ ] `review_issues.status/ignored_by_user_id/ignored_reason` 负责问题状态变更与忽略原因记录
+- [ ] `review_feedback` 负责记录每用户对每问题的当前反馈记录 / 闭环记录，不作为完整事件流
+- [ ] `review_feedback` 可作为后续排序优化和分析输入
+- [ ] 如未来需要完整历史事件流，再扩展独立事件表，不作为 P0 强制项
 
 ## 11. Agent 修复建议
 
@@ -288,7 +302,8 @@
 
 ## 15. 实时状态与通知
 
-- [ ] `review_run` 状态变化通过 `Supabase Realtime` 推送
+- [ ] P0 只预留 `review_run` 状态同步能力边界，不预设具体实时产品
+- [ ] 交付轮询或待定实时机制中的一种可工作最小实现，不锁定具体供应商或产品
 - [ ] 控制台自动刷新任务状态
 - [ ] 审查完成后刷新问题列表
 - [ ] 审查失败时展示失败原因
@@ -319,14 +334,14 @@
 
 - [ ] 新仓库能在 10 分钟内完成接入
 - [ ] 新 PR 能自动触发审查
-- [ ] 首轮反馈可在目标时间内返回
+- [ ] 首轮反馈结果可被成功写入并在控制台可见
 - [ ] 增量提交不会大量重复评论
-- [ ] 可稳定生成 Agent 修复提示词
-- [ ] YAML 规则可生效
+- [ ] 可按单条或多条问题生成人工可读的 Agent 修复提示词
+- [ ] YAML 规则变更后可完成校验并参与后续审查
 - [ ] 安全问题可单独识别
 - [ ] 中 / 英 / 西输出可切换
 - [ ] 模型可按组织 / 仓库切换
-- [ ] 模型密钥可从数据库安全读取
+- [ ] 模型密钥可通过受控服务端机制和 secret reference 安全读取
 
 ## 18. P0 明确不做
 
