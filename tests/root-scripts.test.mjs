@@ -103,6 +103,10 @@ test("single-service scripts forward to child apps", async () => {
   );
   assert.match(webScript, /REDIS_URL:=redis:\/\/127\.0\.0\.1:6379/);
   assert.match(webScript, /REVIEW_QUEUE_NAME:=review-jobs/);
+  assert.match(
+    workerScript,
+    /DATABASE_URL:=postgresql:\/\/postgres:postgres@127\.0\.0\.1:5432\/reviewer/
+  );
 });
 
 test("dev-worker script bootstraps missing .env from .env.example", async () => {
