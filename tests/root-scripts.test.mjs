@@ -105,6 +105,16 @@ test("single-service scripts forward to child apps", async () => {
   assert.match(webScript, /REVIEW_QUEUE_NAME:=review-jobs/);
 });
 
+test("dev-worker script bootstraps missing .env from .env.example", async () => {
+  const workerScript = await readText("scripts/dev-worker.sh");
+
+  assert.match(
+    workerScript,
+    /if \[ ! -f "\$REPO_ROOT\/.env" \] && \[ -f "\$REPO_ROOT\/.env\.example" \]; then/
+  );
+  assert.match(workerScript, /cp "\$REPO_ROOT\/.env\.example" "\$REPO_ROOT\/.env"/);
+});
+
 test("combined dev script starts both services and wires cleanup traps", async () => {
   const script = await readText("scripts/dev.sh");
 

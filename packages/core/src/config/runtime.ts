@@ -1,11 +1,11 @@
-import type { RuntimeEnv } from "./server.js";
+import type { RuntimeEnv, WorkerRuntimeEnv } from "./server.js";
 
 const runtimeExtension = import.meta.url.endsWith(".ts") ? "ts" : "js";
 
 const { formatConfigError } = (await import(
   new URL(`./errors.${runtimeExtension}`, import.meta.url).href
 )) as typeof import("./errors.js");
-const { loadServerEnv } = (await import(
+const { loadServerEnv, loadWorkerEnv } = (await import(
   new URL(`./server.${runtimeExtension}`, import.meta.url).href
 )) as typeof import("./server.js");
 
@@ -27,9 +27,9 @@ export function validateWebEnv(
 
 export function validateWorkerEnv(
   env: NodeJS.ProcessEnv = process.env
-): RuntimeEnv {
+): WorkerRuntimeEnv {
   try {
-    return loadServerEnv(env);
+    return loadWorkerEnv(env);
   } catch (error) {
     rethrowConfigError("worker", error);
   }
