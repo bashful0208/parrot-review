@@ -30,6 +30,7 @@ test("workspace package stubs exist for P0 foundation", async () => {
     "packages/core/package.json",
     "packages/git/package.json",
     "packages/db-types/package.json",
+    ".env.example",
   ];
 
   for (const relativePath of expectedPackages) {
@@ -38,6 +39,9 @@ test("workspace package stubs exist for P0 foundation", async () => {
 });
 
 test("core config schema applies defaults and reports missing keys clearly", async () => {
+  const { validateAiEnv, validateWebEnv, validateWorkerEnv } = await import(
+    "../packages/core/src/config/runtime.ts"
+  );
   const { loadServerEnv, formatConfigError } = await import(
     "../packages/core/src/config/server.ts"
   );
@@ -86,6 +90,30 @@ test("core config schema applies defaults and reports missing keys clearly", asy
       );
     }
   );
+
+  assert.throws(() => validateWebEnv({}), /\[web\][\s\S]*Missing:/);
+  assert.throws(() => validateWorkerEnv({}), /\[worker\][\s\S]*Missing:/);
+  assert.throws(() => validateAiEnv({}), /\[ai\][\s\S]*Missing:/);
+});
+
+test("ai package exposes provider config entry", async () => {
+  const { loadAiProviderConfig, SUPPORTED_MODEL_PROVIDERS } = await import(
+    "../packages/ai/src/config.ts"
+  );
+
+  const config = loadAiProviderConfig({
+    DEFAULT_MODEL_PROVIDER: "anthropic",
+    DEFAULT_MODEL_NAME: "claude-3-7-sonnet",
+  });
+
+  assert.deepEqual(SUPPORTED_MODEL_PROVIDERS, [
+    "anthropic",
+    "openai",
+    "openrouter",
+  ]);
+  assert.equal(config.provider, "anthropic");
+  assert.equal(config.model, "claude-3-7-sonnet");
+  assert.throws(() => loadAiProviderConfig({}), /DEFAULT_MODEL_PROVIDER/);
 });
 
 test("core error catalog exposes stable codes", async () => {

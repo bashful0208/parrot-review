@@ -4,11 +4,19 @@ import {
   assertRedisReachable,
   buildWorkerConfig,
   createPlaceholderWorker,
+  formatConfigError,
+  loadServerEnv,
 } from "@reviewer/core";
 
 export { buildWorkerConfig } from "@reviewer/core";
 
 export async function main(env = process.env): Promise<void> {
+  try {
+    loadServerEnv(env);
+  } catch (error) {
+    throw new Error(formatConfigError(error));
+  }
+
   const config = buildWorkerConfig(env);
 
   console.log(`[worker] queue=${config.queueName}`);
