@@ -60,13 +60,15 @@ pnpm run setup
 
 建议先从仓库根目录 `.env.example` 复制出本地 `.env`，再按环境填入真实值。
 
+> 说明：下面的 `SUPABASE_*` 变量名只是当前代码配置校验里仍保留的历史命名，用于兼容现状，不代表目标架构仍然选择 `Supabase`。当前目标口径已经调整为“数据库底座使用自建 `PostgreSQL`，其它平台能力保持中性待定”。
+
 当前代码已经识别的变量如下：
 
 | 变量名 | 用途 | 归属 | 本地开发 | 部署环境 | 默认值 |
 | --- | --- | --- | --- | --- | --- |
-| `SUPABASE_URL` | Supabase 项目 URL | web / worker | 必填 | 必填 | 无 |
-| `SUPABASE_ANON_KEY` | Supabase 匿名访问 key | web / worker | 必填 | 必填 | 无 |
-| `SUPABASE_SERVICE_ROLE_KEY` | 服务端 Supabase key | web / worker | 必填 | 必填 | 无 |
+| `SUPABASE_URL` | 当前代码历史命名的数据库/后端地址变量 | web / worker | 必填 | 必填 | 无 |
+| `SUPABASE_ANON_KEY` | 当前代码历史命名的后端访问 key | web / worker | 必填 | 必填 | 无 |
+| `SUPABASE_SERVICE_ROLE_KEY` | 当前代码历史命名的服务端访问 key | web / worker | 必填 | 必填 | 无 |
 | `WEBHOOK_SECRET` | webhook 签名密钥 | web / worker | 必填 | 必填 | 无 |
 | `DEFAULT_MODEL_PROVIDER` | 默认模型 provider（legacy env fallback，当前 web 启动仍依赖） | web / ai | 必填（web） | 必填（web） | 无 |
 | `DEFAULT_MODEL_NAME` | 默认模型名称（legacy env fallback，当前 web 启动仍依赖） | web / ai | 必填（web） | 必填（web） | 无 |
@@ -78,6 +80,7 @@ pnpm run setup
 - `web` 当前通过服务端模块早期校验 `SUPABASE_*`、`WEBHOOK_SECRET`、`DEFAULT_MODEL_*` 与默认队列配置；缺失关键变量时会直接报错
 - `worker` 在启动最前面会校验 `SUPABASE_*`、`WEBHOOK_SECRET` 与队列相关配置，再继续检查 Redis 可达性
 - `packages/ai` 当前仍提供基于环境变量的 provider 配置入口，但默认模型已迁移到数据库；因此 `DEFAULT_MODEL_*` 已不再阻塞 worker 启动，不过当前 web 启动仍沿用这组 legacy fallback
+- 这些 `SUPABASE_*` 只代表当前代码现状与历史命名，后续在真正完成数据库与平台配套能力清理时，再统一替换为更贴合自建 `PostgreSQL` 口径的命名
 
 ## 5. 本地启动
 
@@ -120,7 +123,7 @@ pnpm run dev:worker
 pnpm --dir apps/worker run dev
 ```
 
-通过根目录脚本启动时，会优先加载仓库根目录 `.env`；建议先复制 `.env.example`。`worker` 本地开发至少需要先提供：
+通过根目录脚本启动时，会优先加载仓库根目录 `.env`；建议先复制 `.env.example`。`worker` 本地开发至少需要先提供当前代码校验仍要求的这些变量：
 
 - `SUPABASE_URL`
 - `SUPABASE_ANON_KEY`
@@ -143,9 +146,9 @@ pnpm --dir apps/worker run dev
 示例：
 
 ```bash
-export SUPABASE_URL="https://your-project.supabase.co"
-export SUPABASE_ANON_KEY="your-supabase-anon-key"
-export SUPABASE_SERVICE_ROLE_KEY="your-supabase-service-role-key"
+export SUPABASE_URL="https://your-database-or-backend-host"
+export SUPABASE_ANON_KEY="your-backend-anon-key"
+export SUPABASE_SERVICE_ROLE_KEY="your-backend-service-role-key"
 export WEBHOOK_SECRET="replace-with-webhook-secret"
 export REDIS_URL="redis://:your-password@your-redis-host:6379"
 export REVIEW_QUEUE_NAME="review-jobs"
@@ -155,7 +158,7 @@ pnpm run dev:worker
 
 说明：
 
-- `SUPABASE_URL` / `SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY` / `WEBHOOK_SECRET`：worker 启动阶段必需的后端配置
+- `SUPABASE_URL` / `SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY` / `WEBHOOK_SECRET`：当前 worker 启动阶段必需的后端配置；其中 `SUPABASE_*` 只是历史命名，不代表目标架构仍然依赖 `Supabase`
 - `REDIS_URL`：Redis 连接串；不显式配置时默认值是 `redis://127.0.0.1:6379`
 - `REVIEW_QUEUE_NAME`：队列名，默认值是 `review-jobs`
 - `DEFAULT_MODEL_PROVIDER` / `DEFAULT_MODEL_NAME`：当前仅保留给 `packages/ai` 的 legacy env fallback，不再阻塞 worker 启动
@@ -165,9 +168,9 @@ pnpm run dev:worker
 
 ```bash
 pnpm --dir apps/worker run build
-export SUPABASE_URL="https://your-project.supabase.co"
-export SUPABASE_ANON_KEY="your-supabase-anon-key"
-export SUPABASE_SERVICE_ROLE_KEY="your-supabase-service-role-key"
+export SUPABASE_URL="https://your-database-or-backend-host"
+export SUPABASE_ANON_KEY="your-backend-anon-key"
+export SUPABASE_SERVICE_ROLE_KEY="your-backend-service-role-key"
 export WEBHOOK_SECRET="replace-with-webhook-secret"
 export REDIS_URL="redis://:your-password@your-redis-host:6379"
 export REVIEW_QUEUE_NAME="review-jobs"
@@ -276,11 +279,12 @@ Worker 当前职责：
 
 部署要求：
 
-- `SUPABASE_URL`、`SUPABASE_ANON_KEY`、`SUPABASE_SERVICE_ROLE_KEY`、`WEBHOOK_SECRET` 需要在部署前完整配置
+- `SUPABASE_URL`、`SUPABASE_ANON_KEY`、`SUPABASE_SERVICE_ROLE_KEY`、`WEBHOOK_SECRET` 需要在部署前完整配置；其中 `SUPABASE_*` 只是当前代码仍保留的历史命名，不代表目标架构仍然选择 `Supabase`
 - `DEFAULT_MODEL_PROVIDER`、`DEFAULT_MODEL_NAME` 对 worker 启动已非必需，但当前 web 启动和 `packages/ai` 的 legacy env fallback 仍会读取它们
 - 目标环境中的 Redis 必须可达，否则 worker 会在启动时立即失败退出
 - 建议显式配置 `REDIS_URL`
 - `REVIEW_QUEUE_NAME` 可选，默认值是 `review-jobs`
+- 当前部署要求描述的是仓库现状，不代表最终的数据库周边配套方案已经全部定型
 
 ## 8. 推荐部署流程
 
@@ -297,9 +301,9 @@ pnpm --dir apps/web run start
 ```bash
 pnpm run setup
 pnpm --dir apps/worker run build
-export SUPABASE_URL="https://your-project.supabase.co"
-export SUPABASE_ANON_KEY="your-supabase-anon-key"
-export SUPABASE_SERVICE_ROLE_KEY="your-supabase-service-role-key"
+export SUPABASE_URL="https://your-database-or-backend-host"
+export SUPABASE_ANON_KEY="your-backend-anon-key"
+export SUPABASE_SERVICE_ROLE_KEY="your-backend-service-role-key"
 export WEBHOOK_SECRET="replace-with-webhook-secret"
 export REDIS_URL="redis://:your-password@your-redis-host:6379"
 export REVIEW_QUEUE_NAME="review-jobs"
@@ -314,7 +318,7 @@ pnpm --dir apps/worker run start
 - `apps/worker` 目前还是占位消费逻辑，尚未接入完整的 PR 审查主链路
 - `apps/web` 与 `apps/worker` 之间还没有打通真实的入队流程
 - 还没有提交 `Dockerfile`、`docker-compose.yml`、CI/CD 配置或进程管理脚本
-- 未来接入 `Supabase`、Webhook、AI provider 之后，部署所需环境变量会继续增加
+- 未来在数据库周边配套能力、认证、对象存储、实时同步方案进一步明确后，部署所需环境变量可能继续调整
 
 ## 10. 建议后续补充
 
