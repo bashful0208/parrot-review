@@ -56,6 +56,29 @@ pnpm run setup
 
 这些命令都委托给根目录 `scripts/*.sh`，方便后续继续扩展。
 
+## 4.1 环境变量基线
+
+建议先从仓库根目录 `.env.example` 复制出本地 `.env`，再按环境填入真实值。
+
+当前代码已经识别的变量如下：
+
+| 变量名 | 用途 | 归属 | 本地开发 | 部署环境 | 默认值 |
+| --- | --- | --- | --- | --- | --- |
+| `SUPABASE_URL` | Supabase 项目 URL | web / worker | 必填 | 必填 | 无 |
+| `SUPABASE_ANON_KEY` | Supabase 匿名访问 key | web / worker | 必填 | 必填 | 无 |
+| `SUPABASE_SERVICE_ROLE_KEY` | 服务端 Supabase key | web / worker | 必填 | 必填 | 无 |
+| `WEBHOOK_SECRET` | webhook 签名密钥 | web / worker | 必填 | 必填 | 无 |
+| `DEFAULT_MODEL_PROVIDER` | 默认模型 provider | web / worker / ai | 必填 | 必填 | 无 |
+| `DEFAULT_MODEL_NAME` | 默认模型名称 | web / worker / ai | 必填 | 必填 | 无 |
+| `REDIS_URL` | Redis 连接串 | web / worker | 可选 | 建议必填 | `redis://127.0.0.1:6379` |
+| `REVIEW_QUEUE_NAME` | BullMQ 队列名 | web / worker | 可选 | 可选 | `review-jobs` |
+
+说明：
+
+- `web` 当前通过服务端模块早期校验上述变量；缺失关键变量时会直接报错
+- `worker` 在启动最前面校验上述变量，再继续检查 Redis 可达性
+- `packages/ai` 当前提供 provider 配置入口，复用 `DEFAULT_MODEL_PROVIDER` 与 `DEFAULT_MODEL_NAME`
+
 ## 5. 本地启动
 
 ### 5.1 启动 Web
@@ -97,7 +120,7 @@ pnpm run dev:worker
 pnpm --dir apps/worker run dev
 ```
 
-通过根目录脚本启动时，会优先加载仓库根目录 `.env`；如果没有显式配置，则本地开发默认使用：
+通过根目录脚本启动时，会优先加载仓库根目录 `.env`；建议先复制 `.env.example`。如果没有显式配置，则本地开发默认使用：
 
 - `REDIS_URL=redis://127.0.0.1:6379`
 - `REVIEW_QUEUE_NAME=review-jobs`
@@ -234,6 +257,7 @@ Worker 当前职责：
 
 部署要求：
 
+- `SUPABASE_URL`、`SUPABASE_ANON_KEY`、`SUPABASE_SERVICE_ROLE_KEY`、`WEBHOOK_SECRET`、`DEFAULT_MODEL_PROVIDER`、`DEFAULT_MODEL_NAME` 需要在部署前完整配置
 - 目标环境中的 Redis 必须可达，否则 worker 会在启动时立即失败退出
 - 建议显式配置 `REDIS_URL`
 - `REVIEW_QUEUE_NAME` 可选，默认值是 `review-jobs`

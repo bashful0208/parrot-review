@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import path from "node:path";
 
-import { buildWorkerConfig } from "./index.js";
+import { buildWorkerConfig, main } from "./index.js";
 
 const workerDir = "/Users/bashful/work/code/reviewer/apps/worker";
 
@@ -30,6 +30,13 @@ test("buildWorkerConfig reads redis host and port from REDIS_URL", () => {
 
   assert.equal(config.connection.host, "cache.internal");
   assert.equal(config.connection.port, 6381);
+});
+
+test("worker startup fails fast when required runtime env is missing", async () => {
+  await assert.rejects(
+    () => main({ REDIS_URL: "redis://127.0.0.1:6379" }),
+    /Environment configuration is invalid\.|Missing:/
+  );
 });
 
 test(

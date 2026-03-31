@@ -30,6 +30,7 @@ test("workspace package stubs exist for P0 foundation", async () => {
     "packages/core/package.json",
     "packages/git/package.json",
     "packages/db-types/package.json",
+    ".env.example",
   ];
 
   for (const relativePath of expectedPackages) {
@@ -37,14 +38,18 @@ test("workspace package stubs exist for P0 foundation", async () => {
   }
 });
 
-test("core env helpers normalize required P0 settings", async () => {
-  const { loadRuntimeEnv } = await import("../packages/core/src/env.ts");
+test("core config schema applies defaults and reports missing keys clearly", async () => {
+  const { validateAiEnv, validateWebEnv, validateWorkerEnv } = await import(
+    "../packages/core/src/config/runtime.ts"
+  );
+  const { loadServerEnv, formatConfigError } = await import(
+    "../packages/core/src/config/server.ts"
+  );
 
-  const env = loadRuntimeEnv({
+  const env = loadServerEnv({
     SUPABASE_URL: "https://example.supabase.co",
     SUPABASE_ANON_KEY: "anon",
     SUPABASE_SERVICE_ROLE_KEY: "service",
-    REDIS_URL: "redis://127.0.0.1:6379",
     WEBHOOK_SECRET: "secret",
     DEFAULT_MODEL_PROVIDER: "anthropic",
     DEFAULT_MODEL_NAME: "claude-3-7-sonnet",
@@ -52,7 +57,63 @@ test("core env helpers normalize required P0 settings", async () => {
 
   assert.equal(env.defaultModel.provider, "anthropic");
   assert.equal(env.ids.requestIdHeader, "x-request-id");
+  assert.equal(env.redis.url, "redis://127.0.0.1:6379");
   assert.equal(env.redis.queueName, "review-jobs");
+
+  const blankDefaults = loadServerEnv({
+    SUPABASE_URL: "https://example.supabase.co",
+    SUPABASE_ANON_KEY: "anon",
+    SUPABASE_SERVICE_ROLE_KEY: "service",
+    REDIS_URL: "   ",
+    REVIEW_QUEUE_NAME: "   ",
+    WEBHOOK_SECRET: "secret",
+    DEFAULT_MODEL_PROVIDER: "anthropic",
+    DEFAULT_MODEL_NAME: "claude-3-7-sonnet",
+  });
+
+  assert.equal(blankDefaults.redis.url, "redis://127.0.0.1:6379");
+  assert.equal(blankDefaults.redis.queueName, "review-jobs");
+
+  assert.throws(
+    () =>
+      loadServerEnv({
+        SUPABASE_URL: "   ",
+        DEFAULT_MODEL_PROVIDER: "anthropic",
+      }),
+    (error) => {
+      const message = formatConfigError(error);
+      return (
+        /Missing:/.test(message) &&
+        /SUPABASE_URL/.test(message) &&
+        /SUPABASE_ANON_KEY/.test(message) &&
+        /WEBHOOK_SECRET/.test(message)
+      );
+    }
+  );
+
+  assert.throws(() => validateWebEnv({}), /\[web\][\s\S]*Missing:/);
+  assert.throws(() => validateWorkerEnv({}), /\[worker\][\s\S]*Missing:/);
+  assert.throws(() => validateAiEnv({}), /\[ai\][\s\S]*Missing:/);
+});
+
+test("ai package exposes provider config entry", async () => {
+  const { loadAiProviderConfig, SUPPORTED_MODEL_PROVIDERS } = await import(
+    "../packages/ai/src/config.ts"
+  );
+
+  const config = loadAiProviderConfig({
+    DEFAULT_MODEL_PROVIDER: "anthropic",
+    DEFAULT_MODEL_NAME: "claude-3-7-sonnet",
+  });
+
+  assert.deepEqual(SUPPORTED_MODEL_PROVIDERS, [
+    "anthropic",
+    "openai",
+    "openrouter",
+  ]);
+  assert.equal(config.provider, "anthropic");
+  assert.equal(config.model, "claude-3-7-sonnet");
+  assert.throws(() => loadAiProviderConfig({}), /DEFAULT_MODEL_PROVIDER/);
 });
 
 test("core error catalog exposes stable codes", async () => {

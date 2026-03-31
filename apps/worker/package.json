@@ -9,7 +9,7 @@
     "start": "node dist/index.js",
     "test": "tsx --tsconfig tsconfig.dev.json --test src/**/*.test.ts src/**/*.integration.test.ts",
     "lint": "pnpm --dir ../.. exec eslint .",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "pnpm --dir ../../packages/core run build && tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
     "@reviewer/core": "workspace:*",

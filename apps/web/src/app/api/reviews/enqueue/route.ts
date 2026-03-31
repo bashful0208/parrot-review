@@ -1,3 +1,5 @@
+import "@/lib/startup-env";
+
 import { NextResponse } from "next/server";
 
 import { enqueueReviewJob } from "@reviewer/core";

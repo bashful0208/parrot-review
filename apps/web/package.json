@@ -7,7 +7,7 @@
     "build": "pnpm --dir ../../packages/core run build && next build",
     "start": "next start",
     "lint": "pnpm --dir ../.. exec eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "pnpm --dir ../../packages/core run build && tsc --noEmit"
   },
   "dependencies": {
     "@reviewer/core": "workspace:*",
