@@ -1,1 +1,15 @@
-export {};
+export type GitProvider = 'github' | 'gitlab' | 'gitee';
+export type MemberRole = 'owner' | 'admin' | 'member';
+export type RepoStatus = 'active' | 'disabled';
+export type ReviewMode = 'relaxed' | 'standard' | 'strict';
+export type OutputLanguage = 'zh-CN' | 'en-US' | 'es-ES';
+export type ReviewRunStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'retrying' | 'cancelled';
+export type ReviewTrigger = 'pr_opened' | 'pr_synchronize' | 'pr_reopened' | 'manual_rerun' | 'rules_changed';
+export type IssueType = 'quality' | 'security';
+export type Severity = 'low' | 'medium' | 'high' | 'critical';
+export type IssueStatus = 'open' | 'resolved' | 'ignored' | 'confirmed';
+export type CommentStatus = 'draft' | 'posted' | 'skipped' | 'failed' | 'hidden';
+export type FeedbackType = 'helpful' | 'unhelpful' | 'false_positive' | 'ignored';
+export type AiProvider = 'openai' | 'anthropic' | 'alibaba';
+export type AiTaskType = 'review_summary' | 'review_findings' | 'fix_prompt' | 'embedding';
+export type RuleSourceType = 'platform_ui' | 'repo_yaml';

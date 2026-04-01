@@ -63,6 +63,7 @@ create table if not exists public.memberships (
   status text not null default 'active',
   invited_by uuid null references public.app_users (id) on delete set null,
   joined_at timestamptz null,
+  join_source text null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique (organization_id, user_id)
@@ -77,6 +78,7 @@ create table if not exists public.repositories (
   provider_repo_id text not null,
   name text not null,
   full_name text not null,
+  provider_owner_namespace text null,
   default_branch text not null,
   status public.repo_status not null default 'active',
   default_output_language public.output_language not null default 'zh-CN',
@@ -101,6 +103,9 @@ create table if not exists public.repo_integrations (
   credential_vault_secret_id uuid null,
   webhook_secret_vault_secret_id uuid null,
   status text not null default 'active',
+  last_health_check_at timestamptz null,
+  last_health_check_result text null,
+  last_synced_at timestamptz null,
   metadata jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
@@ -151,7 +156,7 @@ create table if not exists public.pull_requests (
   latest_review_run_id uuid null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  unique (repository_id, provider_pr_number)
+  unique (repository_id, provider_pr_id)
 );
 
 create index if not exists pull_requests_repository_state_idx
@@ -166,6 +171,7 @@ create table if not exists public.pr_commits (
   pull_request_id uuid not null references public.pull_requests (id) on delete cascade,
   commit_sha text not null,
   parent_sha text null,
+  message_summary text null,
   author_name text null,
   author_email text null,
   committed_at timestamptz null,
@@ -264,6 +270,7 @@ create table if not exists public.review_runs (
   repository_id uuid not null references public.repositories (id) on delete cascade,
   pull_request_id uuid not null references public.pull_requests (id) on delete cascade,
   run_number integer not null check (run_number > 0),
+  task_source text null,
   trigger_type public.review_trigger not null,
   trigger_event_id uuid null references public.webhook_events (id) on delete set null,
   review_mode public.review_mode not null,
@@ -283,6 +290,7 @@ create table if not exists public.review_runs (
   security_findings_count integer not null default 0 check (security_findings_count >= 0),
   started_at timestamptz null,
   finished_at timestamptz null,
+  retry_count integer not null default 0 check (retry_count >= 0),
   error_code text null,
   error_message text null,
   created_at timestamptz not null default now(),
