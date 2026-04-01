@@ -209,19 +209,19 @@
 
 - [x] 创建 `review_runs` 表迁移
 - [x] 增加任务来源字段
-- [ ] 增加触发类型字段
-- [ ] 增加状态字段
-- [ ] 增加开始时间字段
-- [ ] 增加结束时间字段
-- [ ] 增加失败原因字段
+- [x] 增加触发类型字段
+- [x] 增加状态字段
+- [x] 增加开始时间字段
+- [x] 增加结束时间字段
+- [x] 增加失败原因字段
 - [x] 增加重试次数字段
-- [ ] 定义状态机：`queued`
-- [ ] 定义状态机：`running`
-- [ ] 定义状态机：`succeeded`
-- [ ] 定义状态机：`failed`
-- [ ] 定义状态机：`retrying`
-- [ ] 定义状态机：`cancelled`
-- [ ] 创建 `review_issues` 表迁移
+- [x] 定义状态机：`queued`
+- [x] 定义状态机：`running`
+- [x] 定义状态机：`succeeded`
+- [x] 定义状态机：`failed`
+- [x] 定义状态机：`retrying`
+- [x] 定义状态机：`cancelled`
+- [x] 创建 `review_issues` 表迁移
 - [x] 增加问题类型字段（统一用 `issue_type: quality/security` 表达）
 - [x] 增加严重级别字段
 - [x] 增加置信度字段
