@@ -6,33 +6,44 @@ import {
   createPlaceholderWorker,
   formatConfigError,
   validateWorkerEnv,
+  createLogger,
+  ensureErrorLogged,
 } from "@reviewer/core";
 
 export { buildWorkerConfig } from "@reviewer/core";
 
 export async function main(env = process.env): Promise<void> {
+  const logger = createLogger({
+    component: 'worker',
+    service: 'reviewer-worker',
+  });
+
   try {
     validateWorkerEnv(env);
   } catch (error) {
-    throw new Error(formatConfigError(error));
+    ensureErrorLogged(error, logger, { scope: 'worker_bootstrap' });
+    throw error;
   }
 
   const config = buildWorkerConfig(env);
 
-  console.log(`[worker] queue=${config.queueName}`);
-  console.log(`[worker] redis=${config.redisUrl}`);
+  logger.info('Worker configuration loaded', {
+    queue: config.queueName,
+    redis_url: config.redisUrl.replace(/\/\/[^@]+@/, '//***@'),
+  });
 
   await assertRedisReachable(config.redisUrl);
 
-  const { connection, worker } = createPlaceholderWorker(config);
+  const { connection, worker } = createPlaceholderWorker(config, logger);
 
   await worker.waitUntilReady();
-  console.log("[worker] worker started and waiting for jobs.");
+  logger.info('Worker started and waiting for jobs');
 
   const shutdown = async (signal: string) => {
-    console.log(`[worker] shutting down on ${signal}.`);
+    logger.info(`Shutting down on ${signal}`);
     await worker.close();
     await connection.quit();
+    logger.info('Worker shutdown complete');
   };
 
   process.once("SIGINT", () => {
@@ -50,7 +61,8 @@ if (
   import.meta.url === pathToFileURL(process.argv[1]).href
 ) {
   void main().catch((error: unknown) => {
-    console.error("[worker] bootstrap failed", error);
+    const logger = createLogger({ component: 'worker' });
+    ensureErrorLogged(error, logger, { scope: 'worker_bootstrap' });
     process.exitCode = 1;
   });
 }

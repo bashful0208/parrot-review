@@ -7,6 +7,9 @@ import {
   queueEnvSchema,
 } from "./config/schema.ts";
 import type { QueueEnvInput } from "./config/schema.ts";
+import { Logger, createLogger } from "./logging.js";
+import { mapTaskTimeoutError } from "./errors/mappers.js";
+import { ensureErrorLogged } from "./errors/handler.js";
 
 export { DEFAULT_QUEUE_NAME, DEFAULT_REDIS_URL } from "./config/schema.ts";
 export const DEFAULT_JOB_NAME = "manual-review";
@@ -77,11 +80,14 @@ export async function assertRedisReachable(redisUrl: string): Promise<void> {
 }
 
 export async function runPlaceholderJob(
-  job: Job
+  job: Job,
+  logger?: Logger
 ): Promise<PlaceholderJobResult> {
-  console.log(
-    `[worker] received placeholder job ${job.name} (${job.id ?? "no-id"})`
-  );
+  const jobLogger = logger || createLogger({ component: 'worker', taskId: String(job.id) });
+  jobLogger.info('Received placeholder job', {
+    job_name: job.name,
+    job_id: job.id,
+  });
 
   return {
     handledAt: new Date().toISOString(),
@@ -92,21 +98,45 @@ export async function runPlaceholderJob(
 export function createPlaceholderWorker({
   queueName,
   redisUrl,
-}: Pick<WorkerConfig, "queueName" | "redisUrl">): {
+}: Pick<WorkerConfig, "queueName" | "redisUrl">, logger?: Logger): {
   connection: Redis;
   worker: Worker;
 } {
+  const workerLogger = logger || createLogger({ component: 'worker' });
   const connection = createRedisConnection(redisUrl);
-  const worker = new Worker(queueName, runPlaceholderJob, { connection });
+  const worker = new Worker(queueName, (job: Job) => runPlaceholderJob(job, workerLogger), { connection });
 
   worker.on("completed", (job) => {
-    console.log(`[worker] completed job ${job.name} (${job.id ?? "no-id"})`);
+    if (job) {
+      const jobLogger = workerLogger.child({ taskId: String(job.id) });
+      jobLogger.info('Job completed', {
+        job_name: job.name,
+        job_id: job.id,
+      });
+    }
   });
   worker.on("failed", (job, error) => {
-    console.error(
-      `[worker] failed job ${job?.name ?? "unknown"} (${job?.id ?? "no-id"}):`,
-      error
+    const jobId = job?.id || 'unknown';
+    const jobName = job?.name || 'unknown';
+    const jobLogger = workerLogger.child({ taskId: jobId });
+    const appError = mapTaskTimeoutError(
+      jobId,
+      'exceeded',
+      0,
+      {
+        operation: 'job_execution',
+        task_id: jobId,
+        job_name: jobName,
+      }
     );
+
+    jobLogger.error('Job failed', error, {
+      job_name: jobName,
+      job_id: jobId,
+      error_code: appError.code,
+    });
+
+    ensureErrorLogged(appError, jobLogger);
   });
 
   return { connection, worker };
@@ -115,16 +145,27 @@ export function createPlaceholderWorker({
 export async function enqueueReviewJob(
   env: Partial<QueueEnv> = process.env
 ): Promise<EnqueuedReviewJob> {
+  const logger = createLogger({ component: 'queue' });
   const config = buildWorkerConfig(env);
   const connection = createRedisConnection(config.redisUrl);
+
   connection.on("error", (error) => {
-    console.error("[review-queue] redis connection error", error);
+    logger.error('Redis connection error', error, {
+      resource: 'redis',
+      operation: 'enqueue_review_job',
+    });
   });
 
   const queue = new Queue(config.queueName, { connection });
 
   try {
     const job = await queue.add(DEFAULT_JOB_NAME, { source: "web" });
+
+    logger.info('Review job enqueued successfully', {
+      job_id: String(job.id),
+      job_name: job.name,
+      queue: config.queueName,
+    });
 
     return {
       id: String(job.id ?? "no-id"),
