@@ -115,7 +115,7 @@
 
 - [ ] 明确 P0 必交付受控 secret 管理能力的接口边界与最小可工作实现，不锁定具体供应商或产品
 - [ ] 明确业务表只保存 `vault_secret_id` 等 secret reference 和元数据；这些字段名仅表示历史命名或通用 secret reference 语义，不代表 Vault 方案已定
-- [ ] 明确 `repo_integrations` 只保存接入元数据、状态和 secret reference，不保存明文 token / secret
+- [x] 明确 `repo_integrations` 只保存接入元数据、状态和 secret reference，不保存明文 token / secret
 - [ ] 禁止前端读取原始密钥
 - [ ] 明确 worker 按组织 / 仓库通过受控服务端机制解析 secret reference 的流程
 - [ ] 明确日志、错误栈、审计记录的密钥脱敏规则
@@ -126,130 +126,130 @@
 
 ### 1.1 组织与成员关系
 
-- [ ] 创建 `organizations` 表迁移
-- [ ] 为 `organizations` 添加 `name`
-- [ ] 为 `organizations` 添加 `slug`
-- [ ] 为 `organizations` 添加创建人字段
-- [ ] 为 `organizations` 添加创建时间字段
-- [ ] 为 `organizations.slug` 增加唯一约束
-- [ ] 创建 `memberships` 表迁移
-- [ ] 为 `memberships` 添加 `organization_id`
-- [ ] 为 `memberships` 添加 `user_id`
-- [ ] 为 `memberships` 添加 `role`
-- [ ] 为 `memberships` 添加状态字段
-- [ ] 为 `memberships` 添加加入时间字段
-- [ ] 为 `memberships` 添加邀请来源或加入来源字段
-- [ ] 为 `memberships` 建立 `organization_id + user_id` 唯一约束
-- [ ] 落地基础角色：`owner`
-- [ ] 落地基础角色：`admin`
-- [ ] 落地基础角色：`member`
+- [x] 创建 `organizations` 表迁移
+- [x] 为 `organizations` 添加 `name`
+- [x] 为 `organizations` 添加 `slug`
+- [x] 为 `organizations` 添加创建人字段
+- [x] 为 `organizations` 添加创建时间字段
+- [x] 为 `organizations.slug` 增加唯一约束
+- [x] 创建 `memberships` 表迁移
+- [x] 为 `memberships` 添加 `organization_id`
+- [x] 为 `memberships` 添加 `user_id`
+- [x] 为 `memberships` 添加 `role`
+- [x] 为 `memberships` 添加状态字段
+- [x] 为 `memberships` 添加加入时间字段
+- [x] 为 `memberships` 添加邀请来源或加入来源字段
+- [x] 为 `memberships` 建立 `organization_id + user_id` 唯一约束
+- [x] 落地基础角色：`owner`
+- [x] 落地基础角色：`admin`
+- [x] 落地基础角色：`member`
 - [ ] 约束组织删除前的成员关系处理策略
 
 ### 1.2 核心业务表组织隔离
 
-- [ ] 盘点所有核心业务表的组织归属需求
-- [ ] 为 `repositories` 预留 `organization_id`
-- [ ] 为 `repo_integrations` 预留 `organization_id`
-- [ ] 为 `pull_requests` 预留 `organization_id`
-- [ ] 为 `review_runs` 预留 `organization_id`
-- [ ] 为 `review_issues` 预留 `organization_id`
-- [ ] 为 `review_comments` 预留 `organization_id`
-- [ ] 为 `review_feedback` 预留 `organization_id`
-- [ ] 为 `agent_prompts` 预留 `organization_id`
-- [ ] 为 `usage_events` 预留 `organization_id`
+- [x] 盘点所有核心业务表的组织归属需求
+- [x] 为 `repositories` 预留 `organization_id`
+- [x] 为 `repo_integrations` 预留 `organization_id`
+- [x] 为 `pull_requests` 预留 `organization_id`
+- [x] 为 `review_runs` 预留 `organization_id`
+- [x] 为 `review_issues` 预留 `organization_id`
+- [x] 为 `review_comments` 预留 `organization_id`
+- [x] 为 `review_feedback` 预留 `organization_id`
+- [x] 为 `agent_prompts` 预留 `organization_id`
+- [x] 为 `usage_events` 预留 `organization_id`
 - [ ] 为组织维度常用查询补索引
 - [ ] 统一校验组织 ID 不可为空的表范围
 
 ### 1.3 仓库与 PR 主数据
 
-- [ ] 创建 `repositories` 表迁移
-- [ ] 增加仓库 provider 类型字段
-- [ ] 增加仓库外部平台 ID 字段
-- [ ] 增加仓库 owner / namespace 字段
-- [ ] 增加仓库名称字段
-- [ ] 增加默认语言字段
-- [ ] 增加审查严格度字段
-- [ ] 增加默认模型绑定字段
-- [ ] 增加仓库接入状态字段
-- [ ] 为平台仓库唯一标识建立唯一约束
-- [ ] 创建 `repo_integrations` 表迁移
-- [ ] 增加安装信息 / 授权元数据字段
-- [ ] 增加 provider 安装 ID 字段
-- [ ] 增加接入状态字段
-- [ ] 增加最近健康检查时间字段
-- [ ] 增加最近健康检查结果字段
-- [ ] 增加最近同步时间字段
-- [ ] 明确 `repo_integrations` 只保存接入元数据、状态和 secret reference，不保存明文 token / secret
-- [ ] 创建 `pull_requests` 表迁移
-- [ ] 增加外部 PR ID 字段
-- [ ] 增加 PR 编号字段
-- [ ] 增加标题字段
-- [ ] 增加描述字段
-- [ ] 增加 base 分支信息字段
-- [ ] 增加 head 分支信息字段
-- [ ] 增加当前状态字段
-- [ ] 增加作者信息字段
-- [ ] 增加最近同步时间字段
-- [ ] 为 `repository_id + provider_pr_id` 建立唯一约束
-- [ ] 创建 `pr_commits` 表迁移
-- [ ] 保存 commit SHA
-- [ ] 保存父 commit 关系
-- [ ] 保存 commit message 摘要
-- [ ] 记录 commit 时间
-- [ ] 记录 commit 作者信息
-- [ ] 创建 `changed_files` 表迁移
-- [ ] 将 `changed_files` 明确定义为每次 `review_run` 的变更文件快照
-- [ ] 保存文件路径
-- [ ] 保存变更类型
-- [ ] 保存新增行数
-- [ ] 保存删除行数
-- [ ] 保存必要的 rename / 二进制 / patch 摘要等快照字段
+- [x] 创建 `repositories` 表迁移
+- [x] 增加仓库 provider 类型字段
+- [x] 增加仓库外部平台 ID 字段
+- [x] 增加仓库 owner / namespace 字段
+- [x] 增加仓库名称字段
+- [x] 增加默认语言字段
+- [x] 增加审查严格度字段
+- [x] 增加默认模型绑定字段
+- [x] 增加仓库接入状态字段
+- [x] 为平台仓库唯一标识建立唯一约束
+- [x] 创建 `repo_integrations` 表迁移
+- [x] 增加安装信息 / 授权元数据字段
+- [x] 增加 provider 安装 ID 字段
+- [x] 增加接入状态字段
+- [x] 增加最近健康检查时间字段
+- [x] 增加最近健康检查结果字段
+- [x] 增加最近同步时间字段
+- [x] 明确 `repo_integrations` 只保存接入元数据、状态和 secret reference，不保存明文 token / secret
+- [x] 创建 `pull_requests` 表迁移
+- [x] 增加外部 PR ID 字段
+- [x] 增加 PR 编号字段
+- [x] 增加标题字段
+- [x] 增加描述字段
+- [x] 增加 base 分支信息字段
+- [x] 增加 head 分支信息字段
+- [x] 增加当前状态字段
+- [x] 增加作者信息字段
+- [x] 增加最近同步时间字段
+- [x] 为 `repository_id + provider_pr_id` 建立唯一约束
+- [x] 创建 `pr_commits` 表迁移
+- [x] 保存 commit SHA
+- [x] 保存父 commit 关系
+- [x] 保存 commit message 摘要
+- [x] 记录 commit 时间
+- [x] 记录 commit 作者信息
+- [x] 创建 `changed_files` 表迁移
+- [x] 将 `changed_files` 明确定义为每次 `review_run` 的变更文件快照
+- [x] 保存文件路径
+- [x] 保存变更类型
+- [x] 保存新增行数
+- [x] 保存删除行数
+- [x] 保存必要的 rename / 二进制 / patch 摘要等快照字段
 
 ### 1.4 审查结果主数据
 
-- [ ] 创建 `review_runs` 表迁移
-- [ ] 增加任务来源字段
-- [ ] 增加触发类型字段
-- [ ] 增加状态字段
-- [ ] 增加开始时间字段
-- [ ] 增加结束时间字段
-- [ ] 增加失败原因字段
-- [ ] 增加重试次数字段
-- [ ] 定义状态机：`queued`
-- [ ] 定义状态机：`running`
-- [ ] 定义状态机：`succeeded`
-- [ ] 定义状态机：`failed`
-- [ ] 定义状态机：`retrying`
-- [ ] 定义状态机：`cancelled`
-- [ ] 创建 `review_issues` 表迁移
-- [ ] 增加问题类型字段（统一用 `issue_type: quality/security` 表达）
-- [ ] 增加严重级别字段
-- [ ] 增加置信度字段
-- [ ] 增加文件路径字段
-- [ ] 增加起始行定位字段
-- [ ] 增加结束行定位字段
-- [ ] 增加问题摘要字段
-- [ ] 增加修复建议字段
-- [ ] 增加问题去重指纹字段
-- [ ] 为 `fingerprint` 统一最小定义：用于跨 `review_run` 去重与状态继承，建议由仓库 / 规则类型 / 语义归一化后的问题特征 / 文件路径或代码定位信息组成
+- [x] 创建 `review_runs` 表迁移
+- [x] 增加任务来源字段
+- [x] 增加触发类型字段
+- [x] 增加状态字段
+- [x] 增加开始时间字段
+- [x] 增加结束时间字段
+- [x] 增加失败原因字段
+- [x] 增加重试次数字段
+- [x] 定义状态机：`queued`
+- [x] 定义状态机：`running`
+- [x] 定义状态机：`succeeded`
+- [x] 定义状态机：`failed`
+- [x] 定义状态机：`retrying`
+- [x] 定义状态机：`cancelled`
+- [x] 创建 `review_issues` 表迁移
+- [x] 增加问题类型字段（统一用 `issue_type: quality/security` 表达）
+- [x] 增加严重级别字段
+- [x] 增加置信度字段
+- [x] 增加文件路径字段
+- [x] 增加起始行定位字段
+- [x] 增加结束行定位字段
+- [x] 增加问题摘要字段
+- [x] 增加修复建议字段
+- [x] 增加问题去重指纹字段
+- [x] 为 `fingerprint` 统一最小定义：用于跨 `review_run` 去重与状态继承，建议由仓库 / 规则类型 / 语义归一化后的问题特征 / 文件路径或代码定位信息组成
 - [ ] 保证同类问题可稳定归并、不同问题不被过度合并
-- [ ] 创建 `review_comments` 表迁移
-- [ ] 保存回写到平台的评论 ID
-- [ ] 保存评论状态字段
-- [ ] 保存评论关联的 issue / run 关系
-- [ ] 创建 `review_feedback` 表迁移
-- [ ] 保存帮助/无帮助/误报/忽略等当前反馈类型
-- [ ] 保存反馈原因字段
-- [ ] 保存反馈提交人信息
-- [ ] 为 `review_issue_id + user_id` 建立唯一约束，确保每用户对每问题只保留一条当前反馈记录
-- [ ] 创建 `agent_prompts` 表迁移
-- [ ] 保存修复提示词正文
-- [ ] 保存提示词语言
-- [ ] 保存生成来源和关联 issue
-- [ ] 保存复制时间或复制次数信息
-- [ ] 创建 `usage_events` 表迁移
-- [ ] 保存 provider / model / task_type / token / cost 指标
-- [ ] 保存调用结果和失败原因摘要
+- [x] 创建 `review_comments` 表迁移
+- [x] 保存回写到平台的评论 ID
+- [x] 保存评论状态字段
+- [x] 保存评论关联的 issue / run 关系
+- [x] 创建 `review_feedback` 表迁移
+- [x] 保存帮助/无帮助/误报/忽略等当前反馈类型
+- [x] 保存反馈原因字段
+- [x] 保存反馈提交人信息
+- [x] 为 `review_issue_id + user_id` 建立唯一约束，确保每用户对每问题只保留一条当前反馈记录
+- [x] 创建 `agent_prompts` 表迁移
+- [x] 保存修复提示词正文
+- [x] 保存提示词语言
+- [x] 保存生成来源和关联 issue
+- [x] 保存复制时间或复制次数信息
+- [x] 创建 `usage_events` 表迁移
+- [x] 保存 provider / model / task_type / token / cost 指标
+- [x] 保存调用结果和失败原因摘要
 
 ### 1.5 安全与权限控制
 

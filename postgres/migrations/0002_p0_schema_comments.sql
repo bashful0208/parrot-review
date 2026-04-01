@@ -44,6 +44,7 @@ comment on column public.memberships.role is '成员角色 / Membership role';
 comment on column public.memberships.status is '成员状态 / Membership status';
 comment on column public.memberships.invited_by is '邀请人用户 ID，对应 app_users.id / Invited by user ID referencing app_users.id';
 comment on column public.memberships.joined_at is '加入时间 / Joined at';
+comment on column public.memberships.join_source is '加入来源，如邀请、直接加入等 / Join source, e.g. invite, direct join';
 comment on column public.memberships.created_at is '创建时间 / Created at';
 comment on column public.memberships.updated_at is '更新时间 / Updated at';
 
@@ -54,6 +55,7 @@ comment on column public.repositories.provider is '代码托管平台 / Git prov
 comment on column public.repositories.provider_repo_id is '平台侧仓库 ID / Provider repository ID';
 comment on column public.repositories.name is '仓库名称 / Repository name';
 comment on column public.repositories.full_name is '仓库全名，例如 owner/repo / Full repository name, e.g. owner/repo';
+comment on column public.repositories.provider_owner_namespace is '平台 owner namespace / Provider owner namespace';
 comment on column public.repositories.default_branch is '默认分支 / Default branch';
 comment on column public.repositories.status is '仓库状态 / Repository status';
 comment on column public.repositories.default_output_language is '仓库默认输出语言 / Repository default output language';
@@ -73,6 +75,9 @@ comment on column public.repo_integrations.provider_owner_id is '平台侧 owner
 comment on column public.repo_integrations.credential_vault_secret_id is '访问凭证的 Vault Secret ID / Vault secret ID for provider credentials';
 comment on column public.repo_integrations.webhook_secret_vault_secret_id is 'Webhook 密钥的 Vault Secret ID / Vault secret ID for webhook secret';
 comment on column public.repo_integrations.status is '接入状态 / Integration status';
+comment on column public.repo_integrations.last_health_check_at is '最近健康检查时间 / Last health check at';
+comment on column public.repo_integrations.last_health_check_result is '最近健康检查结果摘要 / Last health check result';
+comment on column public.repo_integrations.last_synced_at is '最近同步时间 / Last synced at';
 comment on column public.repo_integrations.metadata is '接入扩展信息 JSON / Integration metadata JSON';
 comment on column public.repo_integrations.created_at is '创建时间 / Created at';
 comment on column public.repo_integrations.updated_at is '更新时间 / Updated at';
@@ -120,9 +125,10 @@ comment on column public.pr_commits.organization_id is '所属组织 ID / Organi
 comment on column public.pr_commits.pull_request_id is 'PR ID / Pull request ID';
 comment on column public.pr_commits.commit_sha is '提交 SHA / Commit SHA';
 comment on column public.pr_commits.parent_sha is '父提交 SHA / Parent commit SHA';
+comment on column public.pr_commits.message_summary is '提交消息摘要 / Commit message summary';
 comment on column public.pr_commits.author_name is '作者姓名 / Author name';
 comment on column public.pr_commits.author_email is '作者邮箱 / Author email';
-comment on column public.pr_commits.committed_at is '提交时间 / Committed at';
+comment on column public.pr_commits.committed_at is ' '提交时间 / Committed at';
 comment on column public.pr_commits.created_at is '创建时间 / Created at';
 comment on column public.pr_commits.updated_at is '更新时间 / Updated at';
 
@@ -187,6 +193,7 @@ comment on column public.review_runs.organization_id is '所属组织 ID / Organ
 comment on column public.review_runs.repository_id is '仓库 ID / Repository ID';
 comment on column public.review_runs.pull_request_id is 'PR ID / Pull request ID';
 comment on column public.review_runs.run_number is 'PR 内部递增运行号 / Incremental run number within a PR';
+comment on column public.review_runs.task_source is '任务来源，如 webhook、手动等 / Task source, e.g. webhook, manual';
 comment on column public.review_runs.trigger_type is '触发来源 / Trigger type';
 comment on column public.review_runs.trigger_event_id is '对应的 webhook 事件 ID / Related webhook event ID';
 comment on column public.review_runs.review_mode is '审查模式 / Review mode';
@@ -206,6 +213,7 @@ comment on column public.review_runs.findings_count is '问题总数 / Total fin
 comment on column public.review_runs.security_findings_count is '安全问题数 / Security findings count';
 comment on column public.review_runs.started_at is '开始时间 / Started at';
 comment on column public.review_runs.finished_at is '结束时间 / Finished at';
+comment on column public.review_runs.retry_count is '重试次数 / Retry count';
 comment on column public.review_runs.error_code is '错误码 / Error code';
 comment on column public.review_runs.error_message is '错误信息 / Error message';
 comment on column public.review_runs.created_at is '创建时间 / Created at';
