@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Button from "@/components/ui/Button";
+import { validateEmail, validatePassword } from "@/lib/auth/validators";
 
 export interface LoginFormProps {
   onSubmit: (email: string, password: string) => Promise<void>;
@@ -22,19 +23,6 @@ export default function LoginForm({
   const [passwordError, setPasswordError] = useState("");
 
   const error = externalError || internalError;
-
-  const validateEmail = (value: string): string | null => {
-    if (!value) return "邮箱不能为空";
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(value)) return "邮箱格式不正确";
-    return null;
-  };
-
-  const validatePassword = (value: string): string | null => {
-    if (!value) return "密码不能为空";
-    if (value.length < 6) return "密码长度至少6位";
-    return null;
-  };
 
   const handleEmailChange = (value: string) => {
     setEmail(value);
@@ -66,7 +54,7 @@ export default function LoginForm({
     try {
       await onSubmit(email, password);
     } catch (err) {
-      setInternalError(err instanceof Error ? err.message : "登录失败");
+      setInternalError(err instanceof Error ? err.message : "Login failed");
     }
   };
 
@@ -77,7 +65,7 @@ export default function LoginForm({
     <form onSubmit={handleSubmit} className="space-y-5">
       <div className="space-y-2">
         <p className="text-sm leading-6 text-zinc-500 dark:text-zinc-400">
-          Use your workspace email to sign in.
+          Use your email to sign in.
         </p>
       </div>
 
@@ -86,7 +74,7 @@ export default function LoginForm({
           htmlFor="login-email"
           className="block text-sm font-medium text-zinc-700 dark:text-zinc-200"
         >
-          工作邮箱
+          Email
         </label>
         <div className="relative">
           <input
@@ -121,7 +109,7 @@ export default function LoginForm({
             htmlFor="login-password"
             className="block text-sm font-medium text-zinc-700 dark:text-zinc-200"
           >
-            密码
+            Password
           </label>
           <button
             type="button"
@@ -129,7 +117,7 @@ export default function LoginForm({
             className="text-sm text-zinc-500 transition-colors hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 disabled:cursor-not-allowed disabled:opacity-50"
             disabled={loading}
           >
-            忘记密码？
+            Forgot password?
           </button>
         </div>
         <div className="relative">
@@ -138,7 +126,7 @@ export default function LoginForm({
             type={showPassword ? "text" : "password"}
             value={password}
             onChange={(e) => handlePasswordChange(e.target.value)}
-            placeholder="••••••••"
+            placeholder="Enter your password"
             disabled={loading}
             aria-invalid={Boolean(passwordError)}
             aria-describedby={passwordError ? "login-password-error" : undefined}
@@ -149,17 +137,9 @@ export default function LoginForm({
             onClick={() => setShowPassword(!showPassword)}
             disabled={loading}
             className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 transition-colors hover:text-zinc-700 dark:text-zinc-500 dark:hover:text-zinc-300 disabled:cursor-not-allowed disabled:opacity-50"
-            aria-label={showPassword ? "隐藏密码" : "显示密码"}
+            aria-label={showPassword ? "Hide password" : "Show password"}
           >
-            {showPassword ? (
-              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" />
-              </svg>
-            ) : (
-              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-3.13 2.7-5.22 0-4.42-3.58-8-8-8s-8 3.58-8 8c0 2.09 1.19 3.96 2.7 5.22l2.92-2.92c-.23-.57-.36-1.18-.36-1.83zm0 10c-2.76 0-5-2.24-5-5 0-.65.13-1.26.36-1.83L4.44 7.46C2.93 8.72 1.74 10.59 1.74 12.68c0 4.42 3.58 8 8 8s8-3.58 8-8c0-2.09-1.19-3.96-2.7-5.22l-2.92 2.92c.23.57.36 1.18.36 1.83z" />
-              </svg>
-            )}
+            {showPassword ? "Hide" : "Show"}
           </button>
         </div>
         {passwordError && (
@@ -184,19 +164,19 @@ export default function LoginForm({
         loading={loading}
         className="mt-2 w-full rounded-[16px] px-5 py-3.5 text-[15px] font-semibold"
       >
-        登录
+        Sign in
       </Button>
 
       <div className="space-y-3 pt-1 text-center">
         <p className="text-sm text-zinc-500 dark:text-zinc-400">
-          还没有账号？{" "}
+          No account?{" "}
           <button
             type="button"
             onClick={() => router.push("/register")}
             className="font-medium text-zinc-900 transition-colors hover:text-zinc-600 dark:text-zinc-100 dark:hover:text-zinc-300 disabled:cursor-not-allowed disabled:opacity-50"
             disabled={loading}
           >
-            立即注册
+            Create account
           </button>
         </p>
       </div>

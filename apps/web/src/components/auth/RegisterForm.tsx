@@ -69,7 +69,7 @@ export default function RegisterForm({
     try {
       await onSubmit({ email, password, confirmPassword });
     } catch (err) {
-      setInternalError(err instanceof Error ? err.message : "注册失败");
+      setInternalError(err instanceof Error ? err.message : "Registration failed");
     }
   };
 
@@ -80,7 +80,7 @@ export default function RegisterForm({
     <form onSubmit={handleSubmit} className="space-y-5">
       <div className="space-y-2">
         <p className="text-sm leading-6 text-zinc-500 dark:text-zinc-400">
-          Use your workspace email to create an account.
+          Use your email to create an account.
         </p>
       </div>
 
@@ -89,7 +89,7 @@ export default function RegisterForm({
           htmlFor="register-email"
           className="block text-sm font-medium text-zinc-700 dark:text-zinc-200"
         >
-          工作邮箱
+          Email
         </label>
         <input
           id="register-email"
@@ -114,7 +114,7 @@ export default function RegisterForm({
           htmlFor="register-password"
           className="block text-sm font-medium text-zinc-700 dark:text-zinc-200"
         >
-          密码
+          Password
         </label>
         <div className="relative">
           <input
@@ -122,20 +122,20 @@ export default function RegisterForm({
             type={showPassword ? "text" : "password"}
             value={password}
             onChange={(e) => handlePasswordChange(e.target.value)}
-            placeholder="至少 6 位密码"
+            placeholder="At least 6 characters"
             disabled={loading}
             aria-invalid={Boolean(passwordError)}
             aria-describedby={passwordError ? "register-password-error" : undefined}
-            className={`${inputBaseClassName} pr-12 ${passwordError ? "border-red-400 focus:border-red-400 focus:ring-red-100/70 dark:border-red-400/70 dark:focus:ring-red-500/10" : ""}`}
+            className={`${inputBaseClassName} pr-16 ${passwordError ? "border-red-400 focus:border-red-400 focus:ring-red-100/70 dark:border-red-400/70 dark:focus:ring-red-500/10" : ""}`}
           />
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
             disabled={loading}
             className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 transition-colors hover:text-zinc-700 dark:text-zinc-500 dark:hover:text-zinc-300 disabled:cursor-not-allowed disabled:opacity-50"
-            aria-label={showPassword ? "隐藏密码" : "显示密码"}
+            aria-label={showPassword ? "Hide password" : "Show password"}
           >
-            {showPassword ? "隐藏" : "显示"}
+            {showPassword ? "Hide" : "Show"}
           </button>
         </div>
         {passwordError && (
@@ -150,7 +150,7 @@ export default function RegisterForm({
           htmlFor="register-confirm-password"
           className="block text-sm font-medium text-zinc-700 dark:text-zinc-200"
         >
-          确认密码
+          Confirm password
         </label>
         <div className="relative">
           <input
@@ -158,20 +158,20 @@ export default function RegisterForm({
             type={showConfirmPassword ? "text" : "password"}
             value={confirmPassword}
             onChange={(e) => handleConfirmPasswordChange(e.target.value)}
-            placeholder="再次输入密码"
+            placeholder="Repeat your password"
             disabled={loading}
             aria-invalid={Boolean(confirmPasswordError)}
             aria-describedby={confirmPasswordError ? "register-confirm-password-error" : undefined}
-            className={`${inputBaseClassName} pr-12 ${confirmPasswordError ? "border-red-400 focus:border-red-400 focus:ring-red-100/70 dark:border-red-400/70 dark:focus:ring-red-500/10" : ""}`}
+            className={`${inputBaseClassName} pr-16 ${confirmPasswordError ? "border-red-400 focus:border-red-400 focus:ring-red-100/70 dark:border-red-400/70 dark:focus:ring-red-500/10" : ""}`}
           />
           <button
             type="button"
             onClick={() => setShowConfirmPassword(!showConfirmPassword)}
             disabled={loading}
             className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 transition-colors hover:text-zinc-700 dark:text-zinc-500 dark:hover:text-zinc-300 disabled:cursor-not-allowed disabled:opacity-50"
-            aria-label={showConfirmPassword ? "隐藏确认密码" : "显示确认密码"}
+            aria-label={showConfirmPassword ? "Hide confirmation password" : "Show confirmation password"}
           >
-            {showConfirmPassword ? "隐藏" : "显示"}
+            {showConfirmPassword ? "Hide" : "Show"}
           </button>
         </div>
         {confirmPasswordError && (
@@ -196,19 +196,19 @@ export default function RegisterForm({
         loading={loading}
         className="mt-2 w-full rounded-[16px] px-5 py-3.5 text-[15px] font-semibold"
       >
-        注册并登录
+        Create account
       </Button>
 
       <div className="pt-1 text-center">
         <p className="text-sm text-zinc-500 dark:text-zinc-400">
-          已有账号？{" "}
+          Already have an account?{" "}
           <button
             type="button"
             onClick={() => router.push("/login")}
             className="font-medium text-zinc-900 transition-colors hover:text-zinc-600 dark:text-zinc-100 dark:hover:text-zinc-300 disabled:cursor-not-allowed disabled:opacity-50"
             disabled={loading}
           >
-            去登录
+            Sign in
           </button>
         </p>
       </div>
