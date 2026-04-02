@@ -4,12 +4,12 @@ export interface DividerProps {
 
 export default function Divider({ text = "或" }: DividerProps) {
   return (
-    <div className="relative mb-7 flex items-center">
-      <div className="h-px flex-grow bg-black/8 dark:bg-white/10" />
-      <span className="mx-4 flex-shrink bg-[#f5f6f8] px-2 text-[11px] font-medium tracking-[0.14em] text-zinc-500 uppercase dark:bg-[#1a1d23] dark:text-zinc-400">
+    <div className="relative flex items-center mb-8">
+      <div className="flex-grow border-t border-zinc-200 dark:border-zinc-700"></div>
+      <span className="flex-shrink mx-4 text-[10px] font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500">
         {text}
       </span>
-      <div className="h-px flex-grow bg-black/8 dark:bg-white/10" />
+      <div className="flex-grow border-t border-zinc-200 dark:border-zinc-700"></div>
     </div>
   );
 }
