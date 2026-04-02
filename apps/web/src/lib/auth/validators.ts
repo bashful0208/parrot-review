@@ -1,20 +1,33 @@
 export const validateEmail = (email: string): string | null => {
   if (!email || email.trim() === "") {
-    return "邮箱不能为空";
+    return "Email is required.";
   }
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(email)) {
-    return "邮箱格式不正确";
+    return "Enter a valid email address.";
   }
   return null;
 };
 
 export const validatePassword = (password: string): string | null => {
   if (!password || password.trim() === "") {
-    return "密码不能为空";
+    return "Password is required.";
   }
   if (password.length < 6) {
-    return "密码长度至少6位";
+    return "Password must be at least 6 characters.";
+  }
+  return null;
+};
+
+export const validateConfirmPassword = (
+  password: string,
+  confirmPassword: string
+): string | null => {
+  if (!confirmPassword || confirmPassword.trim() === "") {
+    return "Please confirm your password.";
+  }
+  if (password !== confirmPassword) {
+    return "Passwords do not match.";
   }
   return null;
 };

@@ -1,4 +1,4 @@
-import SocialLoginButton, { SocialLoginButtonProps } from "./SocialLoginButton";
+import SocialLoginButton from "./SocialLoginButton";
 
 export interface SocialLoginGroupProps {
   providers: Array<"github" | "gitee" | "google">;
@@ -12,7 +12,7 @@ export default function SocialLoginGroup({
   disabled = false,
 }: SocialLoginGroupProps) {
   return (
-    <div className="grid grid-cols-3 gap-3 mb-8">
+    <div className="mb-8 grid grid-cols-1 gap-3">
       {providers.map((provider) => (
         <SocialLoginButton
           key={provider}
