@@ -34,6 +34,11 @@ export interface AuthResult {
   error?: string;
 }
 
+export interface SessionUserResponse {
+  ok: true;
+  user: AuthUser;
+}
+
 export interface SocialAuthProvider {
   provider: "github" | "gitee" | "google";
 }

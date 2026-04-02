@@ -30,8 +30,8 @@ export default function RegisterPage() {
         return;
       }
 
-      localStorage.setItem("user", JSON.stringify(data.user));
       router.push("/");
+      router.refresh();
     } catch {
       setError("Network error. Please try again.");
     } finally {

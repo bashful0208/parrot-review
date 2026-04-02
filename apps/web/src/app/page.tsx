@@ -1,33 +1,16 @@
-"use client";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { getSessionUser } from "@reviewer/core";
+import { AUTH_SESSION_COOKIE } from "@reviewer/core";
 
-export default function Home() {
-  const router = useRouter();
-  const [isChecking, setIsChecking] = useState(true);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+export default async function Home() {
+  const cookieStore = await cookies();
+  const sessionToken = cookieStore.get(AUTH_SESSION_COOKIE)?.value;
+  const user = sessionToken ? await getSessionUser(sessionToken) : null;
 
-  useEffect(() => {
-    const user = localStorage.getItem("user");
-    setIsLoggedIn(!!user);
-    setIsChecking(false);
-
-    if (!user) {
-      router.push("/login");
-    }
-  }, [router]);
-
-  if (isChecking) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-50 dark:bg-black">
-        <div className="h-12 w-12 animate-spin rounded-full border-b-2 border-foreground" />
-      </div>
-    );
-  }
-
-  if (!isLoggedIn) {
-    return null;
+  if (!user) {
+    redirect("/login");
   }
 
   return (
@@ -45,15 +28,14 @@ export default function Home() {
           <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
             Precision AI for Code Reviews
           </p>
-          <button
-            onClick={() => {
-              localStorage.removeItem("user");
-              router.push("/login");
-            }}
-            className="text-zinc-600 underline hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200"
-          >
-            Sign out
-          </button>
+          <form action="/api/auth/logout" method="post">
+            <button
+              type="submit"
+              className="text-zinc-600 underline hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200"
+            >
+              Sign out
+            </button>
+          </form>
         </div>
       </main>
     </div>

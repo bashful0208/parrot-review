@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
-import { AppError, createLogger, ensureErrorLogged } from "@reviewer/core";
+import { AppError, createLogger } from "@reviewer/core";
+import {
+  AUTH_EMAIL_ALREADY_EXISTS,
+  AUTH_SESSION_COOKIE,
+  registerWithPassword,
+} from "@reviewer/core";
 import {
   validateConfirmPassword,
   validateEmail,
@@ -59,25 +64,42 @@ export async function POST(request: Request) {
       );
     }
 
-    requestLogger.info("Register request accepted", { email });
-
-    return NextResponse.json({
-      ok: true,
-      provider: "local",
-      user: {
-        id: `mock-user-${email}`,
-        email,
-        name: email.split("@")[0],
-      },
+    const result = await registerWithPassword({
+      email,
+      password,
+      ipAddress: request.headers.get("x-forwarded-for"),
+      userAgent: request.headers.get("user-agent"),
     });
+
+    requestLogger.info("Register request accepted", {
+      email,
+      userId: result.user.id,
+    });
+
+    const response = NextResponse.json({
+      ok: true,
+      provider: result.provider,
+      user: result.user,
+    });
+
+    response.cookies.set(AUTH_SESSION_COOKIE, result.token, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      expires: result.expiresAt,
+      path: "/",
+    });
+
+    return response;
   } catch (error) {
-    ensureErrorLogged(error, requestLogger, {
+    requestLogger.error("Register failed", error, {
       operation: "register",
       request: "POST /api/auth/register",
     });
 
     const message = error instanceof Error ? error.message : "Unknown register error";
     const code = error instanceof AppError ? error.code : undefined;
+    const status = message === AUTH_EMAIL_ALREADY_EXISTS ? 409 : 500;
 
     return NextResponse.json(
       {
@@ -86,7 +108,7 @@ export async function POST(request: Request) {
         error_code: code,
         request_id: requestId,
       },
-      { status: 500 }
+      { status }
     );
   }
 }

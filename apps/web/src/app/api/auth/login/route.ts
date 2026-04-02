@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
-import { AppError, createLogger, ensureErrorLogged } from "@reviewer/core";
+import { AppError, createLogger } from "@reviewer/core";
+import {
+  AUTH_INVALID_CREDENTIALS,
+  AUTH_SESSION_COOKIE,
+  loginWithPassword,
+} from "@reviewer/core";
 import { validateEmail, validatePassword } from "@/lib/auth/validators";
 
 export const runtime = "nodejs";
@@ -42,25 +47,39 @@ export async function POST(request: Request) {
       );
     }
 
-    requestLogger.info("Login request accepted", { email });
-
-    return NextResponse.json({
-      ok: true,
-      provider: "local",
-      user: {
-        id: "mock-user-id",
-        email,
-        name: email.split("@")[0],
-      },
+    const result = await loginWithPassword({
+      email,
+      password,
+      ipAddress: request.headers.get("x-forwarded-for"),
+      userAgent: request.headers.get("user-agent"),
     });
+
+    requestLogger.info("Login request accepted", { email, userId: result.user.id });
+
+    const response = NextResponse.json({
+      ok: true,
+      provider: result.provider,
+      user: result.user,
+    });
+
+    response.cookies.set(AUTH_SESSION_COOKIE, result.token, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      expires: result.expiresAt,
+      path: "/",
+    });
+
+    return response;
   } catch (error) {
-    ensureErrorLogged(error, requestLogger, {
+    requestLogger.error("Login failed", error, {
       operation: "login",
       request: "POST /api/auth/login",
     });
 
     const message = error instanceof Error ? error.message : "Unknown login error";
     const code = error instanceof AppError ? error.code : undefined;
+    const status = message === AUTH_INVALID_CREDENTIALS ? 401 : 500;
 
     return NextResponse.json(
       {
@@ -69,7 +88,7 @@ export async function POST(request: Request) {
         error_code: code,
         request_id: requestId,
       },
-      { status: 500 }
+      { status }
     );
   }
 }
