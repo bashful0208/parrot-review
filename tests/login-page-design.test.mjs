@@ -64,10 +64,14 @@ test("auth validation copy is English-only", async () => {
   assert.doesNotMatch(registerRoute, /注册失败|网络错误，请稍后重试/i);
 });
 
-test("home page copy is English-only after sign-in", async () => {
+test("home page renders the dashboard shell in English after sign-in", async () => {
   const home = await read("apps/web/src/app/page.tsx");
 
-  assert.match(home, /Welcome to Reviewer/i);
-  assert.match(home, /Sign out/i);
+  assert.match(home, /DashboardHero/i);
+  assert.match(home, /DashboardKpiGrid/i);
+  assert.match(home, /DashboardQuickActions/i);
+  assert.match(home, /RecentReviewRuns/i);
+  assert.match(home, /RepositoryHealthList/i);
+  assert.match(home, /RiskInsights/i);
   assert.doesNotMatch(home, /退出登录/i);
 });
