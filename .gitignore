@@ -1,5 +1,6 @@
 # Root-level ignores
 node_modules/
+.py/
 
 # Build outputs
 apps/web/.next/
