@@ -18,3 +18,16 @@ export const validatePassword = (password: string): string | null => {
   }
   return null;
 };
+
+export const validateConfirmPassword = (
+  password: string,
+  confirmPassword: string
+): string | null => {
+  if (!confirmPassword || confirmPassword.trim() === "") {
+    return "请再次输入密码";
+  }
+  if (password !== confirmPassword) {
+    return "两次输入的密码不一致";
+  }
+  return null;
+};

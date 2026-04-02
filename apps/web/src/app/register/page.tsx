@@ -3,30 +3,31 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Brand from "@/components/Brand";
-import LoginForm from "@/components/auth/LoginForm";
+import RegisterForm from "@/components/auth/RegisterForm";
+import type { RegisterCredentials, AuthApiResponse } from "@/lib/auth/types";
 
-export default function LoginPage() {
+export default function RegisterPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const handleEmailPasswordLogin = async (email: string, password: string) => {
+  const handleRegister = async (credentials: RegisterCredentials) => {
     setLoading(true);
     setError("");
 
     try {
-      const response = await fetch("/api/auth/login", {
+      const response = await fetch("/api/auth/register", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify(credentials),
       });
 
-      const data = await response.json();
+      const data = (await response.json()) as AuthApiResponse;
 
       if (!data.ok) {
-        setError(data.error || "登录失败");
+        setError(data.error || "注册失败");
         return;
       }
 
@@ -46,19 +47,15 @@ export default function LoginPage() {
           <Brand size="medium" />
           <div className="space-y-2">
             <h1 className="text-[32px] font-semibold tracking-[-0.05em] text-zinc-950 dark:text-white">
-              Sign in to Reviewer
+              Sign up for Reviewer
             </h1>
             <p className="text-sm leading-7 text-zinc-600 dark:text-zinc-300">
-              Continue with your workspace account.
+              Create your workspace account and continue.
             </p>
           </div>
         </div>
 
-        <LoginForm
-          onSubmit={handleEmailPasswordLogin}
-          loading={loading}
-          error={error}
-        />
+        <RegisterForm onSubmit={handleRegister} loading={loading} error={error} />
       </section>
     </main>
   );

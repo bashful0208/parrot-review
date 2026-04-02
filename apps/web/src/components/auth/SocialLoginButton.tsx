@@ -1,4 +1,9 @@
-import { GithubIcon, GiteeIcon, GoogleIcon, getProviderName } from "@/lib/icons/social-icons";
+import {
+  GithubIcon,
+  GiteeIcon,
+  GoogleIcon,
+  getProviderName,
+} from "@/lib/icons/social-icons";
 
 export interface SocialLoginButtonProps {
   provider: "github" | "gitee" | "google";
@@ -14,22 +19,22 @@ export default function SocialLoginButton({
   const getIcon = (provider: "github" | "gitee" | "google") => {
     switch (provider) {
       case "github":
-      return <GithubIcon />;
+        return <GithubIcon />;
       case "gitee":
-      return <GiteeIcon />;
+        return <GiteeIcon />;
       case "google":
-      return <GoogleIcon />;
+        return <GoogleIcon />;
     }
   };
 
-  const getIconBgColor = (provider: "github" | "gitee" | "google") => {
+  const getIconColor = (provider: "github" | "gitee" | "google") => {
     switch (provider) {
       case "github":
-      return "text-zinc-900 dark:text-zinc-100";
+        return "text-zinc-900 dark:text-zinc-100";
       case "gitee":
-      return "text-red-600 dark:text-red-400";
+        return "text-red-600 dark:text-red-400";
       case "google":
-      return "text-blue-600 dark:text-blue-400";
+        return "text-blue-600 dark:text-blue-400";
     }
   };
 
@@ -38,14 +43,21 @@ export default function SocialLoginButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="flex flex-col items-center justify-center p-3 rounded-lg bg-white dark:bg-black border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors group disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]"
+      className="group flex w-full items-center justify-between rounded-[16px] border border-black/8 bg-white px-4 py-3 text-left transition-colors duration-200 hover:bg-zinc-50 active:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-[#20242b] dark:hover:bg-[#262b33] dark:active:bg-[#2c313a]"
     >
-      <div className={`mb-1 group-hover:scale-110 transition-transform ${getIconBgColor(provider)}`}>
-        {getIcon(provider)}
+      <div className="flex items-center gap-3">
+        <div className={`${getIconColor(provider)}`}>
+          {getIcon(provider)}
+        </div>
+        <div>
+          <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+            {getProviderName(provider)}
+          </p>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">
+            Not yet enabled. Use email sign-in for now.
+          </p>
+        </div>
       </div>
-      <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-600 dark:text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-zinc-200">
-        {getProviderName(provider)}
-      </span>
     </button>
   );
 }
