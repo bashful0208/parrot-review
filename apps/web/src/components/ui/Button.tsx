@@ -19,15 +19,15 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     ref
   ) => {
     const baseStyles =
-      "inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
+      "px-4 py-3 rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed";
 
     const variantStyles = {
       primary:
-        "bg-zinc-950 text-white hover:bg-zinc-800 focus:ring-zinc-300 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-white dark:focus:ring-zinc-700",
+        "bg-foreground text-background hover:bg-zinc-800 dark:hover:bg-zinc-200 focus:ring-zinc-200 dark:focus:ring-zinc-800",
       secondary:
-        "bg-white text-zinc-900 hover:bg-zinc-50 focus:ring-zinc-200 dark:bg-[#20242b] dark:text-zinc-100 dark:hover:bg-[#262b33] dark:focus:ring-zinc-800",
+        "bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 hover:bg-zinc-200 dark:hover:bg-zinc-700 focus:ring-zinc-200 dark:focus:ring-zinc-800",
       outline:
-        "border border-black/8 bg-white text-zinc-900 hover:bg-zinc-50 focus:ring-zinc-200 dark:border-white/10 dark:bg-[#20242b] dark:text-zinc-100 dark:hover:bg-[#262b33] dark:focus:ring-zinc-800",
+        "border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-black text-zinc-900 dark:text-zinc-100 hover:bg-zinc-50 dark:hover:bg-zinc-900 focus:ring-zinc-200 dark:focus:ring-zinc-800",
     };
 
     return (
@@ -40,7 +40,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       >
         {loading && (
           <svg
-            className="h-5 w-5 animate-spin"
+            className="animate-spin h-5 w-5 mr-2"
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
             viewBox="0 0 24 24"
