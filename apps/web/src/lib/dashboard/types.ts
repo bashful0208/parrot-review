@@ -21,6 +21,27 @@ export interface DashboardQuickAction {
   href: string;
 }
 
+export interface DashboardNavItem {
+  label: string;
+  href: string;
+  icon: "overview" | "repositories" | "runs" | "policies" | "team" | "settings";
+}
+
+export interface DashboardShellModel {
+  workspaceName: string;
+  currentPath: string;
+  logoutHref: string;
+  navigation: DashboardNavItem[];
+}
+
+export interface DashboardTopbarModel {
+  title: string;
+  summary: string;
+  searchPlaceholder: string;
+  rangeLabel: string;
+  primaryAction: DashboardQuickAction;
+}
+
 export interface DashboardRun {
   id: string;
   repositoryName: string;
@@ -50,6 +71,8 @@ export interface RepositoryHealthItem {
 }
 
 export interface DashboardViewModel {
+  shell: DashboardShellModel;
+  topbar: DashboardTopbarModel;
   hero: DashboardHeroModel;
   kpis: DashboardKpi[];
   quickActions: DashboardQuickAction[];
