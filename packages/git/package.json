@@ -13,7 +13,14 @@
     "lint": "pnpm --dir ../.. exec eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
+  "dependencies": {
+    "@octokit/app": "^15.1.1",
+    "@octokit/rest": "^21.1.1",
+    "@reviewer/core": "workspace:*",
+    "@reviewer/db-types": "workspace:*"
+  },
   "devDependencies": {
+    "@types/node": "^24.5.2",
     "typescript": "^5.9.2"
   }
 }
