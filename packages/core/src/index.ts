@@ -7,3 +7,4 @@ export * from "./logging.ts";
 export * from "./review-queue.ts";
 export * from "./boundaries/external-dependencies.ts";
 export * from "./auth/index.ts";
+export * from "./webhooks/index.ts";
