@@ -7,6 +7,13 @@ const insightClasses: Record<DashboardInsight["severity"], string> = {
   low: "bg-emerald-400",
 };
 
+const insightSurfaceClasses: Record<DashboardInsight["severity"], string> = {
+  critical: "border-rose-200 bg-rose-50/80 text-rose-900",
+  high: "border-orange-200 bg-orange-50/80 text-orange-900",
+  medium: "border-amber-200 bg-amber-50/80 text-amber-900",
+  low: "border-emerald-200 bg-emerald-50/80 text-emerald-900",
+};
+
 export default function RiskInsights({
   insights,
   trend,
@@ -15,35 +22,72 @@ export default function RiskInsights({
   trend: DashboardTrendPoint[];
 }) {
   return (
-    <section className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-      <article className="rounded-[28px] border border-white/70 bg-white/90 p-6 shadow-[0_18px_50px_rgba(15,23,42,0.07)]">
-        <h2 className="text-2xl font-semibold tracking-[-0.05em] text-zinc-950">Risk insights</h2>
+    <section className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+      <article className="rounded-[24px] border border-slate-200/80 bg-white/92 p-5 shadow-[0_10px_30px_rgba(15,23,42,0.06)] sm:p-6">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-semibold tracking-[-0.05em] text-zinc-950">
+              Risk insights
+            </h2>
+            <p className="mt-1 text-sm text-zinc-500">
+              Track where current review pressure is concentrated.
+            </p>
+          </div>
+          <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-slate-600">
+            Severity mix
+          </span>
+        </div>
         <div className="mt-5 space-y-3">
           {insights.map((item) => (
-            <div key={item.severity} className="flex items-center gap-3">
-              <span className={`h-3 w-3 rounded-full ${insightClasses[item.severity]}`} />
-              <span className="min-w-20 text-sm font-medium capitalize text-zinc-700">{item.severity}</span>
-              <div className="h-2 flex-1 rounded-full bg-zinc-100">
+            <div
+              key={item.severity}
+              className={`rounded-[20px] border px-4 py-4 ${insightSurfaceClasses[item.severity]}`}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <span
+                    className={`h-3 w-3 rounded-full ${insightClasses[item.severity]}`}
+                  />
+                  <span className="text-sm font-semibold capitalize">{item.severity}</span>
+                </div>
+                <span className="text-sm font-medium">{item.count}</span>
+              </div>
+              <div className="mt-3 h-2 rounded-full bg-white/60">
                 <div
                   className={`h-2 rounded-full ${insightClasses[item.severity]}`}
                   style={{ width: `${Math.max(item.count * 3, 12)}%` }}
                 />
               </div>
-              <span className="text-sm text-zinc-500">{item.count}</span>
             </div>
           ))}
         </div>
       </article>
-      <article className="rounded-[28px] border border-white/70 bg-white/90 p-6 shadow-[0_18px_50px_rgba(15,23,42,0.07)]">
-        <h2 className="text-2xl font-semibold tracking-[-0.05em] text-zinc-950">Weekly pattern</h2>
+      <article className="rounded-[24px] border border-slate-200/80 bg-white/92 p-5 shadow-[0_10px_30px_rgba(15,23,42,0.06)] sm:p-6">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-semibold tracking-[-0.05em] text-zinc-950">
+              Weekly pattern
+            </h2>
+            <p className="mt-1 text-sm text-zinc-500">
+              Compare the daily rhythm of incoming review activity.
+            </p>
+          </div>
+          <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-slate-600">
+            7 days
+          </span>
+        </div>
         <div className="mt-6 flex items-end gap-3">
           {trend.map((point) => (
             <div key={point.label} className="flex flex-1 flex-col items-center gap-3">
-              <div
-                className="w-full rounded-t-2xl bg-gradient-to-b from-sky-400 to-sky-600"
-                style={{ height: `${Math.max(point.value * 10, 24)}px` }}
-              />
-              <span className="text-xs uppercase tracking-[0.18em] text-zinc-500">{point.label}</span>
+              <div className="flex min-h-40 w-full items-end rounded-[20px] bg-slate-50 px-2 pb-2 pt-4">
+                <div
+                  className="w-full rounded-[16px] bg-gradient-to-b from-sky-400 to-sky-600"
+                  style={{ height: `${Math.max(point.value * 10, 24)}px` }}
+                />
+              </div>
+              <span className="text-xs font-medium uppercase tracking-[0.18em] text-zinc-500">
+                {point.label}
+              </span>
             </div>
           ))}
         </div>

@@ -8,7 +8,20 @@ import {
   DASHBOARD_REPOSITORIES,
   DASHBOARD_TREND,
 } from "./mock-data";
-import type { DashboardViewModel } from "./types";
+import type { DashboardNavItem, DashboardViewModel } from "./types";
+
+const DASHBOARD_NAVIGATION: DashboardNavItem[] = [
+  { label: "Overview", href: "/", icon: "overview" },
+  { label: "Repositories", href: "/repositories", icon: "repositories" },
+  { label: "Review Runs", href: "/review-runs", icon: "runs" },
+  { label: "Policies", href: "/policies", icon: "policies" },
+  { label: "Team", href: "/team", icon: "team" },
+  { label: "Settings", href: "/settings", icon: "settings" },
+];
+
+function cloneItems<T extends object>(items: T[]): T[] {
+  return items.map((item) => ({ ...item }));
+}
 
 function getViewerName(user: Pick<AuthenticatedUser, "email" | "name">): string {
   if (user.name && user.name.trim().length > 0) {
@@ -22,6 +35,20 @@ export function buildDashboardViewModel(
   user: Pick<AuthenticatedUser, "email" | "name"> & { id: string }
 ): DashboardViewModel {
   return {
+    shell: {
+      workspaceName: "Acme Engineering",
+      currentPath: "/",
+      logoutHref: "/api/auth/logout",
+      navigation: cloneItems(DASHBOARD_NAVIGATION),
+    },
+    topbar: {
+      title: "Overview",
+      summary:
+        "Monitor review health, investigate risk, and continue active work.",
+      searchPlaceholder: "Search repositories, runs, or rules",
+      rangeLabel: "Last 7 days",
+      primaryAction: { ...DASHBOARD_QUICK_ACTIONS[0]! },
+    },
     hero: {
       organizationName: "Acme Engineering",
       viewerName: getViewerName(user),
@@ -29,11 +56,11 @@ export function buildDashboardViewModel(
       summary:
         "Track repository health, continue active reviews, and surface the findings that need attention first.",
     },
-    kpis: DASHBOARD_KPIS,
-    quickActions: DASHBOARD_QUICK_ACTIONS,
-    recentRuns: DASHBOARD_RECENT_RUNS,
-    insights: DASHBOARD_INSIGHTS,
-    trend: DASHBOARD_TREND,
-    repositories: DASHBOARD_REPOSITORIES,
+    kpis: cloneItems(DASHBOARD_KPIS),
+    quickActions: cloneItems(DASHBOARD_QUICK_ACTIONS),
+    recentRuns: cloneItems(DASHBOARD_RECENT_RUNS),
+    insights: cloneItems(DASHBOARD_INSIGHTS),
+    trend: cloneItems(DASHBOARD_TREND),
+    repositories: cloneItems(DASHBOARD_REPOSITORIES),
   };
 }
