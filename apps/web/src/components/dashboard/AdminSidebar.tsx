@@ -37,19 +37,19 @@ export default function AdminSidebar({
   return (
     <aside
       className={[
-        "w-72 shrink-0 self-start border-r border-white/10 bg-[var(--admin-sidebar)] text-white lg:sticky lg:top-0 lg:h-dvh lg:overflow-y-auto",
+        "w-56 shrink-0 self-start border-r border-white/10 bg-[var(--admin-sidebar)] text-white lg:sticky lg:top-0 lg:h-dvh lg:overflow-y-auto",
         className,
       ].join(" ")}
     >
       <div className="flex h-full min-h-full flex-col">
-        <div className="border-b border-white/10 px-6 py-6">
-          <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-slate-400">
-            Workspace
-          </p>
-          <h2 className="mt-3 text-lg font-semibold tracking-[-0.03em]">
-            {shell.workspaceName}
-          </h2>
-          <p className="mt-1 text-sm text-slate-400">Operational review console</p>
+        <div className="border-b border-white/10 px-5 py-5">
+          <div className="flex items-center gap-3">
+            <img src="/logo.png" alt="parrot-review logo" className="h-8 w-8 shrink-0 rounded-xl object-cover" />
+            <div className="min-w-0">
+              <p className="text-sm font-semibold tracking-tight text-white">parrot-review</p>
+              <p className="text-[11px] text-slate-400">{shell.workspaceName}</p>
+            </div>
+          </div>
         </div>
 
         <nav aria-label="Primary navigation" className="flex-1 space-y-1.5 px-3 py-4">
@@ -75,18 +75,23 @@ export default function AdminSidebar({
           })}
         </nav>
 
-        <div className="mb-4 border-t border-white/10 px-4 pt-4">
-          <div className="rounded-2xl border border-white/10 bg-white/6 px-4 py-4">
-            <p className="text-xs uppercase tracking-[0.24em] text-slate-400">
-              Signed in as
+        <div className="border-t border-white/10 px-3 py-3">
+          <div className="flex items-center gap-3 rounded-xl px-2 py-2">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/15 text-xs font-semibold uppercase text-white">
+              {viewerName.slice(0, 1)}
+            </div>
+            <p className="min-w-0 flex-1 truncate text-sm font-medium text-white">
+              {viewerName}
             </p>
-            <p className="mt-2 text-sm font-medium text-white">{viewerName}</p>
-            <form action={shell.logoutHref} method="post" className="mt-4">
+            <form action={shell.logoutHref} method="post">
               <button
                 type="submit"
-                className="inline-flex min-h-11 items-center text-sm text-slate-300 transition-colors hover:text-white"
+                title="Log out"
+                className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-white/10 hover:text-white"
               >
-                Log out
+                <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4 stroke-current" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
+                </svg>
               </button>
             </form>
           </div>
