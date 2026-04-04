@@ -37,57 +37,59 @@ export default function AdminSidebar({
   return (
     <aside
       className={[
-        "w-72 shrink-0 flex-col border-r border-white/10 bg-[var(--admin-sidebar)] text-white",
+        "w-72 shrink-0 self-start border-r border-white/10 bg-[var(--admin-sidebar)] text-white lg:sticky lg:top-0 lg:h-dvh lg:overflow-y-auto",
         className,
       ].join(" ")}
     >
-      <div className="border-b border-white/10 px-6 py-6">
-        <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-slate-400">
-          Workspace
-        </p>
-        <h2 className="mt-3 text-lg font-semibold tracking-[-0.03em]">
-          {shell.workspaceName}
-        </h2>
-        <p className="mt-1 text-sm text-slate-400">Operational review console</p>
-      </div>
-
-      <nav aria-label="Primary navigation" className="flex-1 space-y-1.5 px-3 py-4">
-        {shell.navigation.map((item) => {
-          const active = item.href === shell.currentPath;
-
-          return (
-            <a
-              key={item.label}
-              href={item.href}
-              aria-current={active ? "page" : undefined}
-              className={[
-                "flex min-h-11 items-center gap-3 rounded-2xl px-4 py-3 text-sm transition-colors",
-                active
-                  ? "bg-white text-slate-950 shadow-[0_10px_24px_rgba(15,23,42,0.2)]"
-                  : "text-slate-300 hover:bg-white/8 hover:text-white",
-              ].join(" ")}
-            >
-              <NavigationIcon icon={item.icon} />
-              <span className="font-medium">{item.label}</span>
-            </a>
-          );
-        })}
-      </nav>
-
-      <div className="border-t border-white/10 px-4 py-4">
-        <div className="rounded-2xl border border-white/10 bg-white/6 px-4 py-4">
-          <p className="text-xs uppercase tracking-[0.24em] text-slate-400">
-            Signed in as
+      <div className="flex h-full min-h-full flex-col">
+        <div className="border-b border-white/10 px-6 py-6">
+          <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-slate-400">
+            Workspace
           </p>
-          <p className="mt-2 text-sm font-medium text-white">{viewerName}</p>
-          <form action={shell.logoutHref} method="post" className="mt-4">
-            <button
-              type="submit"
-              className="inline-flex min-h-11 items-center text-sm text-slate-300 transition-colors hover:text-white"
-            >
-              Log out
-            </button>
-          </form>
+          <h2 className="mt-3 text-lg font-semibold tracking-[-0.03em]">
+            {shell.workspaceName}
+          </h2>
+          <p className="mt-1 text-sm text-slate-400">Operational review console</p>
+        </div>
+
+        <nav aria-label="Primary navigation" className="flex-1 space-y-1.5 px-3 py-4">
+          {shell.navigation.map((item) => {
+            const active = item.href === shell.currentPath;
+
+            return (
+              <a
+                key={item.label}
+                href={item.href}
+                aria-current={active ? "page" : undefined}
+                className={[
+                  "flex min-h-11 items-center gap-3 rounded-2xl px-4 py-3 text-sm transition-colors",
+                  active
+                    ? "bg-white text-slate-950 shadow-[0_10px_24px_rgba(15,23,42,0.2)]"
+                    : "text-slate-300 hover:bg-white/8 hover:text-white",
+                ].join(" ")}
+              >
+                <NavigationIcon icon={item.icon} />
+                <span className="font-medium">{item.label}</span>
+              </a>
+            );
+          })}
+        </nav>
+
+        <div className="mb-4 border-t border-white/10 px-4 pt-4">
+          <div className="rounded-2xl border border-white/10 bg-white/6 px-4 py-4">
+            <p className="text-xs uppercase tracking-[0.24em] text-slate-400">
+              Signed in as
+            </p>
+            <p className="mt-2 text-sm font-medium text-white">{viewerName}</p>
+            <form action={shell.logoutHref} method="post" className="mt-4">
+              <button
+                type="submit"
+                className="inline-flex min-h-11 items-center text-sm text-slate-300 transition-colors hover:text-white"
+              >
+                Log out
+              </button>
+            </form>
+          </div>
         </div>
       </div>
     </aside>
