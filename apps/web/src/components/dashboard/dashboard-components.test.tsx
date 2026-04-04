@@ -27,7 +27,7 @@ test("dashboard hero renders organization context", () => {
   assert.match(markup, /Sasha/);
 });
 
-test("admin shell renders overview navigation, search, and primary action", () => {
+test("admin shell renders overview navigation and primary action", () => {
   const markup = renderToStaticMarkup(
     <AdminShell
       shell={model.shell}
@@ -41,7 +41,7 @@ test("admin shell renders overview navigation, search, and primary action", () =
   assert.match(markup, /Overview/);
   assert.match(markup, /Repositories/);
   assert.match(markup, /Review Runs/);
-  assert.match(markup, /Search repositories, runs, or rules/);
+  assert.doesNotMatch(markup, /Search repositories, runs, or rules/);
   assert.match(markup, /New Review/);
 });
 
