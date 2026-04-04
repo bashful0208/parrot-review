@@ -54,7 +54,7 @@ test("buildDashboardViewModel includes admin shell navigation and topbar content
     { label: "Settings", href: "/settings", icon: "settings" },
   ]);
   assert.equal(model.topbar.title, "Overview");
-  assert.match(model.topbar.summary, /review/i);
+  assert.equal(model.topbar.summary, "");
   assert.equal(model.topbar.primaryAction.label, "New Review");
 });
 

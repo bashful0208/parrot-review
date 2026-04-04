@@ -37,7 +37,7 @@ export default function AdminShell({
         <div className="flex min-h-dvh min-w-0 flex-1 flex-col">
           <MobileSidebarSheet shell={shell} viewerName={viewerName} />
           <AdminTopbar topbar={topbar} />
-          <div className="flex-1 px-4 pb-6 pt-4 sm:px-6 lg:px-8 lg:pb-8 lg:pt-6">
+          <div className="flex-1 px-4 pb-4 pt-3 sm:px-5 lg:px-6 lg:pb-6 lg:pt-4">
             {children}
           </div>
         </div>
