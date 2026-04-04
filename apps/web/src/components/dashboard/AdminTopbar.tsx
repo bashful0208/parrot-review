@@ -3,9 +3,9 @@ import type { DashboardTopbarModel } from "@/lib/dashboard/types";
 export default function AdminTopbar({ topbar }: { topbar: DashboardTopbarModel }) {
   return (
     <header className="border-b border-slate-200/80 bg-white/78 backdrop-blur-xl">
-      <div className="flex flex-col gap-4 px-4 py-4 sm:px-6 lg:px-8 xl:flex-row xl:items-center xl:justify-between">
+      <div className="flex flex-col gap-3 px-4 py-3 sm:px-5 lg:px-6 xl:flex-row xl:items-center xl:justify-between">
         <div className="min-w-0">
-          <h1 className="text-2xl font-semibold tracking-[-0.05em] text-zinc-950 sm:text-[2rem]">
+          <h1 className="text-xl font-semibold tracking-[-0.04em] text-zinc-950">
             {topbar.title}
           </h1>
           {topbar.summary && (

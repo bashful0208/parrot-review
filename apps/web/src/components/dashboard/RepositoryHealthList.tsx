@@ -13,8 +13,8 @@ export default function RepositoryHealthList({
 }) {
   if (repositories.length === 0) {
     return (
-      <section className="rounded-[24px] border border-slate-200/80 bg-white/92 p-5 shadow-[0_10px_30px_rgba(15,23,42,0.06)] sm:p-6">
-        <h2 className="text-2xl font-semibold tracking-[-0.05em] text-zinc-950">
+      <section className="rounded-[20px] border border-slate-200/80 bg-white/92 p-4 shadow-[0_10px_30px_rgba(15,23,42,0.06)]">
+        <h2 className="text-base font-semibold tracking-[-0.03em] text-zinc-950">
           Repository health
         </h2>
         <p className="mt-4 text-sm leading-6 text-zinc-600">
@@ -31,10 +31,10 @@ export default function RepositoryHealthList({
   }
 
   return (
-    <section className="rounded-[24px] border border-slate-200/80 bg-white/92 p-5 shadow-[0_10px_30px_rgba(15,23,42,0.06)] sm:p-6">
-      <div className="mb-5 flex items-start justify-between gap-4">
+    <section className="rounded-[20px] border border-slate-200/80 bg-white/92 p-4 shadow-[0_10px_30px_rgba(15,23,42,0.06)]">
+      <div className="mb-3 flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-semibold tracking-[-0.05em] text-zinc-950">
+          <h2 className="text-base font-semibold tracking-[-0.03em] text-zinc-950">
             Repository health
           </h2>
           <p className="mt-1 text-sm text-zinc-500">
@@ -45,14 +45,14 @@ export default function RepositoryHealthList({
           Prioritized
         </span>
       </div>
-      <div className="space-y-3">
+      <div className="space-y-2">
         {repositories.map((repository) => (
           <article
             key={repository.id}
-            className="flex flex-col gap-3 rounded-[22px] border border-slate-200/70 bg-slate-50/70 p-4 sm:flex-row sm:items-center sm:justify-between"
+            className="flex flex-col gap-2 rounded-[16px] border border-slate-200/70 bg-slate-50/70 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
           >
             <div className="min-w-0">
-              <h3 className="text-lg font-semibold tracking-[-0.03em] text-zinc-950">
+              <h3 className="text-sm font-semibold tracking-[-0.02em] text-zinc-950">
                 {repository.name}
               </h3>
               <p className="mt-1 text-sm text-zinc-600">{repository.lastReviewLabel}</p>
