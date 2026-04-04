@@ -43,8 +43,7 @@ export function buildDashboardViewModel(
     },
     topbar: {
       title: "Overview",
-      summary:
-        "Monitor review health, investigate risk, and continue active work.",
+      summary: "",
       searchPlaceholder: "Search repositories, runs, or rules",
       rangeLabel: "Last 7 days",
       primaryAction: { ...DASHBOARD_QUICK_ACTIONS[0]! },
