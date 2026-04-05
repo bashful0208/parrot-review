@@ -15,14 +15,16 @@ export default function AdminTopbar({ topbar }: { topbar: DashboardTopbarModel }
           )}
         </div>
 
-        <div className="flex items-center justify-end">
-          <a
-            href={topbar.primaryAction.href}
-            className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-slate-950 px-5 text-sm font-medium text-white transition-colors hover:bg-slate-800"
-          >
-            {topbar.primaryAction.label}
-          </a>
-        </div>
+        {topbar.primaryAction && (
+          <div className="flex items-center justify-end">
+            <a
+              href={topbar.primaryAction.href}
+              className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-slate-950 px-5 text-sm font-medium text-white transition-colors hover:bg-slate-800"
+            >
+              {topbar.primaryAction.label}
+            </a>
+          </div>
+        )}
       </div>
     </header>
   );

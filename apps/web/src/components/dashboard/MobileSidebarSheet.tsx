@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import Button from "@/components/ui/Button";
+import { Button } from "@/components/ui/button";
 import type { DashboardNavItem, DashboardShellModel } from "@/lib/dashboard/types";
 
 function CompactIcon({ icon }: { icon: DashboardNavItem["icon"] }) {

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Button from "@/components/ui/Button";
+import { Button } from "@/components/ui/button";
 import type { RegisterCredentials } from "@/lib/auth/types";
 import {
   validateConfirmPassword,
@@ -192,7 +192,6 @@ export default function RegisterForm({
 
       <Button
         type="submit"
-        variant="primary"
         loading={loading}
         className="mt-2 w-full rounded-[16px] px-5 py-3.5 text-[15px] font-semibold"
       >

@@ -55,7 +55,7 @@ test("buildDashboardViewModel includes admin shell navigation and topbar content
   ]);
   assert.equal(model.topbar.title, "Overview");
   assert.equal(model.topbar.summary, "");
-  assert.equal(model.topbar.primaryAction.label, "New Review");
+  assert.equal(model.topbar.primaryAction?.label, "New Review");
 });
 
 test("buildDashboardViewModel returns fresh collections for each call", () => {

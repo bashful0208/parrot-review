@@ -20,12 +20,6 @@ export interface RepositoriesViewModel {
   repositories: RepositoryItem[];
 }
 
-export interface ConnectPageViewModel {
-  shell: DashboardShellModel;
-  topbar: DashboardTopbarModel;
-  viewerName: string;
-}
-
 function getViewerName(user: Pick<AuthenticatedUser, "email" | "name">): string {
   if (user.name && user.name.trim().length > 0) return user.name;
   return user.email.split("@")[0];
@@ -59,11 +53,6 @@ export function buildRepositoriesViewModel(
       summary: "",
       searchPlaceholder: "Search repositories",
       rangeLabel: "",
-      primaryAction: {
-        label: "Connect Repository",
-        description: "Connect a new repository",
-        href: "/repositories/new",
-      },
     },
     viewerName: getViewerName(user),
     repositories: rows.map((r) => ({
@@ -77,22 +66,3 @@ export function buildRepositoriesViewModel(
   };
 }
 
-export function buildConnectPageViewModel(
-  user: Pick<AuthenticatedUser, "email" | "name"> & { id: string }
-): ConnectPageViewModel {
-  return {
-    shell: buildShell("/repositories"),
-    topbar: {
-      title: "Connect Repository",
-      summary: "",
-      searchPlaceholder: "",
-      rangeLabel: "",
-      primaryAction: {
-        label: "View All",
-        description: "Back to repositories",
-        href: "/repositories",
-      },
-    },
-    viewerName: getViewerName(user),
-  };
-}

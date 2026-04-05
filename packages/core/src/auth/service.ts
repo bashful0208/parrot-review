@@ -2,6 +2,7 @@ import { AppError, ErrorCode } from "../errors.js";
 import {
   createLocalCredential,
   createLocalIdentity,
+  createOrganizationWithOwner,
   createSession,
   expireSession,
   findLocalCredentialByEmail,
@@ -79,6 +80,13 @@ export async function registerWithPassword(input: {
     await createLocalCredential(client, {
       userId: createdUser.id,
       passwordHash,
+    });
+
+    const slug = `${displayName.toLowerCase().replace(/[^a-z0-9]/g, "-")}-${Math.random().toString(36).slice(2, 8)}`;
+    await createOrganizationWithOwner(client, {
+      name: `${displayName}'s Workspace`,
+      slug,
+      ownerUserId: createdUser.id,
     });
 
     await createSession(client, {
