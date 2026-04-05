@@ -89,6 +89,19 @@ export class GitHubProvider implements IProvider {
     const octokit = await buildOctokit(credential);
     return withGitPlatformErrorBoundary(
       async () => {
+        if (credential.type === "github_pat") {
+          const { data } = await (octokit as Awaited<ReturnType<typeof getPatOctokit>>).request(
+            "GET /user/repos",
+            {
+              type: "all",
+              sort: "updated",
+              per_page: options?.perPage ?? 30,
+              page: options?.page ?? 1,
+            }
+          );
+          logger?.debug("Listed GitHub repositories (PAT)", { count: data.length });
+          return data.map(mapRepository);
+        }
         const { data } = await (octokit as Awaited<ReturnType<typeof getPatOctokit>>).request(
           "GET /installation/repositories",
           {
@@ -96,7 +109,7 @@ export class GitHubProvider implements IProvider {
             page: options?.page ?? 1,
           }
         );
-        logger?.debug("Listed GitHub repositories", {
+        logger?.debug("Listed GitHub repositories (App)", {
           count: data.repositories.length,
         });
         return data.repositories.map(mapRepository);

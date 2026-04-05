@@ -10,7 +10,7 @@ import {
 } from "./mock-data";
 import type { DashboardNavItem, DashboardViewModel } from "./types";
 
-const DASHBOARD_NAVIGATION: DashboardNavItem[] = [
+export const DASHBOARD_NAVIGATION: DashboardNavItem[] = [
   { label: "Overview", href: "/", icon: "overview" },
   { label: "Repositories", href: "/repositories", icon: "repositories" },
   { label: "Review Runs", href: "/review-runs", icon: "runs" },

@@ -8,3 +8,5 @@ export * from "./review-queue.ts";
 export * from "./boundaries/external-dependencies.ts";
 export * from "./auth/index.ts";
 export * from "./webhooks/index.ts";
+export * from "./repositories/repository.ts";
+export * from "./repositories/org-helper.ts";
