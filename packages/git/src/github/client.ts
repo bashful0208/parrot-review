@@ -16,9 +16,9 @@ function getOrCreateApp(cred: GitHubAppCredential): App {
   return app;
 }
 
-export async function getInstallationOctokit(cred: GitHubAppCredential) {
+export async function getInstallationOctokit(cred: GitHubAppCredential): Promise<Octokit> {
   const app = getOrCreateApp(cred);
-  return app.getInstallationOctokit(Number(cred.installationId));
+  return app.getInstallationOctokit(Number(cred.installationId)) as Promise<Octokit>;
 }
 
 export function getPatOctokit(cred: GitHubPatCredential): Octokit {

@@ -4,14 +4,15 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "pnpm --dir ../../packages/core run build && next build",
+    "build": "pnpm --dir ../../packages/core run build && pnpm --dir ../../packages/git run build && next build",
     "start": "next start",
     "lint": "pnpm --dir ../.. exec eslint .",
-    "typecheck": "pnpm --dir ../../packages/core run build && tsc --noEmit",
+    "typecheck": "pnpm --dir ../../packages/core run build && pnpm --dir ../../packages/git run build && tsc --noEmit",
     "test": "pnpm exec tsx --test src/lib/dashboard/*.test.ts src/components/dashboard/*.test.tsx"
   },
   "dependencies": {
     "@reviewer/core": "workspace:*",
+    "@reviewer/git": "workspace:*",
     "next": "16.2.1",
     "react": "19.2.4",
     "react-dom": "19.2.4"

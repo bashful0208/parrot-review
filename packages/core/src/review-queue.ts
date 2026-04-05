@@ -177,3 +177,55 @@ export async function enqueueReviewJob(
     await connection.quit();
   }
 }
+
+export const DEFAULT_WEBHOOK_JOB_NAME = "webhook-review";
+
+export interface WebhookJobPayload {
+  source: "webhook";
+  webhookEventId: string;
+  repositoryId: string;
+  organizationId: string;
+  provider: string;
+  prNumber: number;
+  headSha: string;
+  baseSha: string;
+}
+
+export async function enqueueWebhookJob(
+  payload: WebhookJobPayload,
+  env: Partial<QueueEnv> = process.env
+): Promise<EnqueuedReviewJob> {
+  const logger = createLogger({ component: "queue" });
+  const config = buildWorkerConfig(env);
+  const connection = createRedisConnection(config.redisUrl);
+
+  connection.on("error", (error) => {
+    logger.error("Redis connection error", error, {
+      resource: "redis",
+      operation: "enqueue_webhook_job",
+    });
+  });
+
+  const queue = new Queue(config.queueName, { connection });
+
+  try {
+    const job = await queue.add(DEFAULT_WEBHOOK_JOB_NAME, payload);
+
+    logger.info("Webhook review job enqueued", {
+      job_id: String(job.id),
+      job_name: job.name,
+      queue: config.queueName,
+      repository_id: payload.repositoryId,
+      pr_number: payload.prNumber,
+    });
+
+    return {
+      id: String(job.id ?? "no-id"),
+      name: job.name,
+      queue: config.queueName,
+    };
+  } finally {
+    await queue.close();
+    await connection.quit();
+  }
+}
