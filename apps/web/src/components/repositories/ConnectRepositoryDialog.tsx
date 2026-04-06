@@ -34,7 +34,7 @@ interface WebhookInfo {
 }
 
 const STEPS = [
-  { n: 1 as const, label: "Credentials",   desc: "Authenticate with GitHub" },
+  { n: 1 as const, label: "Credentials",   desc: "Choose provider & authenticate" },
   { n: 2 as const, label: "Select Repo",   desc: "Choose a repository" },
   { n: 3 as const, label: "Webhook",       desc: "Set up event delivery" },
 ];
@@ -46,7 +46,7 @@ function Sidebar({ current }: { current: 1 | 2 | 3 }) {
     3: "Configure Webhook",
   };
   const hints = {
-    1: "Enter a GitHub Personal Access Token with repo scope to list your repositories.",
+    1: "Choose your Git provider and enter a Personal Access Token to list your repositories.",
     2: "Pick the repository you want Parrot Review to monitor for pull request events.",
     3: "Add the webhook in GitHub so pull request events are forwarded to Parrot Review.",
   };
@@ -215,7 +215,52 @@ export default function ConnectRepositoryDialog({
                   {error && (
                     <div className="mb-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
                   )}
-                  <div className="space-y-5">
+                  <div className="space-y-6">
+                    {/* Provider selection */}
+                    <div>
+                      <label className="mb-2.5 block text-sm font-medium text-zinc-700">
+                        Git Provider
+                      </label>
+                      <div className="grid grid-cols-3 gap-2.5">
+                        {/* GitHub — available */}
+                        <div className={cn(
+                          "relative flex flex-col items-center gap-2 rounded-xl border-2 px-3 py-3.5 cursor-pointer transition-all",
+                          "border-zinc-950 bg-zinc-50"
+                        )}>
+                          <svg viewBox="0 0 24 24" className="h-6 w-6 fill-zinc-900" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12" />
+                          </svg>
+                          <span className="text-xs font-semibold text-zinc-900">GitHub</span>
+                          <div className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-zinc-950">
+                            <Check className="h-2.5 w-2.5 text-white" />
+                          </div>
+                        </div>
+
+                        {/* GitLab — coming soon */}
+                        <div className="relative flex flex-col items-center gap-2 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 px-3 py-3.5 cursor-not-allowed opacity-60">
+                          <svg viewBox="0 0 24 24" className="h-6 w-6 fill-slate-400" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M23.955 13.587l-1.342-4.135-2.664-8.189a.455.455 0 00-.867 0L16.418 9.45H7.582L4.918 1.263a.455.455 0 00-.867 0L1.386 9.45.044 13.587a.924.924 0 00.331 1.03L12 23.054l11.625-8.436a.92.92 0 00.33-1.031" />
+                          </svg>
+                          <span className="text-xs font-semibold text-slate-400">GitLab</span>
+                          <span className="absolute -top-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-medium text-slate-500">
+                            Coming soon
+                          </span>
+                        </div>
+
+                        {/* Gitee — coming soon */}
+                        <div className="relative flex flex-col items-center gap-2 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 px-3 py-3.5 cursor-not-allowed opacity-60">
+                          <svg viewBox="0 0 24 24" className="h-6 w-6 fill-slate-400" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M11.984 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.016 0zm6.09 5.333c.328 0 .593.266.592.593v1.482a.594.594 0 0 1-.593.592H9.777c-.982 0-1.778.796-1.778 1.778v5.63c0 .327.266.592.593.592h5.63c.982 0 1.778-.796 1.778-1.778v-.296a.593.593 0 0 0-.592-.593h-4.15a.592.592 0 0 1-.592-.592v-1.482a.593.593 0 0 1 .593-.592h6.815c.327 0 .593.265.593.592v3.408a4 4 0 0 1-4 4H5.926a.593.593 0 0 1-.593-.593V9.778a4.444 4.444 0 0 1 4.445-4.444h8.296z" />
+                          </svg>
+                          <span className="text-xs font-semibold text-slate-400">Gitee</span>
+                          <span className="absolute -top-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-medium text-slate-500">
+                            Coming soon
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* PAT input */}
                     <div>
                       <label className="mb-2 block text-sm font-medium text-zinc-700">
                         Personal Access Token
