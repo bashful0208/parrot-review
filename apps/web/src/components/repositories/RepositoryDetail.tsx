@@ -2,10 +2,22 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ChevronLeft, GitBranch, Copy, Eye, EyeOff, Check } from "lucide-react";
+import { ChevronLeft, GitBranch, Copy, Eye, EyeOff, Check, Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import type { RepositoryDetailItem } from "@/lib/repositories/detail-view-model";
 
 function CopyButton({ value }: { value: string }) {
@@ -36,6 +48,25 @@ export default function RepositoryDetail({
   repository: RepositoryDetailItem;
 }) {
   const [showSecret, setShowSecret] = useState(false);
+  const router = useRouter();
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleDelete() {
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/repositories/${repository.id}`, { method: "DELETE" });
+      const data = await res.json() as { ok: boolean; error?: string };
+      if (!data.ok) {
+        alert(data.error ?? "删除失败，请重试");
+        return;
+      }
+      router.push("/repositories");
+    } catch {
+      alert("网络错误，请重试");
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -49,30 +80,60 @@ export default function RepositoryDetail({
       </Link>
 
       {/* Page header */}
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white shadow-sm">
-          <GitBranch className="size-5 text-indigo-500" />
-        </div>
-        <div>
-          <div className="flex items-center gap-2.5">
-            <h1 className="text-lg font-bold tracking-tight text-zinc-950">
-              {repository.fullName}
-            </h1>
-            <Badge
-              variant="outline"
-              className={
-                repository.status === "active"
-                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                  : "border-zinc-200 bg-zinc-100 text-zinc-600"
-              }
-            >
-              {repository.status}
-            </Badge>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white shadow-sm">
+            <GitBranch className="size-5 text-indigo-500" />
           </div>
-          <p className="mt-0.5 text-xs text-zinc-400">
-            {repository.provider} · 接入于 {repository.createdAtLabel}
-          </p>
+          <div>
+            <div className="flex items-center gap-2.5">
+              <h1 className="text-lg font-bold tracking-tight text-zinc-950">
+                {repository.fullName}
+              </h1>
+              <Badge
+                variant="outline"
+                className={
+                  repository.status === "active"
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                    : "border-zinc-200 bg-zinc-100 text-zinc-600"
+                }
+              >
+                {repository.status}
+              </Badge>
+            </div>
+            <p className="mt-0.5 text-xs text-zinc-400">
+              {repository.provider} · 接入于 {repository.createdAtLabel}
+            </p>
+          </div>
         </div>
+
+        {/* 删除按钮 */}
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button variant="destructive" size="sm">
+              <Trash2 className="size-3.5" />
+              删除仓库
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>确认删除仓库？</AlertDialogTitle>
+              <AlertDialogDescription>
+                仓库 <span className="font-medium text-zinc-800">{repository.fullName}</span>{" "}
+                将被停用，相关 Webhook 将停止接收事件。此操作不可恢复。
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>取消</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => void handleDelete()}
+                disabled={deleting}
+              >
+                {deleting ? "删除中…" : "确认删除"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
 
       {/* Two-column grid */}
