@@ -131,11 +131,11 @@ export default function ConnectRepositoryDialog({
   triggerSize = "default",
   triggerClassName,
 }: ConnectRepositoryDialogProps) {
-  let router;
+  let router: ReturnType<typeof useRouter>;
   try {
     router = useRouter();
   } catch {
-    // Handle SSR case where app router is not available (e.g., during static rendering in tests)
+    // Fallback for non-client contexts (e.g., static rendering in tests)
     router = {
       refresh: () => {},
       push: () => {},
@@ -143,7 +143,7 @@ export default function ConnectRepositoryDialog({
       back: () => {},
       forward: () => {},
       prefetch: () => {},
-    };
+    } as unknown as ReturnType<typeof useRouter>;
   }
 
   const [open, setOpen] = useState(false);
