@@ -44,7 +44,7 @@ export default function RepositoryList({
           </span>
         </h2>
         <ConnectRepositoryDialog
-          triggerLabel="+ Connect"
+          triggerLabel="Connect Repository"
           triggerVariant="outline"
           triggerSize="sm"
         />

@@ -131,7 +131,20 @@ export default function ConnectRepositoryDialog({
   triggerSize = "default",
   triggerClassName,
 }: ConnectRepositoryDialogProps) {
-  const router = useRouter();
+  let router;
+  try {
+    router = useRouter();
+  } catch {
+    // Handle SSR case where app router is not available (e.g., during static rendering in tests)
+    router = {
+      refresh: () => {},
+      push: () => {},
+      replace: () => {},
+      back: () => {},
+      forward: () => {},
+      prefetch: () => {},
+    };
+  }
 
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<1 | 2 | 3>(1);
