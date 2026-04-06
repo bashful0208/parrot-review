@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { GitBranch } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -50,37 +51,40 @@ export default function RepositoryList({
       </div>
       <div className="divide-y divide-slate-100">
         {repositories.map((repo) => (
-          <article
+          <Link
             key={repo.id}
-            className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
+            href={`/repositories/${repo.id}`}
+            className="block transition-colors hover:bg-slate-50/80"
           >
-            <div className="flex min-w-0 items-center gap-3">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50">
-                <GitBranch className="h-4 w-4 text-slate-500" />
+            <article className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50">
+                  <GitBranch className="h-4 w-4 text-slate-500" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="truncate text-sm font-medium tracking-[-0.02em] text-zinc-950">
+                    {repo.fullName}
+                  </h3>
+                  <p className="mt-0.5 text-xs text-zinc-400">{repo.createdAtLabel}</p>
+                </div>
               </div>
-              <div className="min-w-0">
-                <h3 className="truncate text-sm font-medium tracking-[-0.02em] text-zinc-950">
-                  {repo.fullName}
-                </h3>
-                <p className="mt-0.5 text-xs text-zinc-400">{repo.createdAtLabel}</p>
+              <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                <Badge variant="outline" className="text-xs text-zinc-500">
+                  {repo.provider}
+                </Badge>
+                <Badge
+                  variant="outline"
+                  className={
+                    repo.status === "active"
+                      ? "border-emerald-200 bg-emerald-50 text-emerald-700 text-xs"
+                      : "border-zinc-200 bg-zinc-100 text-zinc-600 text-xs"
+                  }
+                >
+                  {repo.status}
+                </Badge>
               </div>
-            </div>
-            <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-              <Badge variant="outline" className="text-xs text-zinc-500">
-                {repo.provider}
-              </Badge>
-              <Badge
-                variant="outline"
-                className={
-                  repo.status === "active"
-                    ? "border-emerald-200 bg-emerald-50 text-emerald-700 text-xs"
-                    : "border-zinc-200 bg-zinc-100 text-zinc-600 text-xs"
-                }
-              >
-                {repo.status}
-              </Badge>
-            </div>
-          </article>
+            </article>
+          </Link>
         ))}
       </div>
     </section>
