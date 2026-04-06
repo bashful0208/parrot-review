@@ -199,3 +199,29 @@ export async function insertRepositoryWithIntegration(
     client.release();
   }
 }
+
+export async function disableRepository(
+  id: string,
+  organizationId: string
+): Promise<boolean> {
+  const logger = createLogger({ component: "queue" });
+  try {
+    const result = await getPool().query<{ id: string }>(
+      `update public.repositories
+          set status = 'disabled', updated_at = now()
+        where id = $1 and organization_id = $2 and status = 'active'
+        returning id`,
+      [id, organizationId]
+    );
+    return (result.rowCount ?? 0) > 0;
+  } catch (error) {
+    logger.error("Failed to disable repository", error as Error, {
+      operation: "disable_repository",
+      repository_id: id,
+    });
+    throw new AppError(
+      ErrorCode.DependencyDatabaseConnection,
+      "Failed to disable repository"
+    );
+  }
+}
