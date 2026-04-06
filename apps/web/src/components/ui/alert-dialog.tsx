@@ -3,6 +3,7 @@
 import * as React from "react"
 import { AlertDialog as AlertDialogPrimitive } from "radix-ui"
 
+import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
 function AlertDialog({
@@ -121,15 +122,9 @@ function AlertDialogAction({
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Action>) {
   return (
-    <AlertDialogPrimitive.Action
-      data-slot="alert-dialog-action"
-      className={cn(
-        "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 h-8 gap-1.5 px-2.5",
-        "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
-        className
-      )}
-      {...props}
-    />
+    <AlertDialogPrimitive.Action asChild>
+      <Button variant="destructive" className={className} {...props} />
+    </AlertDialogPrimitive.Action>
   )
 }
 
@@ -138,15 +133,9 @@ function AlertDialogCancel({
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Cancel>) {
   return (
-    <AlertDialogPrimitive.Cancel
-      data-slot="alert-dialog-cancel"
-      className={cn(
-        "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 h-8 gap-1.5 px-2.5",
-        "border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
-        className
-      )}
-      {...props}
-    />
+    <AlertDialogPrimitive.Cancel asChild>
+      <Button variant="outline" className={className} {...props} />
+    </AlertDialogPrimitive.Cancel>
   )
 }
 
