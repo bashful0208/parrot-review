@@ -13,11 +13,24 @@ export type LogContext = {
   service?: 'reviewer-web' | 'reviewer-worker';
 };
 
+export type LogEntry = {
+  level: LogLevel;
+  message: string;
+  request_id?: string;
+  task_id?: string;
+  organization_id?: string;
+  repository_id?: string;
+  user_id?: string;
+  component?: string;
+  service?: string;
+  [key: string]: unknown;
+};
+
 export interface Logger {
-  info(message: string, data?: Record<string, unknown>): void;
-  error(message: string, error?: Error | unknown, data?: Record<string, unknown>): void;
-  warn(message: string, data?: Record<string, unknown>): void;
-  debug(message: string, data?: Record<string, unknown>): void;
+  info(message: string, data?: Record<string, unknown>): LogEntry;
+  error(message: string, error?: Error | unknown, data?: Record<string, unknown>): LogEntry;
+  warn(message: string, data?: Record<string, unknown>): LogEntry;
+  debug(message: string, data?: Record<string, unknown>): LogEntry;
   child(context: Partial<LogContext>): Logger;
 }
 
@@ -47,7 +60,7 @@ const baseTransport = isDevelopment
 const baseLogger = pino(pinoConfig, baseTransport);
 
 export function createLogger(context: LogContext = {}): Logger {
-  const childLogger = baseLogger.child({
+  const contextFields = {
     request_id: context.requestId,
     task_id: context.taskId,
     organization_id: context.organizationId,
@@ -55,26 +68,40 @@ export function createLogger(context: LogContext = {}): Logger {
     user_id: context.userId,
     component: context.component,
     service: context.service,
-  });
+  };
 
+  const childLogger = baseLogger.child(contextFields);
   const loggerContext = { ...context };
 
+  function buildEntry(level: LogLevel, message: string, data?: Record<string, unknown>): LogEntry {
+    const entry: LogEntry = { level, message };
+    for (const [k, v] of Object.entries(contextFields)) {
+      if (v !== undefined) entry[k] = v;
+    }
+    if (data) Object.assign(entry, data);
+    return entry;
+  }
+
   return {
-    info(message: string, data?: Record<string, unknown>): void {
+    info(message: string, data?: Record<string, unknown>): LogEntry {
       childLogger.info({ ...data }, message);
+      return buildEntry('info', message, data);
     },
 
-    error(message: string, error?: Error | unknown, data?: Record<string, unknown>): void {
+    error(message: string, error?: Error | unknown, data?: Record<string, unknown>): LogEntry {
       const errorObj = error instanceof Error ? error : error ? new Error(String(error)) : undefined;
       childLogger.error({ err: errorObj, ...data }, message);
+      return buildEntry('error', message, data);
     },
 
-    warn(message: string, data?: Record<string, unknown>): void {
+    warn(message: string, data?: Record<string, unknown>): LogEntry {
       childLogger.warn({ ...data }, message);
+      return buildEntry('warn', message, data);
     },
 
-    debug(message: string, data?: Record<string, unknown>): void {
+    debug(message: string, data?: Record<string, unknown>): LogEntry {
       childLogger.debug({ ...data }, message);
+      return buildEntry('debug', message, data);
     },
 
     child(context: Partial<LogContext>): Logger {
