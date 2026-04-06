@@ -44,48 +44,53 @@ export default function RepositoryList({
           </span>
         </h2>
         <ConnectRepositoryDialog
-          triggerLabel="Connect Repository"
+          triggerLabel="+ Connect"
           triggerVariant="outline"
           triggerSize="sm"
         />
       </div>
-      <div className="divide-y divide-slate-100">
+
+      <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2">
         {repositories.map((repo) => (
           <Link
             key={repo.id}
             href={`/repositories/${repo.id}`}
-            className="block transition-colors hover:bg-slate-50/80"
+            className="group rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:border-slate-300 hover:shadow-md"
           >
-            <article className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex min-w-0 items-center gap-3">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50">
-                  <GitBranch className="h-4 w-4 text-slate-500" />
-                </div>
-                <div className="min-w-0">
-                  <h3 className="truncate text-sm font-medium tracking-[-0.02em] text-zinc-950">
-                    {repo.fullName}
-                  </h3>
-                  <p className="mt-0.5 text-xs text-zinc-400">{repo.createdAtLabel}</p>
-                </div>
+            <div className="mb-3 flex items-start gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[9px] border border-slate-200 bg-slate-50">
+                <GitBranch className="h-4 w-4 text-slate-500" />
               </div>
-              <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-                <Badge variant="outline" className="text-xs text-zinc-500">
-                  {repo.provider}
-                </Badge>
-                <Badge
-                  variant="outline"
-                  className={
-                    repo.status === "active"
-                      ? "border-emerald-200 bg-emerald-50 text-emerald-700 text-xs"
-                      : "border-zinc-200 bg-zinc-100 text-zinc-600 text-xs"
-                  }
-                >
-                  {repo.status}
-                </Badge>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold tracking-[-0.02em] text-zinc-950">
+                  {repo.fullName}
+                </p>
+                <p className="mt-0.5 text-xs text-zinc-400">{repo.createdAtLabel}</p>
               </div>
-            </article>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              <Badge variant="outline" className="text-xs text-zinc-500">
+                {repo.provider}
+              </Badge>
+              <Badge
+                variant="outline"
+                className={
+                  repo.status === "active"
+                    ? "border-emerald-200 bg-emerald-50 text-xs text-emerald-700"
+                    : "border-zinc-200 bg-zinc-100 text-xs text-zinc-600"
+                }
+              >
+                {repo.status}
+              </Badge>
+            </div>
           </Link>
         ))}
+
+        <ConnectRepositoryDialog
+          triggerLabel="Connect Repository"
+          triggerClassName="flex h-full min-h-[108px] w-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-transparent p-4 text-sm font-medium text-slate-400 shadow-none hover:border-slate-400 hover:bg-slate-50 hover:text-slate-500"
+          triggerVariant="ghost"
+        />
       </div>
     </section>
   );
