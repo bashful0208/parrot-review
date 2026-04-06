@@ -55,16 +55,16 @@ export default function RepositoryList({
           <Link
             key={repo.id}
             href={`/repositories/${repo.id}`}
-            className="group rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:border-slate-300 hover:shadow-md"
+            className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-all hover:border-slate-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             <div className="mb-3 flex items-start gap-3">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[9px] border border-slate-200 bg-slate-50">
                 <GitBranch className="h-4 w-4 text-slate-500" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold tracking-[-0.02em] text-zinc-950">
+                <h3 className="truncate text-sm font-semibold tracking-[-0.02em] text-zinc-950">
                   {repo.fullName}
-                </p>
+                </h3>
                 <p className="mt-0.5 text-xs text-zinc-400">{repo.createdAtLabel}</p>
               </div>
             </div>
