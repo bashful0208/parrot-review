@@ -37,6 +37,7 @@ export async function listRepositoriesByOrganization(
             r.status, r.created_at
        from public.repositories r
       where r.organization_id = $1
+        and r.status = 'active'
       order by r.created_at desc`,
     [orgId]
   );
