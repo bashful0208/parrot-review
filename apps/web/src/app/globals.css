@@ -9,7 +9,7 @@
   --surface-strong: #ffffff;
   --border-subtle: rgba(255, 255, 255, 0.72);
   --admin-background: linear-gradient(180deg, #f4f7fb 0%, #eef3fb 100%);
-  --admin-sidebar: #0f172a;
+  --admin-sidebar: #09090b;
   --font-geist-sans: "SF Pro Display", "SF Pro Text", "Segoe UI", Arial, Helvetica, sans-serif;
   --font-geist-mono:
     "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
@@ -97,7 +97,7 @@
     --surface-strong: #0f172a;
     --border-subtle: rgba(255, 255, 255, 0.10);
     --admin-background: linear-gradient(180deg, #0b1321 0%, #111a2b 100%);
-    --admin-sidebar: #08101d;
+    --admin-sidebar: #09090b;
   }
 }
 
