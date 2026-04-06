@@ -204,7 +204,7 @@ export async function disableRepository(
   id: string,
   organizationId: string
 ): Promise<boolean> {
-  const logger = createLogger({ component: "queue" });
+  const logger = createLogger({ component: "repository" });
   try {
     const result = await getPool().query<{ id: string }>(
       `update public.repositories
