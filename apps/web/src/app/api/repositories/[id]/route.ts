@@ -36,15 +36,15 @@ export async function DELETE(
     );
   }
 
-  const repo = await getRepositoryById(id, orgId);
-  if (!repo) {
-    return NextResponse.json(
-      { ok: false, error: "Repository not found", request_id: requestId },
-      { status: 404 }
-    );
-  }
-
   try {
+    const repo = await getRepositoryById(id, orgId);
+    if (!repo) {
+      return NextResponse.json(
+        { ok: false, error: "Repository not found", request_id: requestId },
+        { status: 404 }
+      );
+    }
+
     const disabled = await disableRepository(id, orgId);
     if (!disabled) {
       return NextResponse.json(

@@ -60,6 +60,7 @@ export default function RepositoryDetail({
         alert(data.error ?? "删除失败，请重试");
         return;
       }
+      router.refresh();
       router.push("/repositories");
     } catch {
       alert("网络错误，请重试");
