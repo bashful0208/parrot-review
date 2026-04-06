@@ -117,6 +117,9 @@ export default function RepositoryDetail({
             </Button>
           </AlertDialogTrigger>
           <AlertDialogContent>
+            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-red-50 ring-8 ring-red-50/60">
+              <Trash2 className="size-5 text-red-500" />
+            </div>
             <AlertDialogHeader>
               <AlertDialogTitle>确认删除仓库？</AlertDialogTitle>
               <AlertDialogDescription>
