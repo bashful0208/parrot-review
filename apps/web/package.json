@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "pnpm --dir ../.. exec eslint .",
     "typecheck": "pnpm --dir ../../packages/core run build && pnpm --dir ../../packages/git run build && tsc --noEmit",
-    "test": "pnpm exec tsx --test src/lib/dashboard/*.test.ts src/components/dashboard/*.test.tsx"
+    "test": "pnpm exec tsx --test src/lib/dashboard/*.test.ts src/lib/repositories/*.test.ts src/components/dashboard/*.test.tsx"
   },
   "dependencies": {
     "@reviewer/core": "workspace:*",
