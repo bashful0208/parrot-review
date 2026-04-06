@@ -12,9 +12,14 @@ function CopyButton({ value }: { value: string }) {
   const [copied, setCopied] = useState(false);
 
   async function handleCopy() {
-    await navigator.clipboard.writeText(value);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // clipboard API unavailable (non-HTTPS or permissions denied)
+      // value is visible in the field — user can copy manually
+    }
   }
 
   return (

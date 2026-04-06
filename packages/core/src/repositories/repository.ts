@@ -75,33 +75,45 @@ export async function getRepositoryById(
   id: string,
   organizationId: string
 ): Promise<RepositoryDetailRow | null> {
-  const result = await getPool().query<RepositoryDetailRow & { metadata: unknown }>(
-    `select r.id, r.name, r.full_name, r.provider, r.default_branch,
-            r.status, r.created_at,
-            ri.metadata
-       from public.repositories r
-       join public.repo_integrations ri
-         on ri.repository_id = r.id and ri.provider = r.provider
-      where r.id = $1 and r.organization_id = $2
-      limit 1`,
-    [id, organizationId]
-  );
+  const logger = createLogger({ component: "queue" });
+  try {
+    const result = await getPool().query<RepositoryDetailRow & { metadata: unknown }>(
+      `select r.id, r.name, r.full_name, r.provider, r.default_branch,
+              r.status, r.created_at,
+              ri.metadata
+         from public.repositories r
+         join public.repo_integrations ri
+           on ri.repository_id = r.id and ri.provider = r.provider
+        where r.id = $1 and r.organization_id = $2
+        limit 1`,
+      [id, organizationId]
+    );
 
-  if (result.rows.length === 0) return null;
+    if (result.rows.length === 0) return null;
 
-  const row = result.rows[0]!;
-  const meta = row.metadata as { webhook_secret?: string } | null;
+    const row = result.rows[0]!;
+    const meta = row.metadata as { webhook_secret?: string } | null;
 
-  return {
-    id: row.id,
-    name: row.name,
-    full_name: row.full_name,
-    provider: row.provider,
-    default_branch: row.default_branch,
-    status: row.status,
-    created_at: row.created_at,
-    webhook_secret: meta?.webhook_secret ?? "",
-  };
+    return {
+      id: row.id,
+      name: row.name,
+      full_name: row.full_name,
+      provider: row.provider,
+      default_branch: row.default_branch,
+      status: row.status,
+      created_at: row.created_at,
+      webhook_secret: meta?.webhook_secret ?? "",
+    };
+  } catch (error) {
+    logger.error("Failed to fetch repository by id", error as Error, {
+      operation: "get_repository_by_id",
+      repository_id: id,
+    });
+    throw new AppError(
+      ErrorCode.DependencyDatabaseConnection,
+      "Failed to fetch repository"
+    );
+  }
 }
 
 export async function insertRepositoryWithIntegration(

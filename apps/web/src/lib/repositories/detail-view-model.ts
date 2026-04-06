@@ -2,6 +2,7 @@ import type { AuthenticatedUser, RepositoryDetailRow } from "@reviewer/core";
 
 import { DASHBOARD_NAVIGATION } from "@/lib/dashboard/view-model";
 import type { DashboardShellModel, DashboardTopbarModel } from "@/lib/dashboard/types";
+import { getViewerName } from "@/lib/utils/viewer-name";
 
 export interface RepositoryDetailItem {
   id: string;
@@ -35,11 +36,6 @@ export function buildRepositoryDetailViewModel(
     webhookUrl,
     webhookSecret: row.webhook_secret,
   };
-}
-
-function getViewerName(user: Pick<AuthenticatedUser, "email" | "name">): string {
-  if (user.name && user.name.trim().length > 0) return user.name;
-  return user.email.split("@")[0];
 }
 
 export function buildRepositoryDetailPageViewModel(
