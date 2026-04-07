@@ -1,4 +1,5 @@
-import { AppError, ErrorCode, ErrorContext } from '../errors.js';
+import { AppError, ErrorCode } from '../errors.ts';
+import type { ErrorContext } from '../errors.ts';
 
 export function mapUserConfigError(
   field: string,

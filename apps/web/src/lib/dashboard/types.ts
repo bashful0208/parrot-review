@@ -39,7 +39,7 @@ export interface DashboardTopbarModel {
   summary: string;
   searchPlaceholder: string;
   rangeLabel: string;
-  primaryAction: DashboardQuickAction;
+  primaryAction?: DashboardQuickAction;
 }
 
 export interface DashboardRun {

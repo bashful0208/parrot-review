@@ -9,8 +9,9 @@ import {
   DASHBOARD_TREND,
 } from "./mock-data";
 import type { DashboardNavItem, DashboardViewModel } from "./types";
+import { getViewerName } from "@/lib/utils/viewer-name";
 
-const DASHBOARD_NAVIGATION: DashboardNavItem[] = [
+export const DASHBOARD_NAVIGATION: DashboardNavItem[] = [
   { label: "Overview", href: "/", icon: "overview" },
   { label: "Repositories", href: "/repositories", icon: "repositories" },
   { label: "Review Runs", href: "/review-runs", icon: "runs" },
@@ -21,14 +22,6 @@ const DASHBOARD_NAVIGATION: DashboardNavItem[] = [
 
 function cloneItems<T extends object>(items: T[]): T[] {
   return items.map((item) => ({ ...item }));
-}
-
-function getViewerName(user: Pick<AuthenticatedUser, "email" | "name">): string {
-  if (user.name && user.name.trim().length > 0) {
-    return user.name;
-  }
-
-  return user.email.split("@")[0];
 }
 
 export function buildDashboardViewModel(

@@ -204,6 +204,30 @@ export async function findSessionWithUser(sessionTokenHash: string): Promise<
   };
 }
 
+export interface OrgRecord {
+  id: string;
+}
+
+export async function createOrganizationWithOwner(
+  client: PoolClient,
+  input: { name: string; slug: string; ownerUserId: string }
+): Promise<OrgRecord> {
+  const org = await client.query<OrgRecord>(
+    `insert into public.organizations (name, slug, owner_user_id)
+     values ($1, $2, $3)
+     returning id`,
+    [input.name, input.slug, input.ownerUserId]
+  );
+
+  await client.query(
+    `insert into public.memberships (organization_id, user_id, role, status, joined_at)
+     values ($1, $2, 'owner', 'active', now())`,
+    [org.rows[0]!.id, input.ownerUserId]
+  );
+
+  return org.rows[0]!;
+}
+
 export async function expireSession(sessionTokenHash: string): Promise<void> {
   await getPool().query(
     `delete from public.user_sessions where session_token_hash = $1`,

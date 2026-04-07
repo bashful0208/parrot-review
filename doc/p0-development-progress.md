@@ -284,7 +284,7 @@
 ### 2.2 `GitHub / GitLab / Gitee` 接入实现
 
 - [x] 按 `GitHub / GitLab / Gitee` 设计统一数据模型与 provider 抽象
-- [ ] 打通 P0 最小可工作闭环所需的单一平台接入
+- [x] 打通 P0 最小可工作闭环所需的单一平台接入
 - [ ] 为 `GitHub` 补齐其余 P0 所需能力实现（若其作为首个打通平台）
 - [x] 为 `GitLab` 预留兼容实现边界
 - [x] 为 `Gitee` 预留兼容实现边界
@@ -296,31 +296,31 @@
 - [ ] 校验回调参数完整性
 - [ ] 校验 state / 签名合法性
 - [ ] 解析安装后的 provider 身份信息
-- [ ] 拉取安装后的可见仓库列表
-- [ ] 支持用户选择要接入的仓库
-- [ ] 保存仓库接入关系
-- [ ] 首次拉取仓库元信息并入库
+- [x] 拉取安装后的可见仓库列表
+- [x] 支持用户选择要接入的仓库
+- [x] 保存仓库接入关系
+- [x] 首次拉取仓库元信息并入库
 - [ ] 首次同步默认分支与语言信息
-- [ ] 首次写入仓库 provider 绑定信息
+- [x] 首次写入仓库 provider 绑定信息
 - [ ] 接入完成后触发健康检查任务
-- [ ] 接入失败时返回明确错误原因
+- [x] 接入失败时返回明确错误原因
 
 ### 2.4 Webhook 链路
 
-- [ ] 建立 `GitHub` webhook handler
+- [x] 建立 `GitHub` webhook handler
 - [ ] 建立 `GitLab` webhook handler
 - [ ] 建立 `Gitee` webhook handler
-- [ ] 实现请求验签
-- [ ] 标准化 `PR opened` 事件
-- [ ] 标准化 `PR synchronize` 事件
-- [ ] 标准化 `PR reopened` 事件
+- [x] 实现请求验签
+- [x] 标准化 `PR opened` 事件
+- [x] 标准化 `PR synchronize` 事件
+- [x] 标准化 `PR reopened` 事件
 - [ ] 标准化评论回写事件
 - [ ] 标准化状态回写事件
-- [ ] 建立 webhook 幂等键生成逻辑
-- [ ] 将 webhook 原始事件写入落库记录
-- [ ] 实现 webhook 幂等去重
-- [ ] webhook 入站仅做写库与入队
-- [ ] 避免 webhook handler 直接执行重任务
+- [x] 建立 webhook 幂等键生成逻辑
+- [x] 将 webhook 原始事件写入落库记录
+- [x] 实现 webhook 幂等去重
+- [x] webhook 入站仅做写库与入队
+- [x] 避免 webhook handler 直接执行重任务
 
 ---
 

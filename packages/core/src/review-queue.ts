@@ -7,9 +7,10 @@ import {
   queueEnvSchema,
 } from "./config/schema.ts";
 import type { QueueEnvInput } from "./config/schema.ts";
-import { Logger, createLogger } from "./logging.js";
-import { mapTaskTimeoutError } from "./errors/mappers.js";
-import { ensureErrorLogged } from "./errors/handler.js";
+import { createLogger } from "./logging.ts";
+import type { Logger } from "./logging.ts";
+import { mapTaskTimeoutError } from "./errors/mappers.ts";
+import { ensureErrorLogged } from "./errors/handler.ts";
 
 export { DEFAULT_QUEUE_NAME, DEFAULT_REDIS_URL } from "./config/schema.ts";
 export const DEFAULT_JOB_NAME = "manual-review";
