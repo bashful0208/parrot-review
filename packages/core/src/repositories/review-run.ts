@@ -1,4 +1,4 @@
-import { Pool, PoolClient } from "pg";
+import { Pool } from "pg";
 
 import { AppError, ErrorCode } from "../errors.js";
 import { createLogger } from "../logging.js";
@@ -34,12 +34,8 @@ export async function createReviewRun(
   input: CreateReviewRunInput
 ): Promise<{ id: string }> {
   const logger = createLogger({ component: "queue" });
-  const client: PoolClient = await getPool().connect();
-
   try {
-    await client.query("BEGIN");
-
-    const result = await client.query<{ id: string }>(
+    const result = await getPool().query<{ id: string }>(
       `insert into public.review_runs
          (organization_id, repository_id, pull_request_id, run_number,
           trigger_type, trigger_event_id, review_mode, output_language,
@@ -65,8 +61,6 @@ export async function createReviewRun(
       ]
     );
 
-    await client.query("COMMIT");
-
     const row = result.rows[0]!;
     logger.info("Review run created", {
       review_run_id: row.id,
@@ -76,7 +70,6 @@ export async function createReviewRun(
 
     return { id: row.id };
   } catch (error) {
-    await client.query("ROLLBACK");
     logger.error("Failed to create review run", error as Error, {
       operation: "create_review_run",
       pull_request_id: input.pullRequestId,
@@ -85,8 +78,6 @@ export async function createReviewRun(
       ErrorCode.DependencyDatabaseConnection,
       "Failed to create review run"
     );
-  } finally {
-    client.release();
   }
 }
 
@@ -104,6 +95,8 @@ export async function updateReviewRun(
   id: string,
   fields: UpdateReviewRunInput
 ): Promise<void> {
+  if (Object.keys(fields).length === 0) return;
+
   const logger = createLogger({ component: "queue" });
 
   const setClauses: string[] = ["updated_at = now()"];
