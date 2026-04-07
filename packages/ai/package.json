@@ -13,6 +13,10 @@
     "lint": "pnpm --dir ../.. exec eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.54.0",
+    "@reviewer/git": "workspace:*"
+  },
   "devDependencies": {
     "typescript": "^5.9.2"
   }
