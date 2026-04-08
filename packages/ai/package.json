@@ -15,7 +15,8 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.54.0",
-    "@reviewer/git": "workspace:*"
+    "@reviewer/git": "workspace:*",
+    "openai": "^6.33.0"
   },
   "devDependencies": {
     "typescript": "^5.9.2"

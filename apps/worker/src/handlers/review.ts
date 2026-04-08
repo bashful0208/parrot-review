@@ -13,7 +13,7 @@ import {
 } from "@reviewer/core";
 import type { Logger } from "@reviewer/core";
 import type { WebhookJobPayload } from "@reviewer/core";
-import { generateReviewFindings, loadAiProviderConfig } from "@reviewer/ai";
+import { generateReviewFindings, loadAiProviderConfig, type AiAdapterConfig } from "@reviewer/ai";
 import { GitHubProvider } from "@reviewer/git";
 
 export async function handleReviewJob(
@@ -84,11 +84,15 @@ export async function handleReviewJob(
       if (!ANTHROPIC_API_KEY) {
         throw new Error("ANTHROPIC_API_KEY is not set");
       }
-      const aiConfig = loadAiProviderConfig();
+      const providerConfig = loadAiProviderConfig();
+      const aiConfig: AiAdapterConfig = {
+        provider: "anthropic",
+        model: providerConfig.model,
+        apiKey: ANTHROPIC_API_KEY,
+      };
       const result = await generateReviewFindings(
         { fullName: repo.full_name, prNumber, headSha, diffs },
-        aiConfig,
-        ANTHROPIC_API_KEY
+        aiConfig
       );
 
       // 步骤 9: 计算 fingerprint 并写入 review_issues
