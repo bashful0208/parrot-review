@@ -17,7 +17,7 @@ export const DASHBOARD_NAVIGATION: DashboardNavItem[] = [
   { label: "Review Runs", href: "/review-runs", icon: "runs" },
   { label: "Policies", href: "/policies", icon: "policies" },
   { label: "Team", href: "/team", icon: "team" },
-  { label: "Settings", href: "/settings", icon: "settings" },
+  { label: "Settings", href: "/settings/providers", icon: "settings" },
 ];
 
 function cloneItems<T extends object>(items: T[]): T[] {
