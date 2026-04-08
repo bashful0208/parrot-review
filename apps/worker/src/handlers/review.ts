@@ -10,10 +10,11 @@ import {
   insertReviewIssues,
   insertReviewComment,
   markCommentPosted,
+  getActiveAiProviderConfig,
 } from "@reviewer/core";
 import type { Logger } from "@reviewer/core";
 import type { WebhookJobPayload } from "@reviewer/core";
-import { generateReviewFindings, loadAiProviderConfig, type AiAdapterConfig } from "@reviewer/ai";
+import { generateReviewFindings } from "@reviewer/ai";
 import { GitHubProvider } from "@reviewer/git";
 
 export async function handleReviewJob(
@@ -79,20 +80,19 @@ export async function handleReviewJob(
       // 步骤 7: 拉取 diff
       const diffs = await provider.getPullRequestDiff(repo.full_name, prNumber, credential, logger);
 
-      // 步骤 8: 调用 AI
-      const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
-      if (!ANTHROPIC_API_KEY) {
-        throw new Error("ANTHROPIC_API_KEY is not set");
+      // 步骤 8: 从 DB 加载 AI provider 配置
+      const activeConfig = await getActiveAiProviderConfig(organizationId);
+      if (!activeConfig) {
+        throw new Error(`No active AI provider config for organization ${organizationId}`);
       }
-      const providerConfig = loadAiProviderConfig();
-      const aiConfig: AiAdapterConfig = {
-        provider: "anthropic",
-        model: providerConfig.model,
-        apiKey: ANTHROPIC_API_KEY,
-      };
       const result = await generateReviewFindings(
         { fullName: repo.full_name, prNumber, headSha, diffs },
-        aiConfig
+        {
+          provider: activeConfig.provider,
+          model: activeConfig.model,
+          apiKey: activeConfig.apiKey,
+          baseUrl: activeConfig.baseUrl ?? undefined,
+        }
       );
 
       // 步骤 9: 计算 fingerprint 并写入 review_issues
