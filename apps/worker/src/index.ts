@@ -10,7 +10,6 @@ import {
   validateWorkerEnv,
   createLogger,
   ensureErrorLogged,
-  mapTaskTimeoutError,
 } from "@reviewer/core";
 import { handleReviewJob } from "./handlers/review.js";
 
@@ -61,24 +60,7 @@ export async function main(env = process.env): Promise<void> {
     const jobId = job?.id || 'unknown';
     const jobName = job?.name || 'unknown';
     const jobLogger = logger.child({ taskId: jobId });
-    const appError = mapTaskTimeoutError(
-      jobId,
-      'exceeded',
-      0,
-      {
-        operation: 'job_execution',
-        task_id: jobId,
-        job_name: jobName,
-      }
-    );
-
-    jobLogger.error('Job failed', error, {
-      job_name: jobName,
-      job_id: jobId,
-      error_code: appError.code,
-    });
-
-    ensureErrorLogged(appError, jobLogger);
+    jobLogger.error('Job failed', error, { job_name: jobName, job_id: jobId });
   });
 
   await worker.waitUntilReady();
