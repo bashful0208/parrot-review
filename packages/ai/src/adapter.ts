@@ -265,10 +265,13 @@ export class OpenAICompatibleAdapter implements AiAdapter {
       throw new Error("OpenAI-compatible API response was truncated (length)");
     }
 
-    const toolCall = choice?.message?.tool_calls?.[0] as
-      | { function: { name: string; arguments: string } }
-      | undefined;
-    if (!toolCall || toolCall.function.name !== "report_findings") {
+    const toolCall = choice?.message?.tool_calls?.[0];
+    if (!toolCall || toolCall.type !== "function") {
+      throw new Error(
+        "OpenAI-compatible API did not return expected tool call for report_findings"
+      );
+    }
+    if (toolCall.function.name !== "report_findings") {
       throw new Error(
         "OpenAI-compatible API did not return expected tool call for report_findings"
       );

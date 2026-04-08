@@ -95,15 +95,22 @@ export async function createAiProviderConfig(
 
 function mapRow(row: Record<string, unknown>): AiProviderConfigRow {
   return {
-    id: row["id"] as string,
-    organizationId: row["organization_id"] as string,
+    id: String(row["id"] ?? ""),
+    organizationId: String(row["organization_id"] ?? ""),
     provider: row["provider"] as AiProviderType,
-    displayName: row["display_name"] as string,
-    model: (row["model"] as string | null) ?? "",
-    baseUrl: (row["base_url"] as string | null) ?? null,
-    maskedKeySuffix: (row["masked_key_suffix"] as string | null) ?? null,
-    isActive: row["is_active"] as boolean,
-    createdAt: row["created_at"] as Date,
+    displayName: String(row["display_name"] ?? ""),
+    model: row["model"] != null ? String(row["model"]) : "",
+    baseUrl: row["base_url"] != null ? String(row["base_url"]) : null,
+    maskedKeySuffix: row["masked_key_suffix"] != null ? String(row["masked_key_suffix"]) : null,
+    isActive: row["is_active"] === true,
+    createdAt: row["created_at"] instanceof Date ? row["created_at"] : new Date(String(row["created_at"])),
+  };
+}
+
+function mapRowWithKey(row: Record<string, unknown>): AiProviderConfigWithKey {
+  return {
+    ...mapRow(row),
+    apiKey: String(row["api_key"] ?? ""),
   };
 }
 
@@ -156,10 +163,14 @@ export async function getActiveAiProviderConfig(
     }
 
     const row = result.rows[0]!;
-    return {
-      ...mapRow(row),
-      apiKey: (row["api_key"] as string | null) ?? "",
-    };
+    const config = mapRowWithKey(row);
+    if (!config.apiKey) {
+      throw new AppError(
+        ErrorCode.DependencyDatabaseConnection,
+        "Active AI provider config has no API key stored"
+      );
+    }
+    return config;
   } catch (error) {
     logger.error("Failed to get active AI provider config", error as Error, {
       operation: "get_active_ai_provider_config",
@@ -230,11 +241,11 @@ export async function deleteAiProviderConfig(
     }
 
     if (checkResult.rows[0]!.is_active) {
-      throw new Error("Cannot delete active provider config");
+      throw new Error("Cannot delete active provider config. Deactivate it first.");
     }
 
     await getPool().query(
-      `delete from public.ai_provider_configs where id = $1 and organization_id = $2`,
+      `delete from public.ai_provider_configs where id = $1 and organization_id = $2 and is_active = false`,
       [id, orgId]
     );
 
@@ -243,7 +254,7 @@ export async function deleteAiProviderConfig(
       organization_id: orgId,
     });
   } catch (error) {
-    if (error instanceof Error && error.message === "Cannot delete active provider config") {
+    if (error instanceof Error && error.message.startsWith("Cannot delete")) {
       throw error;
     }
     logger.error("Failed to delete AI provider config", error as Error, {
