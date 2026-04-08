@@ -93,9 +93,15 @@ importers:
 
   apps/worker:
     dependencies:
+      '@reviewer/ai':
+        specifier: workspace:*
+        version: link:../../packages/ai
       '@reviewer/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@reviewer/git':
+        specifier: workspace:*
+        version: link:../../packages/git
       bullmq:
         specifier: ^5.58.0
         version: 5.71.1

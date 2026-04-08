@@ -12,7 +12,9 @@
     "typecheck": "pnpm --dir ../../packages/core run build && tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "@reviewer/ai": "workspace:*",
     "@reviewer/core": "workspace:*",
+    "@reviewer/git": "workspace:*",
     "bullmq": "^5.58.0",
     "ioredis": "^5.8.1"
   },
