@@ -10,3 +10,8 @@ export * from "./auth/index.ts";
 export * from "./webhooks/index.ts";
 export * from "./repositories/repository.ts";
 export * from "./repositories/org-helper.ts";
+export * from "./repositories/pull-request.ts";
+export * from "./repositories/review-run.ts";
+export * from "./repositories/review-issue.ts";
+export * from "./repositories/review-comment.ts";
+export * from "./repositories/ai-provider-config.ts";

@@ -328,9 +328,9 @@
 
 ### 3.1 BullMQ 队列基础
 
-- [ ] 创建 `pr_review_jobs` 队列
+- [x] 创建 `pr_review_jobs` 队列
 - [ ] 创建 `review_retry_jobs` 队列
-- [ ] 定义 `pr_review_jobs` job payload
+- [x] 定义 `pr_review_jobs` job payload
 - [ ] 定义 `review_retry_jobs` job payload
 - [ ] 配置任务默认重试次数
 - [ ] 配置指数退避或固定退避策略
@@ -342,34 +342,34 @@
 
 ### 3.2 Worker 启动与消费
 
-- [ ] 建立 worker 启动入口
-- [ ] 启动时校验 Redis 连接
-- [ ] 启动时校验数据库连接
+- [x] 建立 worker 启动入口
+- [x] 启动时校验 Redis 连接
+- [x] 启动时校验数据库连接
 - [ ] 启动时校验 provider 配置依赖
-- [ ] 注册审查任务 consumer
+- [x] 注册审查任务 consumer
 - [ ] 注册重试任务 consumer
-- [ ] 注册 worker 级错误监听
-- [ ] 启动失败时快速报错退出
+- [x] 注册 worker 级错误监听
+- [x] 启动失败时快速报错退出
 
 ### 3.3 审查主链路
 
-- [ ] 从 job payload 解析组织与仓库上下文
-- [ ] 加载目标仓库配置
-- [ ] 加载目标 PR 基础信息
-- [ ] 拉取 base / head diff
-- [ ] 解析变更文件清单
+- [x] 从 job payload 解析组织与仓库上下文
+- [x] 加载目标仓库配置
+- [x] 加载目标 PR 基础信息
+- [x] 拉取 base / head diff
+- [x] 解析变更文件清单
 - [ ] 识别是否属于增量审查输入
 - [ ] 按策略拉取必要上下文文件
 - [ ] 加载仓库规则配置
-- [ ] 加载模型绑定配置
-- [ ] 生成审查输入上下文对象
-- [ ] 创建 `review_run` 记录并置为 `queued`
-- [ ] 开始执行时流转为 `running`
-- [ ] 执行完成后流转为 `succeeded`
-- [ ] 执行失败后流转为 `failed`
+- [x] 加载模型绑定配置
+- [x] 生成审查输入上下文对象
+- [x] 创建 `review_run` 记录并置为 `queued`
+- [x] 开始执行时流转为 `running`
+- [x] 执行完成后流转为 `succeeded`
+- [x] 执行失败后流转为 `failed`
 - [ ] 进入重试时流转为 `retrying`
 - [ ] 用户取消时流转为 `cancelled`
-- [ ] 写入执行摘要与失败上下文
+- [x] 写入执行摘要与失败上下文
 
 ### 3.4 稳定性与幂等
 
@@ -389,35 +389,35 @@
 
 ### 4.1 `packages/ai` 统一抽象
 
-- [ ] 创建统一 provider 工厂
-- [ ] 定义统一 provider 实例接口
-- [ ] 定义统一审查任务输入结构
-- [ ] 定义统一审查任务输出结构
-- [ ] 定义结构化输出 schema
+- [x] 创建统一 provider 工厂
+- [x] 定义统一 provider 实例接口
+- [x] 定义统一审查任务输入结构
+- [x] 定义统一审查任务输出结构
+- [x] 定义结构化输出 schema
 - [ ] 为 `summary / findings / fix_prompt` 区分输出子 schema
-- [ ] 定义 schema 校验失败处理逻辑
+- [x] 定义 schema 校验失败处理逻辑
 - [ ] 定义 provider 超时与取消信号透传方式
 
 ### 4.2 审查任务能力
 
 - [ ] 实现 `generateReviewSummary` 接口
-- [ ] 实现 `generateReviewFindings` 接口
+- [x] 实现 `generateReviewFindings` 接口
 - [ ] 实现 `generateFixPrompt` 接口
 - [ ] 实现 `embedKnowledge` 接口
-- [ ] 保证各任务共享统一上下文字段
-- [ ] 保证 findings 输出可映射到文件与行定位
+- [x] 保证各任务共享统一上下文字段
+- [x] 保证 findings 输出可映射到文件与行定位
 - [ ] 保证 fix prompt 输出包含约束与验收信息
 
 ### 4.3 Provider 支持
 
-- [ ] 接入 `OpenAI`
-- [ ] 接入 `Anthropic`
-- [ ] 接入 `Alibaba(Qwen)`
-- [ ] 支持组织级默认 provider
+- [x] 接入 `OpenAI`
+- [x] 接入 `Anthropic`
+- [x] 接入 `Alibaba(Qwen)`
+- [x] 支持组织级默认 provider
 - [ ] 支持仓库级覆盖 provider
 - [ ] 支持 fallback provider
-- [ ] provider 不可用时记录明确失败原因
-- [ ] provider 切换时保证统一输出结构不变
+- [x] provider 不可用时记录明确失败原因
+- [x] provider 切换时保证统一输出结构不变
 
 ### 4.4 调用治理与审计
 
@@ -435,14 +435,14 @@
 ### 4.5 审查结果落库与回写准备
 
 - [ ] 写入 PR 摘要结果
-- [ ] 写入 findings 列表
-- [ ] 为每条 finding 保存 severity
-- [ ] 为每条 finding 保存 confidence
-- [ ] 为每条 finding 保存文件定位
-- [ ] 为每条 finding 保存修复建议
-- [ ] 通过 `issue_type: quality/security` 区分问题类型
-- [ ] 为后续评论回写保留映射关系
-- [ ] 为后续增量审查保留问题比对字段
+- [x] 写入 findings 列表
+- [x] 为每条 finding 保存 severity
+- [x] 为每条 finding 保存 confidence
+- [x] 为每条 finding 保存文件定位
+- [x] 为每条 finding 保存修复建议
+- [x] 通过 `issue_type: quality/security` 区分问题类型
+- [x] 为后续评论回写保留映射关系
+- [x] 为后续增量审查保留问题比对字段
 
 ---
 
@@ -496,10 +496,10 @@
 - [ ] 展示当前生效规则来源
 - [ ] 展示规则校验错误
 - [ ] 支持查看仓库根目录 YAML 规则覆盖结果
-- [ ] 完成模型配置页
-- [ ] 支持录入 provider 配置
-- [ ] 前端仅显示掩码后的密钥信息
-- [ ] 支持禁用失效 provider 配置
+- [x] 完成模型配置页
+- [x] 支持录入 provider 配置
+- [x] 前端仅显示掩码后的密钥信息
+- [x] 支持禁用失效 provider 配置
 - [ ] 支持查看组织默认与仓库覆盖关系
 
 ### 5.5 实时状态
@@ -607,13 +607,13 @@
 
 - [ ] 使用受控 secret 管理能力存储模型密钥
 - [ ] 后台支持录入 `OpenAI / Anthropic / Alibaba(Qwen)` 配置元数据，并只保存 secret reference，不保存明文密钥
-- [ ] 前端禁止读取原始密钥
+- [x] 前端禁止读取原始密钥
 - [ ] worker 调模型前按组织 / 仓库通过受控服务端机制解析 secret reference
 - [ ] 日志中不打印完整密钥
 - [ ] 错误栈中不打印完整密钥
 - [ ] 审计记录中不打印完整密钥
-- [ ] 支持禁用失效 provider 配置
-- [ ] 密钥轮换后保证新任务读取最新有效配置
+- [x] 支持禁用失效 provider 配置
+- [x] 密钥轮换后保证新任务读取最新有效配置
 
 ---
 

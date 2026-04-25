@@ -1,14 +1,17 @@
 import { pathToFileURL } from "node:url";
 
+import { Worker } from "bullmq";
+
 import {
   assertRedisReachable,
   buildWorkerConfig,
-  createPlaceholderWorker,
+  createRedisConnection,
   formatConfigError,
   validateWorkerEnv,
   createLogger,
   ensureErrorLogged,
 } from "@reviewer/core";
+import { handleReviewJob } from "./handlers/review.js";
 
 export { buildWorkerConfig } from "@reviewer/core";
 
@@ -34,7 +37,31 @@ export async function main(env = process.env): Promise<void> {
 
   await assertRedisReachable(config.redisUrl);
 
-  const { connection, worker } = createPlaceholderWorker(config, logger);
+  const connection = createRedisConnection(config.redisUrl);
+  const worker = new Worker(
+    config.queueName,
+    (job) => handleReviewJob(job, logger),
+    {
+      connection,
+      concurrency: 2,
+    }
+  );
+
+  worker.on("completed", (job) => {
+    if (job) {
+      const jobLogger = logger.child({ taskId: String(job.id) });
+      jobLogger.info('Job completed', {
+        job_name: job.name,
+        job_id: job.id,
+      });
+    }
+  });
+  worker.on("failed", (job, error) => {
+    const jobId = job?.id || 'unknown';
+    const jobName = job?.name || 'unknown';
+    const jobLogger = logger.child({ taskId: jobId });
+    jobLogger.error('Job failed', error, { job_name: jobName, job_id: jobId });
+  });
 
   await worker.waitUntilReady();
   logger.info('Worker started and waiting for jobs');

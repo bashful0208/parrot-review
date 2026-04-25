@@ -117,6 +117,62 @@ export async function getRepositoryById(
   }
 }
 
+export interface RepositoryWithCredential extends RepositoryDetailRow {
+  credentialToken: string;
+}
+
+export async function getRepositoryWithCredential(
+  id: string,
+  organizationId: string
+): Promise<RepositoryWithCredential | null> {
+  const logger = createLogger({ component: "queue" });
+  try {
+    const result = await getPool().query<RepositoryDetailRow & { metadata: unknown }>(
+      `select r.id, r.name, r.full_name, r.provider, r.default_branch,
+              r.status, r.created_at,
+              ri.metadata
+         from public.repositories r
+         join public.repo_integrations ri
+           on ri.repository_id = r.id and ri.provider = r.provider
+        where r.id = $1 and r.organization_id = $2
+        limit 1`,
+      [id, organizationId]
+    );
+
+    if (result.rows.length === 0) return null;
+
+    const row = result.rows[0]!;
+    const meta = row.metadata as {
+      webhook_secret?: string;
+      credential?: { token?: string };
+    } | null;
+
+    const credentialToken = meta?.credential?.token;
+    if (!credentialToken) return null;
+
+    return {
+      id: row.id,
+      name: row.name,
+      full_name: row.full_name,
+      provider: row.provider,
+      default_branch: row.default_branch,
+      status: row.status,
+      created_at: row.created_at,
+      webhook_secret: meta?.webhook_secret ?? "",
+      credentialToken,
+    };
+  } catch (error) {
+    logger.error("Failed to fetch repository with credential", error as Error, {
+      operation: "get_repository_with_credential",
+      repository_id: id,
+    });
+    throw new AppError(
+      ErrorCode.DependencyDatabaseConnection,
+      "Failed to fetch repository with credential"
+    );
+  }
+}
+
 export async function insertRepositoryWithIntegration(
   input: InsertRepositoryInput
 ): Promise<InsertRepositoryResult> {
