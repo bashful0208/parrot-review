@@ -23,3 +23,12 @@ export interface ReviewFinding {
 export interface ReviewResult {
   findings: ReviewFinding[];
 }
+
+export interface ReviewSummary {
+  summaryMd: string;
+  highlights: string[];
+}
+
+export interface ReviewSummaryResult {
+  summary: ReviewSummary;
+}

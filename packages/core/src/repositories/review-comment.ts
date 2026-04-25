@@ -23,7 +23,7 @@ export interface InsertReviewCommentInput {
   organizationId: string;
   pullRequestId: string;
   reviewRunId: string;
-  reviewIssueId: string;
+  reviewIssueId: string | null;
   provider: string;
   bodyMd: string;
   filePath: string | null;

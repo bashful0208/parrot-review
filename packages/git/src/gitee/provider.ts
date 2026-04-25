@@ -1,3 +1,4 @@
+import type { Logger, ErrorContext } from "@reviewer/core";
 import type {
   FileDiff,
   Installation,
@@ -13,69 +14,281 @@ import type {
   ListPullRequestsOptions,
   ListRepositoriesOptions,
 } from "../provider.js";
-import { GitProviderNotImplementedError } from "../errors.js";
+import { withGitPlatformErrorBoundary } from "../errors.js";
+import { getGiteePatClient } from "./client.js";
+import {
+  mapFileDiff,
+  mapPostedComment,
+  mapPullRequest,
+  mapRepository,
+  type GiteeComment,
+  type GiteeFile,
+  type GiteePR,
+  type GiteeRepo,
+} from "./mappers.js";
+import { normalizeGiteeEvent } from "./webhook.js";
+
+const PROVIDER = "gitee" as const;
+
+function assertGitee(credential: ProviderCredential) {
+  if (credential.type !== "gitee_pat") {
+    throw new TypeError(
+      `GiteeProvider requires gitee_pat credential, got: ${credential.type}`
+    );
+  }
+  return credential;
+}
+
+function context(extra?: Record<string, unknown>): ErrorContext {
+  return { provider: PROVIDER, ...extra };
+}
+
+function splitFullName(fullName: string): { owner: string; repo: string } {
+  const [owner, repo] = fullName.split("/");
+  if (!owner || !repo) {
+    throw new Error(`Invalid Gitee repository full_name: ${fullName}`);
+  }
+  return { owner, repo };
+}
 
 export class GiteeProvider implements IProvider {
-  readonly provider = "gitee" as const;
+  readonly provider = PROVIDER;
 
-  getInstallation(
+  async getInstallation(
     _installationId: string,
-    _credential: ProviderCredential
+    credential: ProviderCredential,
+    logger?: Logger
   ): Promise<Installation> {
-    return Promise.reject(new GitProviderNotImplementedError("gitee", "getInstallation"));
+    // Gitee 仅支持 PAT，"installation" 概念用当前 user 代替。
+    const cred = assertGitee(credential);
+    const client = getGiteePatClient(cred);
+    return withGitPlatformErrorBoundary(
+      async () => {
+        const data = await client.request<{ id: number; login: string }>(
+          "/user"
+        );
+        logger?.debug("Fetched Gitee user (as installation)", {
+          login: data.login,
+        });
+        return {
+          installationId: String(data.id),
+          provider: PROVIDER,
+          providerOwnerId: String(data.id),
+          organizationId: "",
+          repositoryId: "",
+        };
+      },
+      PROVIDER,
+      logger,
+      context({ operation: "getInstallation" })
+    );
   }
 
-  listRepositories(
-    _credential: ProviderCredential,
-    _options?: ListRepositoriesOptions
+  async listRepositories(
+    credential: ProviderCredential,
+    options?: ListRepositoriesOptions,
+    logger?: Logger
   ): Promise<ProviderRepository[]> {
-    return Promise.reject(new GitProviderNotImplementedError("gitee", "listRepositories"));
+    const cred = assertGitee(credential);
+    const client = getGiteePatClient(cred);
+    return withGitPlatformErrorBoundary(
+      async () => {
+        const data = await client.request<GiteeRepo[]>("/user/repos", {
+          query: {
+            sort: "updated",
+            page: options?.page ?? 1,
+            per_page: options?.perPage ?? 30,
+          },
+        });
+        logger?.debug("Listed Gitee repositories", { count: data.length });
+        return data.map(mapRepository);
+      },
+      PROVIDER,
+      logger,
+      context({ operation: "listRepositories" })
+    );
   }
 
-  getRepository(
-    _fullName: string,
-    _credential: ProviderCredential
+  async getRepository(
+    fullName: string,
+    credential: ProviderCredential,
+    logger?: Logger
   ): Promise<ProviderRepository> {
-    return Promise.reject(new GitProviderNotImplementedError("gitee", "getRepository"));
+    const { owner, repo } = splitFullName(fullName);
+    const cred = assertGitee(credential);
+    const client = getGiteePatClient(cred);
+    return withGitPlatformErrorBoundary(
+      async () => {
+        const data = await client.request<GiteeRepo>(
+          `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`
+        );
+        logger?.debug("Fetched Gitee repository", { fullName });
+        return mapRepository(data);
+      },
+      PROVIDER,
+      logger,
+      context({ operation: "getRepository", repository: fullName })
+    );
   }
 
-  listPullRequests(
-    _fullName: string,
-    _credential: ProviderCredential,
-    _options?: ListPullRequestsOptions
+  async listPullRequests(
+    fullName: string,
+    credential: ProviderCredential,
+    options?: ListPullRequestsOptions,
+    logger?: Logger
   ): Promise<ProviderPullRequest[]> {
-    return Promise.reject(new GitProviderNotImplementedError("gitee", "listPullRequests"));
+    const { owner, repo } = splitFullName(fullName);
+    const cred = assertGitee(credential);
+    const client = getGiteePatClient(cred);
+    return withGitPlatformErrorBoundary(
+      async () => {
+        const data = await client.request<GiteePR[]>(
+          `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls`,
+          {
+            query: {
+              state: options?.state ?? "open",
+              page: options?.page ?? 1,
+              per_page: options?.perPage ?? 30,
+            },
+          }
+        );
+        logger?.debug("Listed Gitee pull requests", {
+          fullName,
+          count: data.length,
+        });
+        return data.map(mapPullRequest);
+      },
+      PROVIDER,
+      logger,
+      context({ operation: "listPullRequests", repository: fullName })
+    );
   }
 
-  getPullRequest(
-    _fullName: string,
-    _prNumber: number,
-    _credential: ProviderCredential
+  async getPullRequest(
+    fullName: string,
+    prNumber: number,
+    credential: ProviderCredential,
+    logger?: Logger
   ): Promise<ProviderPullRequest> {
-    return Promise.reject(new GitProviderNotImplementedError("gitee", "getPullRequest"));
+    const { owner, repo } = splitFullName(fullName);
+    const cred = assertGitee(credential);
+    const client = getGiteePatClient(cred);
+    return withGitPlatformErrorBoundary(
+      async () => {
+        const data = await client.request<GiteePR>(
+          `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}`
+        );
+        logger?.debug("Fetched Gitee pull request", { fullName, prNumber });
+        return mapPullRequest(data);
+      },
+      PROVIDER,
+      logger,
+      context({ operation: "getPullRequest", repository: fullName })
+    );
   }
 
-  getPullRequestDiff(
-    _fullName: string,
-    _prNumber: number,
-    _credential: ProviderCredential
+  async getPullRequestDiff(
+    fullName: string,
+    prNumber: number,
+    credential: ProviderCredential,
+    logger?: Logger
   ): Promise<FileDiff[]> {
-    return Promise.reject(new GitProviderNotImplementedError("gitee", "getPullRequestDiff"));
+    const { owner, repo } = splitFullName(fullName);
+    const cred = assertGitee(credential);
+    const client = getGiteePatClient(cred);
+    return withGitPlatformErrorBoundary(
+      async () => {
+        const data = await client.request<GiteeFile[]>(
+          `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}/files`
+        );
+        logger?.debug("Fetched Gitee PR diff", {
+          fullName,
+          prNumber,
+          fileCount: data.length,
+        });
+        return data.map(mapFileDiff);
+      },
+      PROVIDER,
+      logger,
+      context({ operation: "getPullRequestDiff", repository: fullName })
+    );
   }
 
-  postReviewComment(
-    _fullName: string,
-    _input: ReviewCommentInput,
-    _credential: ProviderCredential
+  async postReviewComment(
+    fullName: string,
+    input: ReviewCommentInput,
+    credential: ProviderCredential,
+    logger?: Logger
   ): Promise<PostedComment> {
-    return Promise.reject(new GitProviderNotImplementedError("gitee", "postReviewComment"));
+    const { owner, repo } = splitFullName(fullName);
+    const cred = assertGitee(credential);
+    const client = getGiteePatClient(cred);
+    return withGitPlatformErrorBoundary(
+      async () => {
+        // Gitee 行级评论：comments 接口附带 path / position（position 即 diff 行号）
+        const data = await client.request<GiteeComment>(
+          `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${input.prNumber}/comments`,
+          {
+            method: "POST",
+            body: {
+              body: input.bodyMd,
+              commit_id: input.commitSha,
+              path: input.filePath,
+              position: input.line,
+            },
+          }
+        );
+        logger?.debug("Posted Gitee review comment", {
+          fullName,
+          prNumber: input.prNumber,
+          commentId: data.id,
+        });
+        return mapPostedComment(data);
+      },
+      PROVIDER,
+      logger,
+      context({ operation: "postReviewComment", repository: fullName })
+    );
   }
 
-  normalizeWebhookEvent(
-    _rawHeaders: Record<string, string>,
-    _rawBody: string,
-    _webhookSecret: string
+  async postPullRequestComment(
+    fullName: string,
+    prNumber: number,
+    bodyMd: string,
+    credential: ProviderCredential,
+    logger?: Logger
+  ): Promise<PostedComment> {
+    const { owner, repo } = splitFullName(fullName);
+    const cred = assertGitee(credential);
+    const client = getGiteePatClient(cred);
+    return withGitPlatformErrorBoundary(
+      async () => {
+        // Gitee PR 整体评论：仅传 body（不带 path / position 即落在会话区）
+        const data = await client.request<GiteeComment>(
+          `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${prNumber}/comments`,
+          {
+            method: "POST",
+            body: { body: bodyMd },
+          }
+        );
+        logger?.debug("Posted Gitee PR conversation comment", {
+          fullName,
+          prNumber,
+          commentId: data.id,
+        });
+        return mapPostedComment(data);
+      },
+      PROVIDER,
+      logger,
+      context({ operation: "postPullRequestComment", repository: fullName })
+    );
+  }
+
+  async normalizeWebhookEvent(
+    rawHeaders: Record<string, string>,
+    rawBody: string,
+    webhookSecret: string
   ): Promise<NormalizedWebhookEvent> {
-    return Promise.reject(new GitProviderNotImplementedError("gitee", "normalizeWebhookEvent"));
+    return normalizeGiteeEvent(rawHeaders, rawBody, webhookSecret);
   }
 }

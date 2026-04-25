@@ -130,6 +130,24 @@ export class GitHubProvider {
             return mapPostedComment(data);
         }, PROVIDER, logger, context({ operation: "postReviewComment", repository: fullName }));
     }
+    async postPullRequestComment(fullName, prNumber, bodyMd, credential, logger) {
+        const [owner, repo] = fullName.split("/");
+        const octokit = await buildOctokit(credential);
+        return withGitPlatformErrorBoundary(async () => {
+            const { data } = await octokit.request("POST /repos/{owner}/{repo}/issues/{issue_number}/comments", {
+                owner,
+                repo,
+                issue_number: prNumber,
+                body: bodyMd,
+            });
+            logger?.debug("Posted GitHub PR conversation comment", {
+                fullName,
+                prNumber,
+                commentId: data.id,
+            });
+            return mapPostedComment(data);
+        }, PROVIDER, logger, context({ operation: "postPullRequestComment", repository: fullName }));
+    }
     async normalizeWebhookEvent(rawHeaders, rawBody, webhookSecret) {
         return normalizeGitHubEvent(rawHeaders, rawBody, webhookSecret);
     }

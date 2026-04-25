@@ -11,5 +11,6 @@ export declare class GitLabProvider implements IProvider {
     getPullRequest(_fullName: string, _prNumber: number, _credential: ProviderCredential): Promise<ProviderPullRequest>;
     getPullRequestDiff(_fullName: string, _prNumber: number, _credential: ProviderCredential): Promise<FileDiff[]>;
     postReviewComment(_fullName: string, _input: ReviewCommentInput, _credential: ProviderCredential): Promise<PostedComment>;
+    postPullRequestComment(_fullName: string, _prNumber: number, _bodyMd: string, _credential: ProviderCredential): Promise<PostedComment>;
     normalizeWebhookEvent(_rawHeaders: Record<string, string>, _rawBody: string, _webhookSecret: string): Promise<NormalizedWebhookEvent>;
 }

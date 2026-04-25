@@ -41,6 +41,9 @@ export {
 export { GitHubProvider } from "./github/provider.js";
 export { verifyGitHubWebhookSignature } from "./github/webhook.js";
 
+// Gitee provider
+export { GiteeProvider } from "./gitee/provider.js";
+export { verifyGiteeWebhookSignature } from "./gitee/webhook.js";
+
 // Stubs
 export { GitLabProvider } from "./gitlab/provider.js";
-export { GiteeProvider } from "./gitee/provider.js";

@@ -1,6 +1,12 @@
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
-import type { ReviewContext, ReviewFinding, ReviewResult } from "./types.js";
+import type {
+  ReviewContext,
+  ReviewFinding,
+  ReviewResult,
+  ReviewSummary,
+  ReviewSummaryResult,
+} from "./types.js";
 
 // ---------------------------------------------------------------------------
 // Internal log helper
@@ -29,6 +35,7 @@ export type AiAdapterConfig = {
 
 export interface AiAdapter {
   generateReviewFindings(context: ReviewContext): Promise<ReviewResult>;
+  generateReviewSummary(context: ReviewContext): Promise<ReviewSummaryResult>;
 }
 
 // ---------------------------------------------------------------------------
@@ -36,6 +43,18 @@ export interface AiAdapter {
 // ---------------------------------------------------------------------------
 
 const MAX_DIFF_CHARS = 80_000;
+
+const SUMMARY_SCHEMA = {
+  type: "object" as const,
+  properties: {
+    summaryMd: { type: "string" as const },
+    highlights: {
+      type: "array" as const,
+      items: { type: "string" as const },
+    },
+  },
+  required: ["summaryMd", "highlights"] as string[],
+};
 
 const FINDINGS_SCHEMA = {
   type: "object" as const,
@@ -138,8 +157,46 @@ ${diffText}
 </diff>`;
 }
 
+function buildSummaryUserMessage(context: ReviewContext, diffText: string): string {
+  return `You are summarizing pull request #${context.prNumber} in repository ${context.fullName} (head SHA: ${context.headSha}).
+
+Read the following diff and call the \`report_summary\` tool with:
+- \`summaryMd\`: a concise Markdown overview (3–8 sentences) describing what this PR changes and why, written for a reviewer who has not yet read the diff.
+- \`highlights\`: 2–6 short bullet strings naming the most important changes, risks, or things to double-check.
+
+Be specific. Reference file or module names where useful. Do not invent functionality not present in the diff.
+
+<diff>
+${diffText}
+</diff>`;
+}
+
 const SYSTEM_PROMPT =
   "You are a senior code reviewer. Your job is to identify real, impactful issues in code changes — bugs, security vulnerabilities, logic errors, and serious quality problems. Avoid reporting trivial style issues. Be precise about file paths and line numbers.";
+
+const SUMMARY_SYSTEM_PROMPT =
+  "You are a senior code reviewer summarizing a pull request for a teammate. Be accurate, specific, and concise. Describe what changed and why; flag noteworthy risks. Do not fabricate behavior that is not in the diff.";
+
+function validateAndNormalizeSummary(input: unknown): ReviewSummary {
+  if (typeof input !== "object" || input === null) {
+    throw new Error("Tool input: report_summary expected an object");
+  }
+  const obj = input as Record<string, unknown>;
+  const summaryMd = obj.summaryMd;
+  const highlights = obj.highlights;
+  if (typeof summaryMd !== "string" || summaryMd.trim() === "") {
+    throw new Error("Tool input: 'summaryMd' must be a non-empty string");
+  }
+  if (!Array.isArray(highlights)) {
+    throw new Error("Tool input: 'highlights' must be an array");
+  }
+  return {
+    summaryMd,
+    highlights: highlights.filter(
+      (h): h is string => typeof h === "string" && h.trim() !== ""
+    ),
+  };
+}
 
 // ---------------------------------------------------------------------------
 // AnthropicAdapter
@@ -149,6 +206,13 @@ const ANTHROPIC_TOOL: Anthropic.Tool = {
   name: "report_findings",
   description: "Report code review findings for the given pull request diff.",
   input_schema: FINDINGS_SCHEMA as Anthropic.Tool["input_schema"],
+};
+
+const ANTHROPIC_SUMMARY_TOOL: Anthropic.Tool = {
+  name: "report_summary",
+  description:
+    "Report a concise overall summary and key highlights for the given pull request diff.",
+  input_schema: SUMMARY_SCHEMA as Anthropic.Tool["input_schema"],
 };
 
 export class AnthropicAdapter implements AiAdapter {
@@ -204,6 +268,55 @@ export class AnthropicAdapter implements AiAdapter {
     const findings = validateAndNormalizeFindings(toolUseBlock.input);
     return { findings };
   }
+
+  async generateReviewSummary(
+    context: ReviewContext
+  ): Promise<ReviewSummaryResult> {
+    const diffText = buildDiffText(context);
+    if (!diffText) {
+      return { summary: { summaryMd: "_No textual diff to summarize._", highlights: [] } };
+    }
+
+    let response: Awaited<ReturnType<typeof this.client.messages.create>>;
+    try {
+      response = await this.client.messages.create({
+        model: this.model,
+        max_tokens: 2048,
+        system: SUMMARY_SYSTEM_PROMPT,
+        messages: [
+          { role: "user", content: buildSummaryUserMessage(context, diffText) },
+        ],
+        tools: [ANTHROPIC_SUMMARY_TOOL],
+        tool_choice: { type: "tool", name: "report_summary" },
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      log("error", "Anthropic API summary call failed", { error: message });
+      throw new Error(`Anthropic API summary call failed: ${message}`);
+    }
+
+    log("info", "Anthropic API summary call succeeded", {
+      prNumber: context.prNumber,
+      stop_reason: response.stop_reason,
+    });
+
+    if (response.stop_reason === "max_tokens") {
+      throw new Error("Anthropic API summary response was truncated (max_tokens)");
+    }
+
+    const toolUseBlock = response.content.find(
+      (block): block is Anthropic.ToolUseBlock => block.type === "tool_use"
+    );
+
+    if (!toolUseBlock) {
+      throw new Error(
+        "Anthropic API did not return expected tool_use block for report_summary"
+      );
+    }
+
+    const summary = validateAndNormalizeSummary(toolUseBlock.input);
+    return { summary };
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -216,6 +329,16 @@ const OPENAI_TOOL: OpenAI.Chat.Completions.ChatCompletionTool = {
     name: "report_findings",
     description: "Report code review findings for the given pull request diff.",
     parameters: FINDINGS_SCHEMA,
+  },
+};
+
+const OPENAI_SUMMARY_TOOL: OpenAI.Chat.Completions.ChatCompletionTool = {
+  type: "function",
+  function: {
+    name: "report_summary",
+    description:
+      "Report a concise overall summary and key highlights for the given pull request diff.",
+    parameters: SUMMARY_SCHEMA,
   },
 };
 
@@ -288,6 +411,70 @@ export class OpenAICompatibleAdapter implements AiAdapter {
 
     const findings = validateAndNormalizeFindings(parsed);
     return { findings };
+  }
+
+  async generateReviewSummary(
+    context: ReviewContext
+  ): Promise<ReviewSummaryResult> {
+    const diffText = buildDiffText(context);
+    if (!diffText) {
+      return { summary: { summaryMd: "_No textual diff to summarize._", highlights: [] } };
+    }
+
+    let response: OpenAI.Chat.Completions.ChatCompletion;
+    try {
+      response = await this.client.chat.completions.create({
+        model: this.model,
+        max_tokens: 2048,
+        messages: [
+          { role: "system", content: SUMMARY_SYSTEM_PROMPT },
+          {
+            role: "user",
+            content: buildSummaryUserMessage(context, diffText),
+          },
+        ],
+        tools: [OPENAI_SUMMARY_TOOL],
+        tool_choice: { type: "function", function: { name: "report_summary" } },
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      log("error", "OpenAI-compatible API summary call failed", { error: message });
+      throw new Error(`OpenAI-compatible API summary call failed: ${message}`);
+    }
+
+    const choice = response.choices[0];
+    log("info", "OpenAI-compatible API summary call succeeded", {
+      prNumber: context.prNumber,
+      finish_reason: choice?.finish_reason,
+    });
+
+    if (choice?.finish_reason === "length") {
+      throw new Error("OpenAI-compatible API summary response was truncated (length)");
+    }
+
+    const toolCall = choice?.message?.tool_calls?.[0];
+    if (!toolCall || toolCall.type !== "function") {
+      throw new Error(
+        "OpenAI-compatible API did not return expected tool call for report_summary"
+      );
+    }
+    if (toolCall.function.name !== "report_summary") {
+      throw new Error(
+        "OpenAI-compatible API did not return expected tool call for report_summary"
+      );
+    }
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(toolCall.function.arguments);
+    } catch {
+      throw new Error(
+        `Failed to parse report_summary arguments: ${toolCall.function.arguments}`
+      );
+    }
+
+    const summary = validateAndNormalizeSummary(parsed);
+    return { summary };
   }
 }
 

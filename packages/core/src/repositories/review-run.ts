@@ -89,6 +89,7 @@ export interface UpdateReviewRunInput {
   errorMessage?: string | null;
   findingsCount?: number;
   analyzedFilesCount?: number;
+  summaryMd?: string | null;
 }
 
 export async function updateReviewRun(
@@ -130,6 +131,10 @@ export async function updateReviewRun(
   if (fields.analyzedFilesCount !== undefined) {
     setClauses.push(`analyzed_files_count = $${idx++}`);
     params.push(fields.analyzedFilesCount);
+  }
+  if (fields.summaryMd !== undefined) {
+    setClauses.push(`summary_md = $${idx++}`);
+    params.push(fields.summaryMd);
   }
 
   params.push(id);

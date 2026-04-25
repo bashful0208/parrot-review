@@ -1,15 +1,17 @@
+import type { Logger } from "@reviewer/core";
 import type { FileDiff, Installation, PostedComment, ProviderPullRequest, ProviderRepository, ReviewCommentInput } from "../domain/models.js";
 import type { NormalizedWebhookEvent } from "../domain/webhook.js";
 import type { ProviderCredential } from "../credentials.js";
 import type { IProvider, ListPullRequestsOptions, ListRepositoriesOptions } from "../provider.js";
 export declare class GiteeProvider implements IProvider {
     readonly provider: "gitee";
-    getInstallation(_installationId: string, _credential: ProviderCredential): Promise<Installation>;
-    listRepositories(_credential: ProviderCredential, _options?: ListRepositoriesOptions): Promise<ProviderRepository[]>;
-    getRepository(_fullName: string, _credential: ProviderCredential): Promise<ProviderRepository>;
-    listPullRequests(_fullName: string, _credential: ProviderCredential, _options?: ListPullRequestsOptions): Promise<ProviderPullRequest[]>;
-    getPullRequest(_fullName: string, _prNumber: number, _credential: ProviderCredential): Promise<ProviderPullRequest>;
-    getPullRequestDiff(_fullName: string, _prNumber: number, _credential: ProviderCredential): Promise<FileDiff[]>;
-    postReviewComment(_fullName: string, _input: ReviewCommentInput, _credential: ProviderCredential): Promise<PostedComment>;
-    normalizeWebhookEvent(_rawHeaders: Record<string, string>, _rawBody: string, _webhookSecret: string): Promise<NormalizedWebhookEvent>;
+    getInstallation(_installationId: string, credential: ProviderCredential, logger?: Logger): Promise<Installation>;
+    listRepositories(credential: ProviderCredential, options?: ListRepositoriesOptions, logger?: Logger): Promise<ProviderRepository[]>;
+    getRepository(fullName: string, credential: ProviderCredential, logger?: Logger): Promise<ProviderRepository>;
+    listPullRequests(fullName: string, credential: ProviderCredential, options?: ListPullRequestsOptions, logger?: Logger): Promise<ProviderPullRequest[]>;
+    getPullRequest(fullName: string, prNumber: number, credential: ProviderCredential, logger?: Logger): Promise<ProviderPullRequest>;
+    getPullRequestDiff(fullName: string, prNumber: number, credential: ProviderCredential, logger?: Logger): Promise<FileDiff[]>;
+    postReviewComment(fullName: string, input: ReviewCommentInput, credential: ProviderCredential, logger?: Logger): Promise<PostedComment>;
+    postPullRequestComment(fullName: string, prNumber: number, bodyMd: string, credential: ProviderCredential, logger?: Logger): Promise<PostedComment>;
+    normalizeWebhookEvent(rawHeaders: Record<string, string>, rawBody: string, webhookSecret: string): Promise<NormalizedWebhookEvent>;
 }

@@ -14,8 +14,28 @@ import {
 } from "@reviewer/core";
 import type { Logger } from "@reviewer/core";
 import type { WebhookJobPayload } from "@reviewer/core";
-import { generateReviewFindings } from "@reviewer/ai";
-import { GitHubProvider } from "@reviewer/git";
+import { generateReviewFindings, generateReviewSummary } from "@reviewer/ai";
+import {
+  GiteeProvider,
+  GitHubProvider,
+  type IProvider,
+  type ProviderCredential,
+} from "@reviewer/git";
+
+function buildProvider(provider: string): IProvider {
+  if (provider === "github") return new GitHubProvider();
+  if (provider === "gitee") return new GiteeProvider();
+  throw new Error(`Unsupported git provider: ${provider}`);
+}
+
+function buildCredential(
+  provider: string,
+  token: string
+): ProviderCredential {
+  if (provider === "github") return { type: "github_pat", token };
+  if (provider === "gitee") return { type: "gitee_pat", token };
+  throw new Error(`Unsupported git provider for credential: ${provider}`);
+}
 
 export async function handleReviewJob(
   job: Job<WebhookJobPayload>,
@@ -37,10 +57,10 @@ export async function handleReviewJob(
     if (!repo) {
       throw new Error(`Repository ${repositoryId} not found or missing credential`);
     }
-    const credential = { type: "github_pat" as const, token: repo.credentialToken };
+    const credential = buildCredential(repo.provider, repo.credentialToken);
 
     // 步骤 3: 拉取 PR 详情
-    const provider = new GitHubProvider();
+    const provider = buildProvider(repo.provider);
     const pr = await provider.getPullRequest(repo.full_name, prNumber, credential, logger);
 
     // 步骤 4: Upsert pull_requests 记录
@@ -85,15 +105,38 @@ export async function handleReviewJob(
       if (!activeConfig) {
         throw new Error(`No active AI provider config for organization ${organizationId}`);
       }
-      const result = await generateReviewFindings(
-        { fullName: repo.full_name, prNumber, headSha, diffs },
-        {
-          provider: activeConfig.provider,
-          model: activeConfig.model,
-          apiKey: activeConfig.apiKey,
-          baseUrl: activeConfig.baseUrl ?? undefined,
-        }
-      );
+      const adapterConfig = {
+        provider: activeConfig.provider,
+        model: activeConfig.model,
+        apiKey: activeConfig.apiKey,
+        baseUrl: activeConfig.baseUrl ?? undefined,
+      };
+      const reviewContext = {
+        fullName: repo.full_name,
+        prNumber,
+        headSha,
+        diffs,
+      };
+
+      // 步骤 8a: 生成行级 findings
+      const result = await generateReviewFindings(reviewContext, adapterConfig);
+
+      // 步骤 8b: 生成 PR 整体摘要（失败不中断行级链路；与回写策略一致）
+      let summaryMd: string | null = null;
+      try {
+        const { summary } = await generateReviewSummary(reviewContext, adapterConfig);
+        const highlightsMd =
+          summary.highlights.length > 0
+            ? "\n\n**Highlights:**\n" +
+              summary.highlights.map((h) => `- ${h}`).join("\n")
+            : "";
+        summaryMd = `${summary.summaryMd}${highlightsMd}`;
+      } catch (err) {
+        logger.warn("Failed to generate PR summary", {
+          review_run_id: runId,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
 
       // 步骤 9: 计算 fingerprint 并写入 review_issues
       const issueInputs = result.findings.map((f) => ({
@@ -130,7 +173,7 @@ export async function handleReviewJob(
             pullRequestId,
             reviewRunId: runId!,
             reviewIssueId: issue.id,
-            provider: "github",
+            provider: repo.provider,
             bodyMd,
             filePath: finding.filePath,
             lineNumber: finding.endLine,
@@ -169,12 +212,51 @@ export async function handleReviewJob(
         }
       }
 
-      // 步骤 11: 更新 review_run 为 succeeded
+      // 步骤 11: 回写 PR 整体摘要评论（与 inline 评论同策略：失败仅 warn 不中断）
+      if (summaryMd) {
+        try {
+          const { id: commentId } = await insertReviewComment({
+            organizationId,
+            pullRequestId,
+            reviewRunId: runId!,
+            reviewIssueId: null,
+            provider: repo.provider,
+            bodyMd: summaryMd,
+            filePath: null,
+            lineNumber: null,
+            isInline: false,
+          });
+
+          try {
+            const posted = await provider.postPullRequestComment(
+              repo.full_name,
+              prNumber,
+              summaryMd,
+              credential,
+              logger
+            );
+            await markCommentPosted(commentId, posted.externalCommentId, posted.createdAt);
+          } catch (err) {
+            logger.warn("Failed to post PR summary comment to platform", {
+              comment_id: commentId,
+              error: err instanceof Error ? err.message : String(err),
+            });
+          }
+        } catch (err) {
+          logger.warn("Failed to insert PR summary comment record", {
+            review_run_id: runId,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+      }
+
+      // 步骤 12: 更新 review_run 为 succeeded
       await updateReviewRun(runId, {
         status: "succeeded",
         finishedAt: new Date(),
         findingsCount: insertedIssues.length,
         analyzedFilesCount: diffs.length,
+        summaryMd,
       });
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);

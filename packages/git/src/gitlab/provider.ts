@@ -71,6 +71,17 @@ export class GitLabProvider implements IProvider {
     return Promise.reject(new GitProviderNotImplementedError("gitlab", "postReviewComment"));
   }
 
+  postPullRequestComment(
+    _fullName: string,
+    _prNumber: number,
+    _bodyMd: string,
+    _credential: ProviderCredential
+  ): Promise<PostedComment> {
+    return Promise.reject(
+      new GitProviderNotImplementedError("gitlab", "postPullRequestComment")
+    );
+  }
+
   normalizeWebhookEvent(
     _rawHeaders: Record<string, string>,
     _rawBody: string,

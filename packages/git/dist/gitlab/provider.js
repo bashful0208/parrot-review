@@ -22,6 +22,9 @@ export class GitLabProvider {
     postReviewComment(_fullName, _input, _credential) {
         return Promise.reject(new GitProviderNotImplementedError("gitlab", "postReviewComment"));
     }
+    postPullRequestComment(_fullName, _prNumber, _bodyMd, _credential) {
+        return Promise.reject(new GitProviderNotImplementedError("gitlab", "postPullRequestComment"));
+    }
     normalizeWebhookEvent(_rawHeaders, _rawBody, _webhookSecret) {
         return Promise.reject(new GitProviderNotImplementedError("gitlab", "normalizeWebhookEvent"));
     }

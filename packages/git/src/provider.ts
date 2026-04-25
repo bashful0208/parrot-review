@@ -80,6 +80,18 @@ export interface IProvider {
     logger?: Logger
   ): Promise<PostedComment>;
 
+  /**
+   * 在 PR 的 conversation 区发一条整体评论（非行级），
+   * 通常用于回写 PR 摘要。
+   */
+  postPullRequestComment(
+    fullName: string,
+    prNumber: number,
+    bodyMd: string,
+    credential: ProviderCredential,
+    logger?: Logger
+  ): Promise<PostedComment>;
+
   normalizeWebhookEvent(
     rawHeaders: Record<string, string>,
     rawBody: string,

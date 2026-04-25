@@ -260,6 +260,39 @@ export class GitHubProvider implements IProvider {
     );
   }
 
+  async postPullRequestComment(
+    fullName: string,
+    prNumber: number,
+    bodyMd: string,
+    credential: ProviderCredential,
+    logger?: Logger
+  ): Promise<PostedComment> {
+    const [owner, repo] = fullName.split("/");
+    const octokit = await buildOctokit(credential);
+    return withGitPlatformErrorBoundary(
+      async () => {
+        const { data } = await (octokit as Awaited<ReturnType<typeof getPatOctokit>>).request(
+          "POST /repos/{owner}/{repo}/issues/{issue_number}/comments",
+          {
+            owner,
+            repo,
+            issue_number: prNumber,
+            body: bodyMd,
+          }
+        );
+        logger?.debug("Posted GitHub PR conversation comment", {
+          fullName,
+          prNumber,
+          commentId: data.id,
+        });
+        return mapPostedComment(data);
+      },
+      PROVIDER,
+      logger,
+      context({ operation: "postPullRequestComment", repository: fullName })
+    );
+  }
+
   async normalizeWebhookEvent(
     rawHeaders: Record<string, string>,
     rawBody: string,
