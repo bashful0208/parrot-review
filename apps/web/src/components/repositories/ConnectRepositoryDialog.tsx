@@ -52,7 +52,7 @@ function Sidebar({ current }: { current: 1 | 2 | 3 }) {
   };
 
   return (
-    <div className="flex w-64 shrink-0 flex-col bg-zinc-950 px-7 py-8">
+    <div className="hidden md:flex w-56 shrink-0 flex-col bg-zinc-950 px-6 py-8">
       {/* Brand mark */}
       <div className="mb-8 flex items-center gap-2.5">
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10">
@@ -242,8 +242,8 @@ export default function ConnectRepositoryDialog({
         </Button>
       </DialogTrigger>
 
-      <DialogContent className="w-[49rem] max-w-[calc(100vw-2rem)] gap-0 p-0 overflow-hidden max-h-[85vh]">
-        <div className="flex w-full h-[640px] max-h-[85vh]">
+      <DialogContent className="w-[44rem] max-w-[calc(100vw-2rem)] gap-0 p-0 overflow-hidden max-h-[85vh]">
+        <div className="flex w-full h-[600px] max-h-[85vh]">
 
           {/* Left sidebar */}
           <Sidebar current={step} />
@@ -252,7 +252,7 @@ export default function ConnectRepositoryDialog({
           <div className="flex flex-1 flex-col min-w-0">
 
             {/* Body */}
-            <div className="flex-1 min-h-0 overflow-hidden px-8 py-8">
+            <div className="flex-1 min-h-0 overflow-hidden px-6 py-6 md:px-8 md:py-8">
 
               {/* Step 1 */}
               {step === 1 && (
@@ -415,7 +415,7 @@ export default function ConnectRepositoryDialog({
                       </span>
                     )}
                   </div>
-                  <ScrollArea className="flex-1 min-h-0 -mx-1 px-1">
+                  <ScrollArea className="flex-1 min-h-0">
                     {filteredRepos.length === 0 ? (
                       <div className="flex h-full items-center justify-center py-16 text-center">
                         <div>
@@ -425,7 +425,7 @@ export default function ConnectRepositoryDialog({
                         </div>
                       </div>
                     ) : (
-                    <div className="space-y-1.5 pb-1">
+                    <div className="space-y-1.5 pb-1 pr-3">
                       {filteredRepos.map((repo) => {
                         const isSelected = selectedRepo?.providerRepoId === repo.providerRepoId;
                         return (
