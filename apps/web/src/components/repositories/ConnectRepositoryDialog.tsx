@@ -7,7 +7,6 @@ import { Check, CheckCircle2, Circle, Copy, GitBranch, Loader2, Search, Webhook,
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Dialog,
   DialogContent,
@@ -423,7 +422,7 @@ export default function ConnectRepositoryDialog({
                       </span>
                     )}
                   </div>
-                  <ScrollArea className="flex-1 min-h-0">
+                  <div className="flex-1 min-h-0 overflow-y-auto">
                     {filteredRepos.length === 0 ? (
                       <div className="flex h-full items-center justify-center py-16 text-center">
                         <div>
@@ -433,7 +432,7 @@ export default function ConnectRepositoryDialog({
                         </div>
                       </div>
                     ) : (
-                    <div className="space-y-1.5 pb-1 pr-3">
+                    <div className="space-y-1.5 pb-1 pr-1">
                       {filteredRepos.map((repo) => {
                         const isSelected = selectedRepo?.providerRepoId === repo.providerRepoId;
                         return (
@@ -482,7 +481,7 @@ export default function ConnectRepositoryDialog({
                       })}
                     </div>
                     )}
-                  </ScrollArea>
+                  </div>
                 </div>
               )}
 
