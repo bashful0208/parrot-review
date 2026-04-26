@@ -242,17 +242,17 @@ export default function ConnectRepositoryDialog({
         </Button>
       </DialogTrigger>
 
-      <DialogContent className="max-w-[49rem] gap-0 p-0 overflow-hidden">
-        <div className="flex min-h-[480px]">
+      <DialogContent className="max-w-[49rem] gap-0 p-0 overflow-hidden max-h-[85vh]">
+        <div className="flex h-[640px] max-h-[85vh]">
 
           {/* Left sidebar */}
           <Sidebar current={step} />
 
           {/* Right content */}
-          <div className="flex flex-1 flex-col">
+          <div className="flex flex-1 flex-col min-w-0">
 
             {/* Body */}
-            <div className="flex-1 px-8 py-8">
+            <div className="flex-1 min-h-0 overflow-hidden px-8 py-8">
 
               {/* Step 1 */}
               {step === 1 && (
@@ -415,7 +415,7 @@ export default function ConnectRepositoryDialog({
                       </span>
                     )}
                   </div>
-                  <ScrollArea className="flex-1 h-72 -mx-1 px-1">
+                  <ScrollArea className="flex-1 min-h-0 -mx-1 px-1">
                     {filteredRepos.length === 0 ? (
                       <div className="flex h-full items-center justify-center py-16 text-center">
                         <div>
