@@ -30,9 +30,6 @@ export type WorkerRuntimeEnv = {
     url: string;
     queueName: string;
   };
-  webhook: {
-    secret: string;
-  };
 };
 
 export type RuntimeEnv = {
@@ -42,9 +39,6 @@ export type RuntimeEnv = {
   redis: {
     url: string;
     queueName: string;
-  };
-  webhook: {
-    secret: string;
   };
   defaultModel: {
     provider: DefaultModelProvider;
@@ -135,9 +129,6 @@ export function loadWorkerEnv(
       url: parsed.data.REDIS_URL,
       queueName: parsed.data.REVIEW_QUEUE_NAME,
     },
-    webhook: {
-      secret: parsed.data.WEBHOOK_SECRET,
-    },
   };
 }
 
@@ -155,9 +146,6 @@ export function loadServerEnv(env: Partial<ServerEnvInput> = process.env): Runti
     redis: {
       url: parsed.data.REDIS_URL,
       queueName: parsed.data.REVIEW_QUEUE_NAME,
-    },
-    webhook: {
-      secret: parsed.data.WEBHOOK_SECRET,
     },
     defaultModel: {
       provider: parsed.data.DEFAULT_MODEL_PROVIDER,

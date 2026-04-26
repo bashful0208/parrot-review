@@ -23,7 +23,6 @@ test("web build regenerates core dist when committed artifacts are missing", asy
       env: {
         ...process.env,
         DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:5432/reviewer",
-        WEBHOOK_SECRET: "secret",
         DEFAULT_MODEL_PROVIDER: "anthropic",
         DEFAULT_MODEL_NAME: "claude-3-7-sonnet",
       },

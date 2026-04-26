@@ -32,9 +32,9 @@ test("buildWorkerConfig reads redis host and port from REDIS_URL", () => {
   assert.equal(config.connection.port, 6381);
 });
 
-test("worker startup still requires database and webhook env", async () => {
+test("worker startup still requires database env", async () => {
   await assert.rejects(() => main({ REDIS_URL: "redis://127.0.0.1:6399" }), {
-    message: /DATABASE_URL|WEBHOOK_SECRET/,
+    message: /DATABASE_URL/,
   });
 });
 
@@ -43,7 +43,6 @@ test("worker startup reaches Redis check without default model env", async () =>
     () =>
       main({
         DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:5432/reviewer",
-        WEBHOOK_SECRET: "secret",
         REDIS_URL: "redis://127.0.0.1:6399",
       }),
     /ECONNREFUSED|connect/i
@@ -60,7 +59,6 @@ test(
       env: {
         ...process.env,
         DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:5432/reviewer",
-        WEBHOOK_SECRET: "secret",
         REDIS_URL: "redis://127.0.0.1:6399",
       },
       stdio: ["ignore", "pipe", "pipe"],
@@ -111,7 +109,6 @@ test(
       env: {
         ...process.env,
         DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:5432/reviewer",
-        WEBHOOK_SECRET: "secret",
         REDIS_URL: "redis://127.0.0.1:6399",
       },
       stdio: ["ignore", "pipe", "pipe"],

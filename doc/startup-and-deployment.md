@@ -67,7 +67,6 @@ pnpm run setup
 | 变量名 | 用途 | 归属 | 本地开发 | 部署环境 | 默认值 |
 | --- | --- | --- | --- | --- | --- |
 | `DATABASE_URL` | PostgreSQL 连接串 | web / worker | 必填 | 必填 | 无 |
-| `WEBHOOK_SECRET` | webhook 签名密钥 | web / worker | 必填 | 必填 | 无 |
 | `DEFAULT_MODEL_PROVIDER` | 默认模型 provider（legacy env fallback，当前 web 启动仍依赖） | web / ai | 必填（web） | 必填（web） | 无 |
 | `DEFAULT_MODEL_NAME` | 默认模型名称（legacy env fallback，当前 web 启动仍依赖） | web / ai | 必填（web） | 必填（web） | 无 |
 | `REDIS_URL` | Redis 连接串 | web / worker | 可选 | 建议必填 | `redis://127.0.0.1:6379` |
@@ -75,8 +74,9 @@ pnpm run setup
 
 说明：
 
-- `web` 当前通过服务端模块早期校验 `DATABASE_URL`、`WEBHOOK_SECRET`、`DEFAULT_MODEL_*` 与默认队列配置；缺失关键变量时会直接报错
-- `worker` 在启动最前面会校验 `DATABASE_URL`、`WEBHOOK_SECRET` 与队列相关配置，再继续检查 Redis 可达性
+- Webhook 签名密钥已下放为仓库级：每个接入仓库 onboarding 时由后端生成独立 secret，存到 `repo_integrations.metadata.webhook_secret`，通过 web UI 复制后填入 GitHub / Gitee 后台。已不再使用全局 `WEBHOOK_SECRET` 环境变量
+- `web` 当前通过服务端模块早期校验 `DATABASE_URL`、`DEFAULT_MODEL_*` 与默认队列配置；缺失关键变量时会直接报错
+- `worker` 在启动最前面会校验 `DATABASE_URL` 与队列相关配置，再继续检查 Redis 可达性
 - `packages/ai` 当前仍提供基于环境变量的 provider 配置入口，但默认模型已迁移到数据库；因此 `DEFAULT_MODEL_*` 已不再阻塞 worker 启动，不过当前 web 启动仍沿用这组 legacy fallback
 - 数据库 schema SQL 当前统一维护在 `postgres/migrations`
 
@@ -124,14 +124,13 @@ pnpm --dir apps/worker run dev
 通过根目录脚本启动时，会优先加载仓库根目录 `.env`；建议先复制 `.env.example`。`worker` 本地开发至少需要先提供当前代码校验仍要求的这些变量：
 
 - `DATABASE_URL`
-- `WEBHOOK_SECRET`
 
 如果没有显式配置 Redis 相关变量，则本地开发默认使用：
 
 - `REDIS_URL=redis://127.0.0.1:6379`
 - `REVIEW_QUEUE_NAME=review-jobs`
 
-`worker` 启动不再要求 `DEFAULT_MODEL_PROVIDER` / `DEFAULT_MODEL_NAME`，但仍会在配置校验阶段要求 `DATABASE_URL` 与 `WEBHOOK_SECRET`。
+`worker` 启动不再要求 `DEFAULT_MODEL_PROVIDER` / `DEFAULT_MODEL_NAME`，仅会在配置校验阶段要求 `DATABASE_URL`。
 
 也就是说，直接执行根目录的 `pnpm run dev` 或 `pnpm run dev:worker` 时，worker 会尝试连接本机 Redis 并消费队列；如果 Redis 不可达，worker 会立即失败退出，而不是进入静默 fallback。
 
@@ -143,7 +142,6 @@ pnpm --dir apps/worker run dev
 
 ```bash
 export DATABASE_URL="postgresql://postgres:postgres@your-postgres-host:5432/reviewer"
-export WEBHOOK_SECRET="replace-with-webhook-secret"
 export REDIS_URL="redis://:your-password@your-redis-host:6379"
 export REVIEW_QUEUE_NAME="review-jobs"
 
@@ -152,7 +150,7 @@ pnpm run dev:worker
 
 说明：
 
-- `DATABASE_URL` / `WEBHOOK_SECRET`：当前 worker 启动阶段必需的后端配置
+- `DATABASE_URL`：当前 worker 启动阶段必需的后端配置
 - `REDIS_URL`：Redis 连接串；不显式配置时默认值是 `redis://127.0.0.1:6379`
 - `REVIEW_QUEUE_NAME`：队列名，默认值是 `review-jobs`
 - `DEFAULT_MODEL_PROVIDER` / `DEFAULT_MODEL_NAME`：当前仅保留给 `packages/ai` 的 legacy env fallback，不再阻塞 worker 启动
@@ -163,7 +161,6 @@ pnpm run dev:worker
 ```bash
 pnpm --dir apps/worker run build
 export DATABASE_URL="postgresql://postgres:postgres@your-postgres-host:5432/reviewer"
-export WEBHOOK_SECRET="replace-with-webhook-secret"
 export REDIS_URL="redis://:your-password@your-redis-host:6379"
 export REVIEW_QUEUE_NAME="review-jobs"
 pnpm --dir apps/worker run start
@@ -271,7 +268,7 @@ Worker 当前职责：
 
 部署要求：
 
-- `DATABASE_URL`、`WEBHOOK_SECRET` 需要在部署前完整配置
+- `DATABASE_URL` 需要在部署前完整配置；webhook 签名密钥已下放为仓库级，由 onboarding 流程在数据库中存储
 - `DEFAULT_MODEL_PROVIDER`、`DEFAULT_MODEL_NAME` 对 worker 启动已非必需，但当前 web 启动和 `packages/ai` 的 legacy env fallback 仍会读取它们
 - 目标环境中的 Redis 必须可达，否则 worker 会在启动时立即失败退出
 - 建议显式配置 `REDIS_URL`
@@ -294,7 +291,6 @@ pnpm --dir apps/web run start
 pnpm run setup
 pnpm --dir apps/worker run build
 export DATABASE_URL="postgresql://postgres:postgres@your-postgres-host:5432/reviewer"
-export WEBHOOK_SECRET="replace-with-webhook-secret"
 export REDIS_URL="redis://:your-password@your-redis-host:6379"
 export REVIEW_QUEUE_NAME="review-jobs"
 pnpm --dir apps/worker run start

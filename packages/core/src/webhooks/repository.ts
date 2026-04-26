@@ -23,14 +23,22 @@ export interface RepoIntegrationLookup {
   repository_id: string;
   organization_id: string;
   installation_id: string | null;
+  webhook_secret: string;
+}
+
+interface RepoIntegrationLookupRow {
+  repository_id: string;
+  organization_id: string;
+  installation_id: string | null;
+  metadata: unknown;
 }
 
 export async function findRepoIntegrationByProviderRepoId(
   provider: string,
   providerRepoId: string
 ): Promise<RepoIntegrationLookup | null> {
-  const result = await getPool().query<RepoIntegrationLookup>(
-    `select ri.repository_id, ri.organization_id, ri.installation_id
+  const result = await getPool().query<RepoIntegrationLookupRow>(
+    `select ri.repository_id, ri.organization_id, ri.installation_id, ri.metadata
        from public.repo_integrations ri
        join public.repositories r on r.id = ri.repository_id
       where ri.provider = $1
@@ -39,7 +47,15 @@ export async function findRepoIntegrationByProviderRepoId(
       limit 1`,
     [provider, providerRepoId]
   );
-  return result.rows[0] ?? null;
+  const row = result.rows[0];
+  if (!row) return null;
+  const meta = row.metadata as { webhook_secret?: string } | null;
+  return {
+    repository_id: row.repository_id,
+    organization_id: row.organization_id,
+    installation_id: row.installation_id,
+    webhook_secret: meta?.webhook_secret ?? "",
+  };
 }
 
 export interface InsertWebhookEventInput {

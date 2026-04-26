@@ -38,14 +38,12 @@ export const queueEnvSchema = z.object({
 export const workerEnvSchema = z
   .object({
     DATABASE_URL: databaseUrl,
-    WEBHOOK_SECRET: requiredString,
   })
   .extend(queueEnvSchema.shape);
 
 export const serverEnvSchema = z
   .object({
     DATABASE_URL: databaseUrl,
-    WEBHOOK_SECRET: requiredString,
     DEFAULT_MODEL_PROVIDER: defaultModelProviderSchema,
     DEFAULT_MODEL_NAME: requiredString,
   })

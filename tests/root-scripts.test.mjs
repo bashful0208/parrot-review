@@ -67,7 +67,7 @@ test("root package.json exposes shell script entrypoints", async () => {
 
   assert.deepEqual(packageJson.scripts, {
     setup: "sh ./scripts/setup.sh",
-    test: "node --test tests/*.test.mjs",
+    test: "node --test tests/*.test.mjs && pnpm -r --if-present run test",
     build:
       "pnpm --dir packages/core run build && pnpm --dir apps/web run build && pnpm --dir apps/worker run build",
     dev: "sh ./scripts/dev.sh",

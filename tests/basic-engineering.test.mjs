@@ -49,14 +49,13 @@ test("worker dev script uses tsx watch subcommand syntax", async () => {
   );
 });
 
-test("worker env validation keeps database/webhook requirements but drops default model env", async () => {
+test("worker env validation keeps database requirement but drops default model env", async () => {
   const { validateWebEnv, validateWorkerEnv } = await import(
     "../packages/core/src/config/runtime.ts"
   );
 
   const workerEnv = validateWorkerEnv({
     DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:5432/reviewer",
-    WEBHOOK_SECRET: "secret",
   });
 
   assert.equal(
@@ -71,7 +70,7 @@ test("worker env validation keeps database/webhook requirements but drops defaul
       error instanceof Error &&
       /\[worker\][\s\S]*Missing:/.test(error.message) &&
       /DATABASE_URL/.test(error.message) &&
-      /WEBHOOK_SECRET/.test(error.message) &&
+      !/WEBHOOK_SECRET/.test(error.message) &&
       !/DEFAULT_MODEL_PROVIDER/.test(error.message) &&
       !/DEFAULT_MODEL_NAME/.test(error.message)
     );
@@ -83,7 +82,8 @@ test("worker env validation keeps database/webhook requirements but drops defaul
       /\[web\][\s\S]*Missing:/.test(error.message) &&
       /DATABASE_URL/.test(error.message) &&
       /DEFAULT_MODEL_PROVIDER/.test(error.message) &&
-      /DEFAULT_MODEL_NAME/.test(error.message)
+      /DEFAULT_MODEL_NAME/.test(error.message) &&
+      !/WEBHOOK_SECRET/.test(error.message)
     );
   });
 });
@@ -98,7 +98,6 @@ test("core config schema applies defaults and reports missing keys clearly", asy
 
   const env = loadServerEnv({
     DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:5432/reviewer",
-    WEBHOOK_SECRET: "secret",
     DEFAULT_MODEL_PROVIDER: "anthropic",
     DEFAULT_MODEL_NAME: "claude-3-7-sonnet",
   });
@@ -116,7 +115,6 @@ test("core config schema applies defaults and reports missing keys clearly", asy
     DATABASE_URL: "postgresql://postgres:postgres@127.0.0.1:5432/reviewer",
     REDIS_URL: "   ",
     REVIEW_QUEUE_NAME: "   ",
-    WEBHOOK_SECRET: "secret",
     DEFAULT_MODEL_PROVIDER: "anthropic",
     DEFAULT_MODEL_NAME: "claude-3-7-sonnet",
   });
@@ -132,11 +130,7 @@ test("core config schema applies defaults and reports missing keys clearly", asy
       }),
     (error) => {
       const message = formatConfigError(error);
-      return (
-        /Missing:/.test(message) &&
-        /DATABASE_URL/.test(message) &&
-        /WEBHOOK_SECRET/.test(message)
-      );
+      return /Missing:/.test(message) && /DATABASE_URL/.test(message);
     }
   );
 
@@ -144,7 +138,6 @@ test("core config schema applies defaults and reports missing keys clearly", asy
     () =>
       loadServerEnv({
         DATABASE_URL: "https://example.com/reviewer",
-        WEBHOOK_SECRET: "secret",
         DEFAULT_MODEL_PROVIDER: "anthropic",
         DEFAULT_MODEL_NAME: "claude-3-7-sonnet",
       }),
@@ -157,7 +150,7 @@ test("core config schema applies defaults and reports missing keys clearly", asy
       error instanceof Error &&
       /\[worker\][\s\S]*Missing:/.test(error.message) &&
       /DATABASE_URL/.test(error.message) &&
-      /WEBHOOK_SECRET/.test(error.message) &&
+      !/WEBHOOK_SECRET/.test(error.message) &&
       !/DEFAULT_MODEL_PROVIDER/.test(error.message) &&
       !/DEFAULT_MODEL_NAME/.test(error.message)
     );
