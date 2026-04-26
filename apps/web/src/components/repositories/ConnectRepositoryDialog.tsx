@@ -242,8 +242,8 @@ export default function ConnectRepositoryDialog({
         </Button>
       </DialogTrigger>
 
-      <DialogContent className="max-w-[49rem] gap-0 p-0 overflow-hidden max-h-[85vh]">
-        <div className="flex h-[640px] max-h-[85vh]">
+      <DialogContent className="w-[49rem] max-w-[calc(100vw-2rem)] gap-0 p-0 overflow-hidden max-h-[85vh]">
+        <div className="flex w-full h-[640px] max-h-[85vh]">
 
           {/* Left sidebar */}
           <Sidebar current={step} />
