@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, CheckCircle2, Circle, Copy, GitBranch, Loader2, Webhook } from "lucide-react";
+import { Check, CheckCircle2, Circle, Copy, GitBranch, Loader2, Search, Webhook, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -157,6 +157,17 @@ export default function ConnectRepositoryDialog({
   const [webhookInfo, setWebhookInfo] = useState<WebhookInfo | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [repoSearch, setRepoSearch] = useState("");
+
+  const filteredRepos = (() => {
+    const q = repoSearch.trim().toLowerCase();
+    if (!q) return repoList;
+    return repoList.filter((r) =>
+      r.fullName.toLowerCase().includes(q) ||
+      r.name.toLowerCase().includes(q) ||
+      (r.description?.toLowerCase().includes(q) ?? false)
+    );
+  })();
 
   const tokenPlaceholder = provider === "gitee" ? "gitee-pat-xxxxxxxxxxxxxxxxxxxx" : "ghp_xxxxxxxxxxxxxxxxxxxx";
   const tokenHelpUrl = provider === "gitee" ? "https://gitee.com/profile/personal_access_tokens" : "https://github.com/settings/tokens/new";
@@ -169,7 +180,7 @@ export default function ConnectRepositoryDialog({
     if (!next) {
       setTimeout(() => {
         setStep(1); setProvider("github"); setToken(""); setRepoList([]);
-        setSelectedRepo(null); setWebhookInfo(null); setError("");
+        setSelectedRepo(null); setWebhookInfo(null); setError(""); setRepoSearch("");
       }, 300);
     }
   }
@@ -181,6 +192,7 @@ export default function ConnectRepositoryDialog({
     setRepoList([]);
     setSelectedRepo(null);
     setError("");
+    setRepoSearch("");
   }
 
   async function handleVerify() {
@@ -193,6 +205,7 @@ export default function ConnectRepositoryDialog({
       const data = await res.json() as { ok: boolean; repositories?: ProviderRepoItem[]; error?: string };
       if (!data.ok) { setError(data.error ?? "Verification failed"); return; }
       setRepoList(data.repositories ?? []);
+      setRepoSearch("");
       setStep(2);
     } catch { setError("Network error, please try again"); }
     finally { setLoading(false); }
@@ -358,9 +371,43 @@ export default function ConnectRepositoryDialog({
                   {error && (
                     <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
                   )}
-                  <div className="mb-3 flex items-center justify-between">
-                    <p className="text-sm text-zinc-500">
-                      <span className="font-medium text-zinc-900">{repoList.length}</span> repositories found
+                  <div className="mb-3">
+                    <div className="relative">
+                      <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
+                      <Input
+                        type="text"
+                        value={repoSearch}
+                        onChange={(e) => setRepoSearch(e.target.value)}
+                        placeholder="Filter by name, owner, or description"
+                        className="h-9 pl-9 pr-9 text-sm"
+                      />
+                      {repoSearch && (
+                        <button
+                          type="button"
+                          onClick={() => setRepoSearch("")}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700"
+                          aria-label="Clear filter"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <div className="mb-2 flex items-center justify-between">
+                    <p className="text-xs text-zinc-500">
+                      {repoSearch ? (
+                        <>
+                          <span className="font-medium text-zinc-900">{filteredRepos.length}</span>
+                          <span> of </span>
+                          <span className="font-medium text-zinc-900">{repoList.length}</span>
+                          <span> repositories</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="font-medium text-zinc-900">{repoList.length}</span>
+                          <span> repositories found</span>
+                        </>
+                      )}
                     </p>
                     {selectedRepo && (
                       <span className="text-xs text-emerald-600 font-medium flex items-center gap-1">
@@ -369,8 +416,17 @@ export default function ConnectRepositoryDialog({
                     )}
                   </div>
                   <ScrollArea className="flex-1 h-72 -mx-1 px-1">
+                    {filteredRepos.length === 0 ? (
+                      <div className="flex h-full items-center justify-center py-16 text-center">
+                        <div>
+                          <Search className="mx-auto mb-3 h-6 w-6 text-zinc-300" />
+                          <p className="text-sm font-medium text-zinc-600">No matches</p>
+                          <p className="mt-1 text-xs text-zinc-400">Try a different search term.</p>
+                        </div>
+                      </div>
+                    ) : (
                     <div className="space-y-1.5 pb-1">
-                      {repoList.map((repo) => {
+                      {filteredRepos.map((repo) => {
                         const isSelected = selectedRepo?.providerRepoId === repo.providerRepoId;
                         return (
                           <button
@@ -417,6 +473,7 @@ export default function ConnectRepositoryDialog({
                         );
                       })}
                     </div>
+                    )}
                   </ScrollArea>
                 </div>
               )}
