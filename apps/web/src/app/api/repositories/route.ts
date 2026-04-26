@@ -14,10 +14,15 @@ export const runtime = "nodejs";
 
 const logger = createLogger({ component: "api" });
 
+type SupportedProvider = "github" | "gitee";
+
+function isSupportedProvider(value: unknown): value is SupportedProvider {
+  return value === "github" || value === "gitee";
+}
+
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const requestId = crypto.randomUUID();
 
-  // Auth
   const cookieStore = await cookies();
   const sessionToken = cookieStore.get(AUTH_SESSION_COOKIE)?.value;
   const user = sessionToken ? await getSessionUser(sessionToken) : null;
@@ -26,6 +31,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   let body: {
+    provider?: unknown;
     providerRepoId?: unknown;
     name?: unknown;
     fullName?: unknown;
@@ -34,7 +40,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     token?: unknown;
   };
   try {
-    body = await req.json() as typeof body;
+    body = (await req.json()) as typeof body;
   } catch {
     return NextResponse.json(
       { ok: false, error: "Invalid request body", request_id: requestId },
@@ -43,6 +49,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   const { providerRepoId, name, fullName, ownerNamespace, defaultBranch, token } = body;
+  const provider: SupportedProvider = isSupportedProvider(body.provider)
+    ? body.provider
+    : "github";
+
   if (
     !providerRepoId || typeof providerRepoId !== "string" ||
     !name || typeof name !== "string" ||
@@ -70,7 +80,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     const result = await insertRepositoryWithIntegration({
       organizationId: orgId,
-      provider: "github",
+      provider,
       providerRepoId,
       name,
       fullName,
@@ -82,11 +92,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL;
     const host = appUrl ?? `https://${req.headers.get("host") ?? "localhost"}`;
-    const webhookUrl = `${host}/api/webhooks/github`;
+    const webhookUrl = `${host}/api/webhooks/${provider}`;
 
     logger.info("Repository connected", {
       repository_id: result.repositoryId,
       organization_id: orgId,
+      provider,
     });
 
     return NextResponse.json({
@@ -97,7 +108,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
-    logger.error("Failed to connect repository", error as Error, { operation: "connect_repository", request_id: requestId });
+    logger.error("Failed to connect repository", error as Error, {
+      operation: "connect_repository",
+      provider,
+      request_id: requestId,
+    });
     return NextResponse.json(
       { ok: false, error: message, request_id: requestId },
       { status: 500 }

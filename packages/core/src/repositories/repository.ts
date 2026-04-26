@@ -214,8 +214,12 @@ export async function insertRepositoryWithIntegration(
     }
 
     // 2. Upsert repo_integration (MVP: store credential in metadata)
+    const credentialType =
+      input.provider === "gitee" ? "gitee_pat"
+      : input.provider === "gitlab" ? "gitlab_pat"
+      : "github_pat";
     const metadata = {
-      credential: { type: "github_pat", token: input.credentialToken },
+      credential: { type: credentialType, token: input.credentialToken },
       webhook_secret: input.webhookSecret,
     };
 
