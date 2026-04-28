@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, CheckCircle2, Circle, Copy, GitBranch, Loader2, Search, Webhook, X } from "lucide-react";
+import { Check, CheckCircle2, Copy, GitBranch, Loader2, Search, Webhook, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,7 +51,7 @@ function Sidebar({ current }: { current: 1 | 2 | 3 }) {
   };
 
   return (
-    <div className="hidden md:flex w-56 shrink-0 flex-col bg-zinc-950 px-6 py-8">
+    <div className="hidden md:flex w-52 shrink-0 flex-col bg-zinc-950 px-5 py-7 border-r border-white/5">
       {/* Brand mark */}
       <div className="mb-8 flex items-center gap-2.5">
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10">
@@ -244,9 +244,9 @@ export default function ConnectRepositoryDialog({
       <DialogContent
         className="gap-0 p-0 overflow-hidden"
         style={{
-          width: "min(44rem, calc(100vw - 2rem))",
+          width: "min(52rem, calc(100vw - 2rem))",
           maxWidth: "calc(100vw - 2rem)",
-          height: "min(600px, 85vh)",
+          height: "min(620px, 85vh)",
           maxHeight: "85vh",
         }}
       >
@@ -259,7 +259,7 @@ export default function ConnectRepositoryDialog({
           <div className="flex flex-1 flex-col min-w-0">
 
             {/* Body */}
-            <div className="flex-1 min-h-0 overflow-hidden px-6 py-6 md:px-8 md:py-8">
+            <div className="flex-1 min-h-0 min-w-0 overflow-hidden px-6 py-7 md:px-7 md:py-8 md:pt-10">
 
               {/* Step 1 */}
               {step === 1 && (
@@ -378,8 +378,8 @@ export default function ConnectRepositoryDialog({
                   {error && (
                     <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
                   )}
-                  <div className="mb-3">
-                    <div className="relative">
+                  <div className="mb-3 flex items-center gap-3">
+                    <div className="relative flex-1">
                       <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" />
                       <Input
                         type="text"
@@ -399,95 +399,86 @@ export default function ConnectRepositoryDialog({
                         </button>
                       )}
                     </div>
-                  </div>
-                  <div className="mb-2 flex items-center justify-between">
-                    <p className="text-xs text-zinc-500">
+                    <span className="shrink-0 text-xs text-zinc-500 tabular-nums">
                       {repoSearch ? (
                         <>
-                          <span className="font-medium text-zinc-900">{filteredRepos.length}</span>
-                          <span> of </span>
-                          <span className="font-medium text-zinc-900">{repoList.length}</span>
-                          <span> repositories</span>
+                          <b className="font-semibold text-zinc-900">{filteredRepos.length}</b>
+                          <span className="mx-0.5">/</span>
+                          <b className="font-semibold text-zinc-900">{repoList.length}</b>
                         </>
                       ) : (
                         <>
-                          <span className="font-medium text-zinc-900">{repoList.length}</span>
-                          <span> repositories found</span>
+                          <b className="font-semibold text-zinc-900">{repoList.length}</b>
+                          <span> repos</span>
                         </>
                       )}
-                    </p>
-                    {selectedRepo && (
-                      <span className="text-xs text-emerald-600 font-medium flex items-center gap-1">
-                        <Check className="h-3.5 w-3.5" />{selectedRepo.name}
-                      </span>
-                    )}
+                    </span>
                   </div>
-                  <div className="flex-1 min-h-0 overflow-y-auto">
-                    {filteredRepos.length === 0 ? (
-                      <div className="flex h-full items-center justify-center py-16 text-center">
-                        <div>
-                          <Search className="mx-auto mb-3 h-6 w-6 text-zinc-300" />
-                          <p className="text-sm font-medium text-zinc-600">No matches</p>
-                          <p className="mt-1 text-xs text-zinc-400">Try a different search term.</p>
+                  <div className="relative flex-1 min-h-0">
+                    <div className="absolute inset-0 overflow-y-auto pr-1">
+                      {filteredRepos.length === 0 ? (
+                        <div className="flex h-full items-center justify-center py-16 text-center">
+                          <div>
+                            <Search className="mx-auto mb-3 h-6 w-6 text-zinc-300" />
+                            <p className="text-sm font-medium text-zinc-600">No matches</p>
+                            <p className="mt-1 text-xs text-zinc-400">Try a different search term.</p>
+                          </div>
                         </div>
-                      </div>
-                    ) : (
-                    <div className="space-y-1.5 pb-1 pr-1">
-                      {filteredRepos.map((repo) => {
-                        const isSelected = selectedRepo?.providerRepoId === repo.providerRepoId;
-                        return (
-                          <button
-                            key={repo.providerRepoId}
-                            type="button"
-                            disabled={repo.alreadyConnected}
-                            onClick={() => !repo.alreadyConnected && setSelectedRepo(repo)}
-                            className={cn(
-                              "w-full rounded-xl border px-4 py-3 text-left transition-all duration-150",
-                              repo.alreadyConnected && "cursor-not-allowed border-slate-100 opacity-40",
-                              !repo.alreadyConnected && !isSelected && "border-slate-200 bg-white hover:border-zinc-300 hover:shadow-sm",
-                              isSelected && "border-zinc-900 bg-zinc-950 text-white shadow-sm"
-                            )}
-                          >
-                            <div className="flex items-center justify-between gap-3">
-                              <div className="flex min-w-0 items-center gap-2.5">
-                                <GitBranch className={cn("h-3.5 w-3.5 shrink-0", isSelected ? "text-zinc-300" : "text-zinc-400")} />
-                                <span className={cn("truncate text-sm font-medium", isSelected ? "text-white" : "text-zinc-900")}>
-                                  {repo.fullName}
-                                </span>
-                              </div>
-                              <div className="flex shrink-0 items-center gap-1.5">
-                                {repo.alreadyConnected && (
-                                  <Badge variant="secondary" className="text-[11px]">Connected</Badge>
+                      ) : (
+                        <div className="space-y-1 pb-1">
+                          {filteredRepos.map((repo) => {
+                            const isSelected = selectedRepo?.providerRepoId === repo.providerRepoId;
+                            return (
+                              <button
+                                key={repo.providerRepoId}
+                                type="button"
+                                disabled={repo.alreadyConnected}
+                                onClick={() => !repo.alreadyConnected && setSelectedRepo(repo)}
+                                className={cn(
+                                  "w-full rounded-lg border px-3.5 py-2.5 text-left transition-colors duration-150",
+                                  repo.alreadyConnected && "cursor-not-allowed border-slate-100 opacity-40",
+                                  !repo.alreadyConnected && !isSelected && "border-slate-200 bg-white hover:border-zinc-300 hover:bg-zinc-50",
+                                  isSelected && "border-zinc-900 bg-zinc-950 text-white"
                                 )}
-                                <span className={cn(
-                                  "rounded-full px-2 py-0.5 text-[11px] font-medium border",
-                                  isSelected
-                                    ? "border-zinc-700 bg-zinc-800 text-zinc-300"
-                                    : repo.isPrivate
-                                    ? "border-zinc-200 bg-zinc-50 text-zinc-500"
-                                    : "border-sky-200 bg-sky-50 text-sky-700"
-                                )}>
-                                  {repo.isPrivate ? "Private" : "Public"}
-                                </span>
-                              </div>
-                            </div>
-                            {repo.description && (
-                              <p className={cn("mt-1 truncate text-xs", isSelected ? "text-zinc-400" : "text-zinc-400")}>
-                                {repo.description}
-                              </p>
-                            )}
-                          </button>
-                        );
-                      })}
+                              >
+                                <div className="flex min-w-0 items-center justify-between gap-3">
+                                  <div className="flex min-w-0 items-center gap-2">
+                                    <GitBranch className={cn("h-3.5 w-3.5 shrink-0", isSelected ? "text-zinc-300" : "text-zinc-400")} />
+                                    <span className={cn("truncate text-sm font-medium", isSelected ? "text-white" : "text-zinc-900")}>
+                                      {repo.fullName}
+                                    </span>
+                                  </div>
+                                  <div className="flex shrink-0 items-center gap-1.5">
+                                    {repo.alreadyConnected && (
+                                      <Badge variant="secondary" className="text-[11px]">Connected</Badge>
+                                    )}
+                                    <span className={cn(
+                                      "rounded-full px-2 py-0.5 text-[11px] font-medium border",
+                                      isSelected
+                                        ? "border-zinc-700 bg-zinc-800 text-zinc-300"
+                                        : repo.isPrivate
+                                        ? "border-zinc-200 bg-zinc-50 text-zinc-500"
+                                        : "border-sky-200 bg-sky-50 text-sky-700"
+                                    )}>
+                                      {repo.isPrivate ? "Private" : "Public"}
+                                    </span>
+                                  </div>
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
-                    )}
+                    <div className="pointer-events-none absolute inset-x-0 top-0 h-3 bg-gradient-to-b from-white to-transparent" />
+                    <div className="pointer-events-none absolute inset-x-0 bottom-0 h-3 bg-gradient-to-t from-white to-transparent" />
                   </div>
                 </div>
               )}
 
               {/* Step 3 */}
               {step === 3 && webhookInfo && (
-                <div className="flex h-full flex-col justify-center max-w-lg">
+                <div className="flex h-full flex-col justify-center max-w-md">
                   <div className="mb-6 flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
                     <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" />
                     <div>
@@ -533,29 +524,39 @@ export default function ConnectRepositoryDialog({
             </div>
 
             {/* Footer */}
-            <div className="flex items-center justify-end gap-2.5 border-t border-slate-100 px-8 py-4">
-              {step === 1 && (
-                <>
-                  <Button variant="outline" size="default" onClick={() => handleOpenChange(false)}>Cancel</Button>
-                  <Button size="default" disabled={!token.trim() || loading} onClick={() => void handleVerify()} className="min-w-[7rem]">
-                    {loading ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Verifying…</> : "Verify Token"}
-                  </Button>
-                </>
-              )}
-              {step === 2 && (
-                <>
-                  <Button variant="outline" size="default" onClick={() => { setStep(1); setError(""); }}>Back</Button>
-                  <Button size="default" disabled={!selectedRepo || loading} onClick={() => void handleConnect()} className="min-w-[8rem]">
-                    {loading ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Connecting…</> : "Connect Repository"}
-                  </Button>
-                </>
-              )}
-              {step === 3 && (
-                <>
-                  <Button variant="outline" size="default" onClick={() => { setStep(2); setError(""); }}>Back</Button>
-                  <Button size="default" onClick={handleDone} className="min-w-[5rem]">Done</Button>
-                </>
-              )}
+            <div className="flex items-center justify-between gap-3 border-t border-slate-100 px-6 py-3.5">
+              <div className="min-w-0 flex-1">
+                {step === 2 && selectedRepo && (
+                  <div className="flex min-w-0 items-center gap-1.5 text-xs">
+                    <Check className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
+                    <span className="truncate font-medium text-zinc-700">{selectedRepo.fullName}</span>
+                  </div>
+                )}
+              </div>
+              <div className="flex shrink-0 items-center gap-2.5">
+                {step === 1 && (
+                  <>
+                    <Button variant="outline" size="default" onClick={() => handleOpenChange(false)}>Cancel</Button>
+                    <Button size="default" disabled={!token.trim() || loading} onClick={() => void handleVerify()} className="min-w-[7rem]">
+                      {loading ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Verifying…</> : "Verify Token"}
+                    </Button>
+                  </>
+                )}
+                {step === 2 && (
+                  <>
+                    <Button variant="outline" size="default" onClick={() => { setStep(1); setError(""); }}>Back</Button>
+                    <Button size="default" disabled={!selectedRepo || loading} onClick={() => void handleConnect()} className="min-w-[8rem]">
+                      {loading ? <><Loader2 className="h-3.5 w-3.5 animate-spin" />Connecting…</> : "Connect Repository"}
+                    </Button>
+                  </>
+                )}
+                {step === 3 && (
+                  <>
+                    <Button variant="outline" size="default" onClick={() => { setStep(2); setError(""); }}>Back</Button>
+                    <Button size="default" onClick={handleDone} className="min-w-[5rem]">Done</Button>
+                  </>
+                )}
+              </div>
             </div>
 
           </div>
