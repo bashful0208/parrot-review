@@ -170,24 +170,41 @@ ${diffText}
 }
 
 function buildSummaryUserMessage(context: ReviewContext, diffText: string): string {
+  const guidelines = context.guidelines ?? "";
+  const projectContext = context.projectContext ?? "";
+
   return `You are summarizing pull request #${context.prNumber} in repository ${context.fullName} (head SHA: ${context.headSha}).
 
-Read the following diff and call the \`report_summary\` tool with:
-- \`summaryMd\`: a concise Markdown overview (3–8 sentences) describing what this PR changes and why, written for a reviewer who has not yet read the diff.
-- \`highlights\`: 2–6 short bullet strings naming the most important changes, risks, or things to double-check.
+<reviewer_guidelines>
+${guidelines}
+</reviewer_guidelines>
 
-Be specific. Reference file or module names where useful. Do not invent functionality not present in the diff.
+<project_context>
+${projectContext}
+</project_context>
 
 <diff>
 ${diffText}
-</diff>`;
+</diff>
+
+Call the \`report_summary\` tool with:
+
+- \`summaryMd_en\`: a concise English Markdown overview (3–8 sentences) of what this PR changes and why. Reference file/module names where useful. Do not invent functionality not in the diff.
+- \`summaryMd_zh\`: 等价的中文 Markdown 概述（3-8 句），独立成文，不是逐字翻译英文版本；保留专有名词和文件路径。
+- \`highlights_en\`: 2–6 short bullet strings naming the most important changes, risks, or things to double-check.
+- \`highlights_zh\`: 2-6 条对应中文要点，独立成文。
+- \`mermaid_flow\`: if and only if the diff introduces or modifies a discernible execution flow, call chain, or state transition, output a mermaid block (e.g. \`\`\`mermaid sequenceDiagram ...\`\`\`). Otherwise output an empty string.`;
 }
 
 const SYSTEM_PROMPT =
   "You are a senior code reviewer. Your job is to identify real, impactful issues in code changes — bugs, security vulnerabilities, logic errors, and serious quality problems. Avoid reporting trivial style issues. Be precise about file paths and line numbers.";
 
 const SUMMARY_SYSTEM_PROMPT =
-  "You are a senior code reviewer summarizing a pull request for a teammate. Be accurate, specific, and concise. Describe what changed and why; flag noteworthy risks. Do not fabricate behavior that is not in the diff.";
+  "You are a senior code reviewer summarizing a pull request for a teammate. " +
+  "Be accurate, specific, and concise. Describe what changed and why; flag noteworthy risks. " +
+  "Do not fabricate behavior that is not in the diff. " +
+  "You produce both English and Simplified Chinese outputs that are independently idiomatic — not literal translations. " +
+  "When the diff introduces or alters a clear execution flow, call chain, or state transition, output a mermaid diagram in the mermaid_flow field; otherwise leave it empty.";
 
 function extractJsonFromText(text: string | null | undefined): unknown {
   if (typeof text !== "string" || text.trim() === "") return undefined;
