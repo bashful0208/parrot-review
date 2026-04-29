@@ -14,7 +14,13 @@ import {
 } from "@reviewer/core";
 import type { Logger } from "@reviewer/core";
 import type { WebhookJobPayload } from "@reviewer/core";
-import { generateReviewFindings, generateReviewSummary } from "@reviewer/ai";
+import {
+  generateReviewFindings,
+  generateReviewSummary,
+  loadReviewerGuidelines,
+  loadTargetRepoContext,
+  renderBilingualSummary,
+} from "@reviewer/ai";
 import {
   GiteeProvider,
   GitHubProvider,
@@ -100,6 +106,12 @@ export async function handleReviewJob(
       // 步骤 7: 拉取 diff
       const diffs = await provider.getPullRequestDiff(repo.full_name, prNumber, credential, logger);
 
+      // 步骤 7a: 并发加载 reviewer 自身规范 + 目标仓库背景
+      const [guidelines, projectContext] = await Promise.all([
+        loadReviewerGuidelines(),
+        loadTargetRepoContext(provider, repo.full_name, headSha, credential, logger),
+      ]);
+
       // 步骤 8: 从 DB 加载 AI provider 配置
       const activeConfig = await getActiveAiProviderConfig(organizationId);
       if (!activeConfig) {
@@ -116,21 +128,18 @@ export async function handleReviewJob(
         prNumber,
         headSha,
         diffs,
+        guidelines,
+        projectContext,
       };
 
       // 步骤 8a: 生成行级 findings
       const result = await generateReviewFindings(reviewContext, adapterConfig);
 
-      // 步骤 8b: 生成 PR 整体摘要（失败不中断行级链路；与回写策略一致）
+      // 步骤 8b: 生成 PR 双语摘要（失败不中断行级链路；与回写策略一致）
       let summaryMd: string | null = null;
       try {
         const { summary } = await generateReviewSummary(reviewContext, adapterConfig);
-        const highlightsMd =
-          summary.highlights.length > 0
-            ? "\n\n**Highlights:**\n" +
-              summary.highlights.map((h) => `- ${h}`).join("\n")
-            : "";
-        summaryMd = `${summary.summaryMd}${highlightsMd}`;
+        summaryMd = renderBilingualSummary(summary);
       } catch (err) {
         logger.warn("Failed to generate PR summary", {
           review_run_id: runId,
