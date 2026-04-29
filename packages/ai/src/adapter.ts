@@ -177,9 +177,7 @@ const SYSTEM_PROMPT =
 const SUMMARY_SYSTEM_PROMPT =
   "You are a senior code reviewer summarizing a pull request for a teammate. Be accurate, specific, and concise. Describe what changed and why; flag noteworthy risks. Do not fabricate behavior that is not in the diff.";
 
-function extractJsonFromText(
-  text: string | null | undefined
-): unknown | undefined {
+function extractJsonFromText(text: string | null | undefined): unknown {
   if (typeof text !== "string" || text.trim() === "") return undefined;
 
   try {
@@ -422,7 +420,7 @@ export class OpenAICompatibleAdapter implements AiAdapter {
     }
 
     const toolCall = choice?.message?.tool_calls?.[0];
-    let parsed: unknown | undefined;
+    let parsed: unknown;
 
     if (toolCall && toolCall.type === "function") {
       if (toolCall.function.name !== "report_findings") {
@@ -497,7 +495,7 @@ export class OpenAICompatibleAdapter implements AiAdapter {
     }
 
     const toolCall = choice?.message?.tool_calls?.[0];
-    let parsed: unknown | undefined;
+    let parsed: unknown;
 
     if (toolCall && toolCall.type === "function") {
       if (toolCall.function.name !== "report_summary") {
