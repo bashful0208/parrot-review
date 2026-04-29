@@ -284,6 +284,61 @@ export class GiteeProvider implements IProvider {
     );
   }
 
+  async getRepositoryFile(
+    fullName: string,
+    path: string,
+    ref: string,
+    credential: ProviderCredential,
+    logger?: Logger
+  ): Promise<string | null> {
+    const cred = assertGitee(credential);
+    const { owner, repo } = splitFullName(fullName);
+    const client = getGiteePatClient(cred);
+    return withGitPlatformErrorBoundary(
+      async () => {
+        try {
+          const encodedPath = path
+            .split("/")
+            .map((seg) => encodeURIComponent(seg))
+            .join("/");
+          const data = await client.request<{
+            type?: string;
+            encoding?: string;
+            content?: string;
+          }>(
+            `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents/${encodedPath}`,
+            { query: { ref } }
+          );
+          if (!data || data.type !== "file" || typeof data.content !== "string") {
+            return null;
+          }
+          const buf = Buffer.from(data.content, "base64");
+          const text = buf.toString("utf-8");
+          logger?.debug("Fetched Gitee repository file", {
+            fullName,
+            path,
+            ref,
+            bytes: buf.length,
+          });
+          return text;
+        } catch (err) {
+          if (
+            typeof err === "object" &&
+            err !== null &&
+            "status" in err &&
+            (err as { status?: number }).status === 404
+          ) {
+            return null;
+          }
+          throw err;
+        }
+      },
+      PROVIDER,
+      logger,
+      context({ operation: "getRepositoryFile", fullName, path, ref })
+    );
+  }
+
   async normalizeWebhookEvent(
     rawHeaders: Record<string, string>,
     rawBody: string,
