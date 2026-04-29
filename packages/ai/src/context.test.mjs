@@ -211,3 +211,125 @@ test("LruCache: rejects non-positive capacity", () => {
   assert.throws(() => new LruCache_reference(-1), /capacity/);
   assert.throws(() => new LruCache_reference(1.5), /capacity/);
 });
+
+// ---------------------------------------------------------------------------
+// loadTargetRepoContext reference (production lives in context.ts)
+// ---------------------------------------------------------------------------
+
+let _targetCacheRef = { cache: new LruCache_reference(256) };
+function _resetTargetRepoCache_reference() {
+  _targetCacheRef.cache = new LruCache_reference(256);
+}
+
+async function loadTargetRepoContext_reference(provider, fullName, ref, credential, logger) {
+  const cache = _targetCacheRef.cache;
+  const tasks = REVIEWER_DOC_WHITELIST.map(async (name) => {
+    const cacheKey = `${provider.provider}:${fullName}:${ref}:${name}`;
+    if (cache.has(cacheKey)) {
+      const cached = cache.get(cacheKey);
+      return cached === null ? null : { name, content: truncate_reference(cached) };
+    }
+    try {
+      const content = await provider.getRepositoryFile(fullName, name, ref, credential, logger);
+      cache.set(cacheKey, content);
+      return content === null ? null : { name, content: truncate_reference(content) };
+    } catch (err) {
+      logger.warn("Failed to load project context file (will skip)", {
+        full_name: fullName,
+        ref,
+        path: name,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      return null;
+    }
+  });
+  const results = await Promise.all(tasks);
+  const parts = results.filter((r) => r !== null);
+  return joinDocs_reference(parts);
+}
+
+function fakeProvider(map = {}, opts = {}) {
+  const calls = [];
+  return {
+    calls,
+    provider: "github",
+    async getRepositoryFile(fullName, path, ref) {
+      calls.push({ fullName, path, ref });
+      if (opts.throwOn?.(path)) throw new Error("boom");
+      const key = `${fullName}|${path}|${ref}`;
+      return key in map ? map[key] : null;
+    },
+  };
+}
+
+const FAKE_LOGGER = {
+  debug() {}, info() {}, warn() {}, error() {},
+};
+
+const FAKE_CRED = { type: "github_pat", token: "x" };
+
+test("loadTargetRepoContext: pulls whitelisted files concurrently", async () => {
+  _resetTargetRepoCache_reference();
+  const p = fakeProvider({
+    "owner/repo|CLAUDE.md|sha1": "claude-content",
+    "owner/repo|README.md|sha1": "readme-content",
+  });
+  const out = await loadTargetRepoContext_reference(p, "owner/repo", "sha1", FAKE_CRED, FAKE_LOGGER);
+  assert.ok(out.includes("# CLAUDE.md"));
+  assert.ok(out.includes("claude-content"));
+  assert.ok(out.includes("# README.md"));
+  assert.ok(out.includes("readme-content"));
+  assert.equal(p.calls.length, 4, "must attempt all 4 whitelist files");
+});
+
+test("loadTargetRepoContext: returns empty string when nothing found", async () => {
+  _resetTargetRepoCache_reference();
+  const p = fakeProvider({});
+  const out = await loadTargetRepoContext_reference(p, "owner/repo", "sha1", FAKE_CRED, FAKE_LOGGER);
+  assert.equal(out, "");
+});
+
+test("loadTargetRepoContext: caches by (provider, fullName, ref, path)", async () => {
+  _resetTargetRepoCache_reference();
+  const p = fakeProvider({ "owner/repo|README.md|sha1": "rd" });
+  await loadTargetRepoContext_reference(p, "owner/repo", "sha1", FAKE_CRED, FAKE_LOGGER);
+  const before = p.calls.length;
+  await loadTargetRepoContext_reference(p, "owner/repo", "sha1", FAKE_CRED, FAKE_LOGGER);
+  assert.equal(p.calls.length, before, "second call must hit cache for all 4 files");
+});
+
+test("loadTargetRepoContext: cache key isolates by ref (head SHA)", async () => {
+  _resetTargetRepoCache_reference();
+  const p = fakeProvider({
+    "owner/repo|README.md|sha1": "old",
+    "owner/repo|README.md|sha2": "new",
+  });
+  const a = await loadTargetRepoContext_reference(p, "owner/repo", "sha1", FAKE_CRED, FAKE_LOGGER);
+  const b = await loadTargetRepoContext_reference(p, "owner/repo", "sha2", FAKE_CRED, FAKE_LOGGER);
+  assert.ok(a.includes("old"));
+  assert.ok(b.includes("new"));
+});
+
+test("loadTargetRepoContext: warn-and-skip on per-file error, others still load", async () => {
+  _resetTargetRepoCache_reference();
+  const warnings = [];
+  const logger = { ...FAKE_LOGGER, warn: (msg, extra) => warnings.push({ msg, extra }) };
+  const p = fakeProvider(
+    { "owner/repo|README.md|sha1": "rd" },
+    { throwOn: (path) => path === "CLAUDE.md" }
+  );
+  const out = await loadTargetRepoContext_reference(p, "owner/repo", "sha1", FAKE_CRED, logger);
+  assert.ok(out.includes("rd"));
+  assert.ok(!out.includes("# CLAUDE.md"));
+  assert.ok(warnings.some((w) => w.msg.includes("project context")));
+});
+
+test("loadTargetRepoContext: truncates files over 4000 chars", async () => {
+  _resetTargetRepoCache_reference();
+  const big = "y".repeat(5000);
+  const p = fakeProvider({ "owner/repo|README.md|sha1": big });
+  const out = await loadTargetRepoContext_reference(p, "owner/repo", "sha1", FAKE_CRED, FAKE_LOGGER);
+  assert.ok(out.includes("[...truncated]"));
+  const ys = (out.match(/y/g) ?? []).length;
+  assert.equal(ys, 4000);
+});
