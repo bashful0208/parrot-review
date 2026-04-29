@@ -82,6 +82,16 @@ export class GitLabProvider implements IProvider {
     );
   }
 
+  async getRepositoryFile(
+    _fullName: string,
+    _path: string,
+    _ref: string,
+    _credential: ProviderCredential,
+    _logger?: unknown
+  ): Promise<string | null> {
+    throw new Error("GitLabProvider.getRepositoryFile is not implemented");
+  }
+
   normalizeWebhookEvent(
     _rawHeaders: Record<string, string>,
     _rawBody: string,
