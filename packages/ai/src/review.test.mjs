@@ -239,3 +239,84 @@ test("log helper: info writes to stdout without throwing", () => {
   assert.doesNotThrow(() => log("error", "something failed", { err: "oops" }));
   assert.doesNotThrow(() => log("warn", "heads up"));
 });
+
+// ---------------------------------------------------------------------------
+// 6. extractJsonFromText: 从文本里抽 JSON 的 fallback 解析
+// ---------------------------------------------------------------------------
+
+// Reference implementation. The actual TypeScript implementation in
+// packages/ai/src/adapter.ts MUST satisfy the contract asserted below.
+function extractJsonFromText_reference(text) {
+  if (typeof text !== "string" || text.trim() === "") return undefined;
+
+  // 1) 整段直接 parse
+  try {
+    return JSON.parse(text);
+  } catch {
+    /* fall through */
+  }
+
+  // 2) 取第一个 ```json ... ``` 或 ``` ... ``` 代码块
+  const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (fence && fence[1]) {
+    try {
+      return JSON.parse(fence[1].trim());
+    } catch {
+      /* fall through */
+    }
+  }
+
+  // 3) 第一个 { 到最后一个 } 之间
+  const first = text.indexOf("{");
+  const last = text.lastIndexOf("}");
+  if (first !== -1 && last > first) {
+    try {
+      return JSON.parse(text.slice(first, last + 1));
+    } catch {
+      /* fall through */
+    }
+  }
+
+  return undefined;
+}
+
+test("extractJsonFromText: bare JSON parses directly", () => {
+  const result = extractJsonFromText_reference('{"findings":[]}');
+  assert.deepEqual(result, { findings: [] });
+});
+
+test("extractJsonFromText: ```json fenced block", () => {
+  const text = 'Here is the data:\n```json\n{"findings":[{"x":1}]}\n```\nDone.';
+  const result = extractJsonFromText_reference(text);
+  assert.deepEqual(result, { findings: [{ x: 1 }] });
+});
+
+test("extractJsonFromText: plain ``` fenced block", () => {
+  const text = 'Output:\n```\n{"summaryMd":"hi","highlights":[]}\n```';
+  const result = extractJsonFromText_reference(text);
+  assert.deepEqual(result, { summaryMd: "hi", highlights: [] });
+});
+
+test("extractJsonFromText: first-{ to last-} when surrounded by prose", () => {
+  const text = 'Some preamble. {"findings":[{"a":1}]} trailing words.';
+  const result = extractJsonFromText_reference(text);
+  assert.deepEqual(result, { findings: [{ a: 1 }] });
+});
+
+test("extractJsonFromText: nested objects survive first-{-to-last-} extraction", () => {
+  const text = 'noise {"outer":{"inner":[1,2,3]}} more noise';
+  const result = extractJsonFromText_reference(text);
+  assert.deepEqual(result, { outer: { inner: [1, 2, 3] } });
+});
+
+test("extractJsonFromText: empty / null / non-string returns undefined", () => {
+  assert.equal(extractJsonFromText_reference(undefined), undefined);
+  assert.equal(extractJsonFromText_reference(null), undefined);
+  assert.equal(extractJsonFromText_reference(""), undefined);
+  assert.equal(extractJsonFromText_reference("   "), undefined);
+});
+
+test("extractJsonFromText: unparseable garbage returns undefined", () => {
+  const result = extractJsonFromText_reference("just words, no json here");
+  assert.equal(result, undefined);
+});
