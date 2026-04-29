@@ -11,7 +11,8 @@
   },
   "scripts": {
     "lint": "pnpm --dir ../.. exec eslint .",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "node --test src/*.test.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.54.0",
