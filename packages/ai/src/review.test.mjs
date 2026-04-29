@@ -520,3 +520,119 @@ test("parseOpenAiCompatChoice: missing message entirely throws", () => {
     /did not return expected tool call/
   );
 });
+
+// ---------------------------------------------------------------------------
+// 5. validateAndNormalizeSummary: bilingual + mermaid contract
+// ---------------------------------------------------------------------------
+
+function validateAndNormalizeSummary_reference(input) {
+  if (typeof input !== "object" || input === null) {
+    throw new Error("Tool input: report_summary expected an object");
+  }
+  const obj = input;
+  const en = obj.summaryMd_en;
+  const zh = obj.summaryMd_zh;
+  const hi_en = obj.highlights_en;
+  const hi_zh = obj.highlights_zh;
+  const mermaid = obj.mermaid_flow;
+  if (typeof en !== "string" || en.trim() === "") {
+    throw new Error("Tool input: 'summaryMd_en' must be a non-empty string");
+  }
+  if (typeof zh !== "string" || zh.trim() === "") {
+    throw new Error("Tool input: 'summaryMd_zh' must be a non-empty string");
+  }
+  if (!Array.isArray(hi_en)) {
+    throw new Error("Tool input: 'highlights_en' must be an array");
+  }
+  if (!Array.isArray(hi_zh)) {
+    throw new Error("Tool input: 'highlights_zh' must be an array");
+  }
+  if (typeof mermaid !== "string") {
+    throw new Error("Tool input: 'mermaid_flow' must be a string (use empty string when no flow)");
+  }
+  return {
+    summaryMd_en: en,
+    summaryMd_zh: zh,
+    highlights_en: hi_en.filter((h) => typeof h === "string" && h.trim() !== ""),
+    highlights_zh: hi_zh.filter((h) => typeof h === "string" && h.trim() !== ""),
+    mermaid_flow: mermaid,
+  };
+}
+
+test("validateAndNormalizeSummary: accepts full bilingual payload", () => {
+  const out = validateAndNormalizeSummary_reference({
+    summaryMd_en: "Adds bilingual summary",
+    summaryMd_zh: "增加双语总评",
+    highlights_en: ["a", "b"],
+    highlights_zh: ["甲", "乙"],
+    mermaid_flow: "",
+  });
+  assert.equal(out.summaryMd_en, "Adds bilingual summary");
+  assert.equal(out.summaryMd_zh, "增加双语总评");
+  assert.deepEqual(out.highlights_en, ["a", "b"]);
+  assert.deepEqual(out.highlights_zh, ["甲", "乙"]);
+  assert.equal(out.mermaid_flow, "");
+});
+
+test("validateAndNormalizeSummary: keeps non-empty mermaid flow", () => {
+  const flow = "```mermaid\nflowchart LR\nA-->B\n```";
+  const out = validateAndNormalizeSummary_reference({
+    summaryMd_en: "x",
+    summaryMd_zh: "x",
+    highlights_en: [],
+    highlights_zh: [],
+    mermaid_flow: flow,
+  });
+  assert.equal(out.mermaid_flow, flow);
+});
+
+test("validateAndNormalizeSummary: rejects missing summaryMd_en", () => {
+  assert.throws(
+    () =>
+      validateAndNormalizeSummary_reference({
+        summaryMd_zh: "x",
+        highlights_en: [],
+        highlights_zh: [],
+        mermaid_flow: "",
+      }),
+    /summaryMd_en/
+  );
+});
+
+test("validateAndNormalizeSummary: rejects missing summaryMd_zh", () => {
+  assert.throws(
+    () =>
+      validateAndNormalizeSummary_reference({
+        summaryMd_en: "x",
+        highlights_en: [],
+        highlights_zh: [],
+        mermaid_flow: "",
+      }),
+    /summaryMd_zh/
+  );
+});
+
+test("validateAndNormalizeSummary: rejects non-string mermaid_flow", () => {
+  assert.throws(
+    () =>
+      validateAndNormalizeSummary_reference({
+        summaryMd_en: "x",
+        summaryMd_zh: "x",
+        highlights_en: [],
+        highlights_zh: [],
+      }),
+    /mermaid_flow/
+  );
+});
+
+test("validateAndNormalizeSummary: filters empty/non-string highlights", () => {
+  const out = validateAndNormalizeSummary_reference({
+    summaryMd_en: "x",
+    summaryMd_zh: "x",
+    highlights_en: ["a", "", null, "b"],
+    highlights_zh: ["甲", undefined, "乙"],
+    mermaid_flow: "",
+  });
+  assert.deepEqual(out.highlights_en, ["a", "b"]);
+  assert.deepEqual(out.highlights_zh, ["甲", "乙"]);
+});

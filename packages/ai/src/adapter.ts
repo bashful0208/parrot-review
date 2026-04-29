@@ -47,13 +47,25 @@ const MAX_DIFF_CHARS = 80_000;
 const SUMMARY_SCHEMA = {
   type: "object" as const,
   properties: {
-    summaryMd: { type: "string" as const },
-    highlights: {
+    summaryMd_en: { type: "string" as const },
+    summaryMd_zh: { type: "string" as const },
+    highlights_en: {
       type: "array" as const,
       items: { type: "string" as const },
     },
+    highlights_zh: {
+      type: "array" as const,
+      items: { type: "string" as const },
+    },
+    mermaid_flow: { type: "string" as const },
   },
-  required: ["summaryMd", "highlights"] as string[],
+  required: [
+    "summaryMd_en",
+    "summaryMd_zh",
+    "highlights_en",
+    "highlights_zh",
+    "mermaid_flow",
+  ] as string[],
 };
 
 const FINDINGS_SCHEMA = {
@@ -213,19 +225,40 @@ function validateAndNormalizeSummary(input: unknown): ReviewSummary {
     throw new Error("Tool input: report_summary expected an object");
   }
   const obj = input as Record<string, unknown>;
-  const summaryMd = obj.summaryMd;
-  const highlights = obj.highlights;
-  if (typeof summaryMd !== "string" || summaryMd.trim() === "") {
-    throw new Error("Tool input: 'summaryMd' must be a non-empty string");
+  const en = obj.summaryMd_en;
+  const zh = obj.summaryMd_zh;
+  const hiEn = obj.highlights_en;
+  const hiZh = obj.highlights_zh;
+  const mermaid = obj.mermaid_flow;
+
+  if (typeof en !== "string" || en.trim() === "") {
+    throw new Error("Tool input: 'summaryMd_en' must be a non-empty string");
   }
-  if (!Array.isArray(highlights)) {
-    throw new Error("Tool input: 'highlights' must be an array");
+  if (typeof zh !== "string" || zh.trim() === "") {
+    throw new Error("Tool input: 'summaryMd_zh' must be a non-empty string");
   }
+  if (!Array.isArray(hiEn)) {
+    throw new Error("Tool input: 'highlights_en' must be an array");
+  }
+  if (!Array.isArray(hiZh)) {
+    throw new Error("Tool input: 'highlights_zh' must be an array");
+  }
+  if (typeof mermaid !== "string") {
+    throw new Error(
+      "Tool input: 'mermaid_flow' must be a string (use empty string when no flow)"
+    );
+  }
+
   return {
-    summaryMd,
-    highlights: highlights.filter(
+    summaryMd_en: en,
+    summaryMd_zh: zh,
+    highlights_en: hiEn.filter(
       (h): h is string => typeof h === "string" && h.trim() !== ""
     ),
+    highlights_zh: hiZh.filter(
+      (h): h is string => typeof h === "string" && h.trim() !== ""
+    ),
+    mermaid_flow: mermaid,
   };
 }
 
@@ -305,7 +338,15 @@ export class AnthropicAdapter implements AiAdapter {
   ): Promise<ReviewSummaryResult> {
     const diffText = buildDiffText(context);
     if (!diffText) {
-      return { summary: { summaryMd: "_No textual diff to summarize._", highlights: [] } };
+      return {
+        summary: {
+          summaryMd_en: "_No textual diff to summarize._",
+          summaryMd_zh: "_本次 PR 没有可用于总结的代码 diff。_",
+          highlights_en: [],
+          highlights_zh: [],
+          mermaid_flow: "",
+        },
+      };
     }
 
     let response: Awaited<ReturnType<typeof this.client.messages.create>>;
@@ -460,7 +501,15 @@ export class OpenAICompatibleAdapter implements AiAdapter {
   ): Promise<ReviewSummaryResult> {
     const diffText = buildDiffText(context);
     if (!diffText) {
-      return { summary: { summaryMd: "_No textual diff to summarize._", highlights: [] } };
+      return {
+        summary: {
+          summaryMd_en: "_No textual diff to summarize._",
+          summaryMd_zh: "_本次 PR 没有可用于总结的代码 diff。_",
+          highlights_en: [],
+          highlights_zh: [],
+          mermaid_flow: "",
+        },
+      };
     }
 
     let response: OpenAI.Chat.Completions.ChatCompletion;
