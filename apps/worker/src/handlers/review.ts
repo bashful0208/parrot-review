@@ -159,7 +159,45 @@ export async function handleReviewJob(
       }));
       const insertedIssues = await insertReviewIssues(issueInputs);
 
-      // 步骤 10: 对每条 issue 回写 GitHub 评论
+      // 步骤 10: 先回写 PR 整体摘要评论（与 inline 评论同策略：失败仅 warn 不中断）
+      if (summaryMd) {
+        try {
+          const { id: commentId } = await insertReviewComment({
+            organizationId,
+            pullRequestId,
+            reviewRunId: runId!,
+            reviewIssueId: null,
+            provider: repo.provider,
+            bodyMd: summaryMd,
+            filePath: null,
+            lineNumber: null,
+            isInline: false,
+          });
+
+          try {
+            const posted = await provider.postPullRequestComment(
+              repo.full_name,
+              prNumber,
+              summaryMd,
+              credential,
+              logger
+            );
+            await markCommentPosted(commentId, posted.externalCommentId, posted.createdAt);
+          } catch (err) {
+            logger.warn("Failed to post PR summary comment to platform", {
+              comment_id: commentId,
+              error: err instanceof Error ? err.message : String(err),
+            });
+          }
+        } catch (err) {
+          logger.warn("Failed to insert PR summary comment record", {
+            review_run_id: runId,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+      }
+
+      // 步骤 11: 再对每条 issue 回写行内评论
       for (let i = 0; i < insertedIssues.length; i++) {
         const issue = insertedIssues[i]!;
         const finding = result.findings[i]!;
@@ -207,44 +245,6 @@ export async function handleReviewJob(
           logger.warn("Failed to process review comment for finding", {
             review_run_id: runId,
             issue_id: issue.id,
-            error: err instanceof Error ? err.message : String(err),
-          });
-        }
-      }
-
-      // 步骤 11: 回写 PR 整体摘要评论（与 inline 评论同策略：失败仅 warn 不中断）
-      if (summaryMd) {
-        try {
-          const { id: commentId } = await insertReviewComment({
-            organizationId,
-            pullRequestId,
-            reviewRunId: runId!,
-            reviewIssueId: null,
-            provider: repo.provider,
-            bodyMd: summaryMd,
-            filePath: null,
-            lineNumber: null,
-            isInline: false,
-          });
-
-          try {
-            const posted = await provider.postPullRequestComment(
-              repo.full_name,
-              prNumber,
-              summaryMd,
-              credential,
-              logger
-            );
-            await markCommentPosted(commentId, posted.externalCommentId, posted.createdAt);
-          } catch (err) {
-            logger.warn("Failed to post PR summary comment to platform", {
-              comment_id: commentId,
-              error: err instanceof Error ? err.message : String(err),
-            });
-          }
-        } catch (err) {
-          logger.warn("Failed to insert PR summary comment record", {
-            review_run_id: runId,
             error: err instanceof Error ? err.message : String(err),
           });
         }
