@@ -239,3 +239,284 @@ test("log helper: info writes to stdout without throwing", () => {
   assert.doesNotThrow(() => log("error", "something failed", { err: "oops" }));
   assert.doesNotThrow(() => log("warn", "heads up"));
 });
+
+// ---------------------------------------------------------------------------
+// 6. extractJsonFromText: 从文本里抽 JSON 的 fallback 解析
+// ---------------------------------------------------------------------------
+
+// Reference implementation. The actual TypeScript implementation in
+// packages/ai/src/adapter.ts MUST satisfy the contract asserted below.
+function extractJsonFromText_reference(text) {
+  if (typeof text !== "string" || text.trim() === "") return undefined;
+
+  // 1) 整段直接 parse
+  try {
+    return JSON.parse(text);
+  } catch {
+    /* fall through */
+  }
+
+  // 2) 取第一个 ```json ... ``` 或 ``` ... ``` 代码块
+  const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (fence && fence[1]) {
+    try {
+      return JSON.parse(fence[1].trim());
+    } catch {
+      /* fall through */
+    }
+  }
+
+  // 3) 第一个 { 到最后一个 } 之间
+  const first = text.indexOf("{");
+  const last = text.lastIndexOf("}");
+  if (first !== -1 && last > first) {
+    try {
+      return JSON.parse(text.slice(first, last + 1));
+    } catch {
+      /* fall through */
+    }
+  }
+
+  return undefined;
+}
+
+test("extractJsonFromText: bare JSON parses directly", () => {
+  const result = extractJsonFromText_reference('{"findings":[]}');
+  assert.deepEqual(result, { findings: [] });
+});
+
+test("extractJsonFromText: ```json fenced block", () => {
+  const text = 'Here is the data:\n```json\n{"findings":[{"x":1}]}\n```\nDone.';
+  const result = extractJsonFromText_reference(text);
+  assert.deepEqual(result, { findings: [{ x: 1 }] });
+});
+
+test("extractJsonFromText: plain ``` fenced block", () => {
+  const text = 'Output:\n```\n{"summaryMd":"hi","highlights":[]}\n```';
+  const result = extractJsonFromText_reference(text);
+  assert.deepEqual(result, { summaryMd: "hi", highlights: [] });
+});
+
+test("extractJsonFromText: first-{ to last-} when surrounded by prose", () => {
+  const text = 'Some preamble. {"findings":[{"a":1}]} trailing words.';
+  const result = extractJsonFromText_reference(text);
+  assert.deepEqual(result, { findings: [{ a: 1 }] });
+});
+
+test("extractJsonFromText: nested objects survive first-{-to-last-} extraction", () => {
+  const text = 'noise {"outer":{"inner":[1,2,3]}} more noise';
+  const result = extractJsonFromText_reference(text);
+  assert.deepEqual(result, { outer: { inner: [1, 2, 3] } });
+});
+
+test("extractJsonFromText: empty / null / non-string returns undefined", () => {
+  assert.equal(extractJsonFromText_reference(undefined), undefined);
+  assert.equal(extractJsonFromText_reference(null), undefined);
+  assert.equal(extractJsonFromText_reference(""), undefined);
+  assert.equal(extractJsonFromText_reference("   "), undefined);
+});
+
+test("extractJsonFromText: unparseable garbage returns undefined", () => {
+  const result = extractJsonFromText_reference("just words, no json here");
+  assert.equal(result, undefined);
+});
+
+// ---------------------------------------------------------------------------
+// 7. OpenAI-compatible parsing path: tool_call + content-fallback
+// ---------------------------------------------------------------------------
+
+// Reference implementation of the parsing flow inside
+// OpenAICompatibleAdapter.generateReviewFindings / generateReviewSummary.
+// The actual TypeScript implementation MUST satisfy this contract.
+function parseOpenAiCompatChoice_reference({ choice, toolName, validate }) {
+  // 1) tool_call 优先
+  const toolCall = choice?.message?.tool_calls?.[0];
+  if (toolCall && toolCall.type === "function") {
+    if (toolCall.function?.name !== toolName) {
+      throw new Error(
+        `OpenAI-compatible API did not return expected tool call for ${toolName}`
+      );
+    }
+    let parsed;
+    try {
+      parsed = JSON.parse(toolCall.function.arguments);
+    } catch {
+      throw new Error(
+        `Failed to parse ${toolName} arguments: ${toolCall.function.arguments}`
+      );
+    }
+    return validate(parsed);
+  }
+
+  // 2) content fallback
+  const content = choice?.message?.content;
+  const fallback = extractJsonFromText_reference(
+    typeof content === "string" ? content : undefined
+  );
+  if (fallback !== undefined) {
+    return validate(fallback);
+  }
+
+  // 3) 都没有
+  throw new Error(
+    `OpenAI-compatible API did not return expected tool call for ${toolName}`
+  );
+}
+
+const validateFindingsRef = (input) => {
+  const findings = validateAndNormalizeFindings_reference(input);
+  return { findings };
+};
+
+const validateSummaryRef = (input) => {
+  if (typeof input !== "object" || input === null) {
+    throw new Error("Tool input: report_summary expected an object");
+  }
+  const obj = input;
+  if (typeof obj.summaryMd !== "string" || obj.summaryMd.trim() === "") {
+    throw new Error("Tool input: 'summaryMd' must be a non-empty string");
+  }
+  if (!Array.isArray(obj.highlights)) {
+    throw new Error("Tool input: 'highlights' must be an array");
+  }
+  return {
+    summary: {
+      summaryMd: obj.summaryMd,
+      highlights: obj.highlights.filter(
+        (h) => typeof h === "string" && h.trim() !== ""
+      ),
+    },
+  };
+};
+
+test("parseOpenAiCompatChoice: tool_call path returns findings", () => {
+  const finding = {
+    filePath: "a.ts",
+    startLine: 1,
+    endLine: 2,
+    side: "RIGHT",
+    issueType: "quality",
+    severity: "low",
+    title: "T",
+    summary: "S",
+    suggestion: "Fix",
+    confidenceScore: 0.5,
+  };
+  const choice = {
+    message: {
+      tool_calls: [
+        {
+          type: "function",
+          function: {
+            name: "report_findings",
+            arguments: JSON.stringify({ findings: [finding] }),
+          },
+        },
+      ],
+      content: null,
+    },
+  };
+  const result = parseOpenAiCompatChoice_reference({
+    choice,
+    toolName: "report_findings",
+    validate: validateFindingsRef,
+  });
+  assert.equal(result.findings.length, 1);
+  assert.equal(result.findings[0].filePath, "a.ts");
+});
+
+test("parseOpenAiCompatChoice: tool_call wrong name throws", () => {
+  const choice = {
+    message: {
+      tool_calls: [
+        {
+          type: "function",
+          function: { name: "something_else", arguments: "{}" },
+        },
+      ],
+    },
+  };
+  assert.throws(
+    () =>
+      parseOpenAiCompatChoice_reference({
+        choice,
+        toolName: "report_findings",
+        validate: validateFindingsRef,
+      }),
+    /did not return expected tool call/
+  );
+});
+
+test("parseOpenAiCompatChoice: no tool_call but bare-JSON content -> fallback findings", () => {
+  const finding = {
+    filePath: "a.ts",
+    startLine: 1,
+    endLine: 2,
+    side: "RIGHT",
+    issueType: "quality",
+    severity: "low",
+    title: "T",
+    summary: "S",
+    suggestion: "Fix",
+    confidenceScore: 0.7,
+  };
+  const choice = {
+    message: {
+      tool_calls: undefined,
+      content: JSON.stringify({ findings: [finding] }),
+    },
+  };
+  const result = parseOpenAiCompatChoice_reference({
+    choice,
+    toolName: "report_findings",
+    validate: validateFindingsRef,
+  });
+  assert.equal(result.findings.length, 1);
+});
+
+test("parseOpenAiCompatChoice: no tool_call but fenced-JSON content -> fallback summary", () => {
+  const choice = {
+    message: {
+      tool_calls: undefined,
+      content:
+        'Sure:\n```json\n{"summaryMd":"a PR summary","highlights":["fix bug"]}\n```',
+    },
+  };
+  const result = parseOpenAiCompatChoice_reference({
+    choice,
+    toolName: "report_summary",
+    validate: validateSummaryRef,
+  });
+  assert.equal(result.summary.summaryMd, "a PR summary");
+  assert.deepEqual(result.summary.highlights, ["fix bug"]);
+});
+
+test("parseOpenAiCompatChoice: no tool_call and no parseable content throws", () => {
+  const choice = {
+    message: {
+      tool_calls: undefined,
+      content: "I think the code looks fine, no issues found.",
+    },
+  };
+  assert.throws(
+    () =>
+      parseOpenAiCompatChoice_reference({
+        choice,
+        toolName: "report_findings",
+        validate: validateFindingsRef,
+      }),
+    /did not return expected tool call/
+  );
+});
+
+test("parseOpenAiCompatChoice: missing message entirely throws", () => {
+  assert.throws(
+    () =>
+      parseOpenAiCompatChoice_reference({
+        choice: { message: undefined },
+        toolName: "report_findings",
+        validate: validateFindingsRef,
+      }),
+    /did not return expected tool call/
+  );
+});
