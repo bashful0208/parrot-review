@@ -177,6 +177,39 @@ const SYSTEM_PROMPT =
 const SUMMARY_SYSTEM_PROMPT =
   "You are a senior code reviewer summarizing a pull request for a teammate. Be accurate, specific, and concise. Describe what changed and why; flag noteworthy risks. Do not fabricate behavior that is not in the diff.";
 
+function extractJsonFromText(
+  text: string | null | undefined
+): unknown | undefined {
+  if (typeof text !== "string" || text.trim() === "") return undefined;
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    /* fall through */
+  }
+
+  const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (fence && fence[1]) {
+    try {
+      return JSON.parse(fence[1].trim());
+    } catch {
+      /* fall through */
+    }
+  }
+
+  const first = text.indexOf("{");
+  const last = text.lastIndexOf("}");
+  if (first !== -1 && last > first) {
+    try {
+      return JSON.parse(text.slice(first, last + 1));
+    } catch {
+      /* fall through */
+    }
+  }
+
+  return undefined;
+}
+
 function validateAndNormalizeSummary(input: unknown): ReviewSummary {
   if (typeof input !== "object" || input === null) {
     throw new Error("Tool input: report_summary expected an object");
@@ -370,7 +403,7 @@ export class OpenAICompatibleAdapter implements AiAdapter {
           { role: "user", content: buildUserMessage(context, diffText) },
         ],
         tools: [OPENAI_TOOL],
-        tool_choice: { type: "function", function: { name: "report_findings" } },
+        tool_choice: "auto",
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -389,24 +422,35 @@ export class OpenAICompatibleAdapter implements AiAdapter {
     }
 
     const toolCall = choice?.message?.tool_calls?.[0];
-    if (!toolCall || toolCall.type !== "function") {
-      throw new Error(
-        "OpenAI-compatible API did not return expected tool call for report_findings"
-      );
-    }
-    if (toolCall.function.name !== "report_findings") {
-      throw new Error(
-        "OpenAI-compatible API did not return expected tool call for report_findings"
-      );
-    }
+    let parsed: unknown | undefined;
 
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(toolCall.function.arguments);
-    } catch {
-      throw new Error(
-        `Failed to parse report_findings arguments: ${toolCall.function.arguments}`
-      );
+    if (toolCall && toolCall.type === "function") {
+      if (toolCall.function.name !== "report_findings") {
+        throw new Error(
+          "OpenAI-compatible API did not return expected tool call for report_findings"
+        );
+      }
+      try {
+        parsed = JSON.parse(toolCall.function.arguments);
+      } catch {
+        throw new Error(
+          `Failed to parse report_findings arguments: ${toolCall.function.arguments}`
+        );
+      }
+    } else {
+      const content =
+        typeof choice?.message?.content === "string"
+          ? choice.message.content
+          : undefined;
+      parsed = extractJsonFromText(content);
+      if (parsed === undefined) {
+        throw new Error(
+          "OpenAI-compatible API did not return expected tool call for report_findings"
+        );
+      }
+      log("info", "OpenAI-compatible findings parsed via content fallback", {
+        prNumber: context.prNumber,
+      });
     }
 
     const findings = validateAndNormalizeFindings(parsed);
@@ -434,7 +478,7 @@ export class OpenAICompatibleAdapter implements AiAdapter {
           },
         ],
         tools: [OPENAI_SUMMARY_TOOL],
-        tool_choice: { type: "function", function: { name: "report_summary" } },
+        tool_choice: "auto",
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -453,24 +497,35 @@ export class OpenAICompatibleAdapter implements AiAdapter {
     }
 
     const toolCall = choice?.message?.tool_calls?.[0];
-    if (!toolCall || toolCall.type !== "function") {
-      throw new Error(
-        "OpenAI-compatible API did not return expected tool call for report_summary"
-      );
-    }
-    if (toolCall.function.name !== "report_summary") {
-      throw new Error(
-        "OpenAI-compatible API did not return expected tool call for report_summary"
-      );
-    }
+    let parsed: unknown | undefined;
 
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(toolCall.function.arguments);
-    } catch {
-      throw new Error(
-        `Failed to parse report_summary arguments: ${toolCall.function.arguments}`
-      );
+    if (toolCall && toolCall.type === "function") {
+      if (toolCall.function.name !== "report_summary") {
+        throw new Error(
+          "OpenAI-compatible API did not return expected tool call for report_summary"
+        );
+      }
+      try {
+        parsed = JSON.parse(toolCall.function.arguments);
+      } catch {
+        throw new Error(
+          `Failed to parse report_summary arguments: ${toolCall.function.arguments}`
+        );
+      }
+    } else {
+      const content =
+        typeof choice?.message?.content === "string"
+          ? choice.message.content
+          : undefined;
+      parsed = extractJsonFromText(content);
+      if (parsed === undefined) {
+        throw new Error(
+          "OpenAI-compatible API did not return expected tool call for report_summary"
+        );
+      }
+      log("info", "OpenAI-compatible summary parsed via content fallback", {
+        prNumber: context.prNumber,
+      });
     }
 
     const summary = validateAndNormalizeSummary(parsed);
