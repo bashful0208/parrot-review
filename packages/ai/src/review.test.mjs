@@ -636,3 +636,59 @@ test("validateAndNormalizeSummary: filters empty/non-string highlights", () => {
   assert.deepEqual(out.highlights_en, ["a", "b"]);
   assert.deepEqual(out.highlights_zh, ["甲", "乙"]);
 });
+
+test("validateAndNormalizeSummary: rejects empty summaryMd_en (whitespace only)", () => {
+  assert.throws(
+    () =>
+      validateAndNormalizeSummary_reference({
+        summaryMd_en: "   ",
+        summaryMd_zh: "x",
+        highlights_en: [],
+        highlights_zh: [],
+        mermaid_flow: "",
+      }),
+    /summaryMd_en/
+  );
+});
+
+test("validateAndNormalizeSummary: rejects empty summaryMd_zh (whitespace only)", () => {
+  assert.throws(
+    () =>
+      validateAndNormalizeSummary_reference({
+        summaryMd_en: "x",
+        summaryMd_zh: "   ",
+        highlights_en: [],
+        highlights_zh: [],
+        mermaid_flow: "",
+      }),
+    /summaryMd_zh/
+  );
+});
+
+test("validateAndNormalizeSummary: rejects non-array highlights_en", () => {
+  assert.throws(
+    () =>
+      validateAndNormalizeSummary_reference({
+        summaryMd_en: "x",
+        summaryMd_zh: "x",
+        highlights_en: "not-an-array",
+        highlights_zh: [],
+        mermaid_flow: "",
+      }),
+    /highlights_en/
+  );
+});
+
+test("validateAndNormalizeSummary: rejects non-array highlights_zh", () => {
+  assert.throws(
+    () =>
+      validateAndNormalizeSummary_reference({
+        summaryMd_en: "x",
+        summaryMd_zh: "x",
+        highlights_en: [],
+        highlights_zh: null,
+        mermaid_flow: "",
+      }),
+    /highlights_zh/
+  );
+});
