@@ -46,3 +46,36 @@ export async function loadReviewerGuidelines(): Promise<string> {
 export function _resetReviewerGuidelinesCache(): void {
   reviewerCache = null;
 }
+
+export class LruCache<V> {
+  private readonly capacity: number;
+  private readonly map = new Map<string, V>();
+
+  constructor(capacity: number) {
+    if (!Number.isInteger(capacity) || capacity <= 0) {
+      throw new Error(`LruCache capacity must be a positive integer, got: ${capacity}`);
+    }
+    this.capacity = capacity;
+  }
+
+  has(key: string): boolean {
+    return this.map.has(key);
+  }
+
+  get(key: string): V | undefined {
+    if (!this.map.has(key)) return undefined;
+    const v = this.map.get(key) as V;
+    this.map.delete(key);
+    this.map.set(key, v);
+    return v;
+  }
+
+  set(key: string, value: V): void {
+    if (this.map.has(key)) this.map.delete(key);
+    this.map.set(key, value);
+    if (this.map.size > this.capacity) {
+      const oldestKey = this.map.keys().next().value;
+      if (typeof oldestKey === "string") this.map.delete(oldestKey);
+    }
+  }
+}

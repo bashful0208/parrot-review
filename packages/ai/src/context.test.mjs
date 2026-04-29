@@ -125,3 +125,89 @@ test("loadReviewerGuidelines: caches across calls (lazy load once)", async () =>
     assert.equal(a, b, "second call returns cached value, not new file content");
   });
 });
+
+// ---------------------------------------------------------------------------
+// LruCache reference impl (production class lives in context.ts)
+// ---------------------------------------------------------------------------
+
+class LruCache_reference {
+  constructor(capacity) {
+    if (!Number.isInteger(capacity) || capacity <= 0) {
+      throw new Error(`LruCache capacity must be a positive integer, got: ${capacity}`);
+    }
+    this._capacity = capacity;
+    this._map = new Map();
+  }
+  has(key) { return this._map.has(key); }
+  get(key) {
+    if (!this._map.has(key)) return undefined;
+    const v = this._map.get(key);
+    this._map.delete(key);
+    this._map.set(key, v);
+    return v;
+  }
+  set(key, value) {
+    if (this._map.has(key)) this._map.delete(key);
+    this._map.set(key, value);
+    if (this._map.size > this._capacity) {
+      const oldestKey = this._map.keys().next().value;
+      if (typeof oldestKey === "string") this._map.delete(oldestKey);
+    }
+  }
+}
+
+test("LruCache: stores and retrieves values", () => {
+  const c = new LruCache_reference(3);
+  c.set("a", "1");
+  assert.equal(c.get("a"), "1");
+});
+
+test("LruCache: returns undefined for missing keys", () => {
+  const c = new LruCache_reference(3);
+  assert.equal(c.get("missing"), undefined);
+});
+
+test("LruCache: evicts oldest when capacity exceeded", () => {
+  const c = new LruCache_reference(2);
+  c.set("a", "1");
+  c.set("b", "2");
+  c.set("c", "3");
+  assert.equal(c.get("a"), undefined);
+  assert.equal(c.get("b"), "2");
+  assert.equal(c.get("c"), "3");
+});
+
+test("LruCache: get() refreshes recency", () => {
+  const c = new LruCache_reference(2);
+  c.set("a", "1");
+  c.set("b", "2");
+  c.get("a");
+  c.set("c", "3");
+  assert.equal(c.get("a"), "1");
+  assert.equal(c.get("b"), undefined);
+  assert.equal(c.get("c"), "3");
+});
+
+test("LruCache: set() of existing key refreshes recency", () => {
+  const c = new LruCache_reference(2);
+  c.set("a", "1");
+  c.set("b", "2");
+  c.set("a", "1b");
+  c.set("c", "3");
+  assert.equal(c.get("a"), "1b");
+  assert.equal(c.get("b"), undefined);
+  assert.equal(c.get("c"), "3");
+});
+
+test("LruCache: stores null values explicitly (negative cache)", () => {
+  const c = new LruCache_reference(2);
+  c.set("missing", null);
+  assert.equal(c.has("missing"), true);
+  assert.equal(c.get("missing"), null);
+});
+
+test("LruCache: rejects non-positive capacity", () => {
+  assert.throws(() => new LruCache_reference(0), /capacity/);
+  assert.throws(() => new LruCache_reference(-1), /capacity/);
+  assert.throws(() => new LruCache_reference(1.5), /capacity/);
+});
