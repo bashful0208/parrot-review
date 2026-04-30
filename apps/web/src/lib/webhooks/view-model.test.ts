@@ -12,16 +12,18 @@ const baseStats = {
   total: 0,
   signatureInvalid: 0,
   byProvider: {} as Record<string, number>,
+  byStatus: {} as Record<string, number>,
   topEventTypes: [] as Array<{ eventType: string; count: number }>,
 };
 
-test("buildWebhooksListViewModel: KPI cards reflect stats", () => {
+test("buildWebhooksListViewModel: KPI cards reflect status breakdown", () => {
   const vm = buildWebhooksListViewModel({
     user: baseUser,
     stats: {
       total: 42,
       signatureInvalid: 2,
       byProvider: { github: 30, gitee: 12 },
+      byStatus: { processed: 35, failed: 3, received: 2, enqueued: 1, unmatched: 1 },
       topEventTypes: [{ eventType: "pull_request", count: 18 }],
     },
     events: [],
@@ -31,11 +33,19 @@ test("buildWebhooksListViewModel: KPI cards reflect stats", () => {
     page: 1,
     perPage: 50,
   });
+  // 0: Total
+  assert.equal(vm.kpis[0]!.label, "Total events");
   assert.equal(vm.kpis[0]!.value, "42");
-  assert.equal(vm.kpis[1]!.value, "2");
+  // 1: Failed (warn tone when > 0)
+  assert.equal(vm.kpis[1]!.label, "Failed");
+  assert.equal(vm.kpis[1]!.value, "3");
   assert.equal(vm.kpis[1]!.tone, "warn");
-  assert.equal(vm.kpis[2]!.value, "30 / 12");
-  assert.equal(vm.kpis[3]!.value, "pull_request");
+  // 2: Pending = received + enqueued
+  assert.equal(vm.kpis[2]!.label, "Pending");
+  assert.equal(vm.kpis[2]!.value, "3");
+  // 3: Processed
+  assert.equal(vm.kpis[3]!.label, "Processed");
+  assert.equal(vm.kpis[3]!.value, "35");
 });
 
 test("buildWebhooksListViewModel: empty state -> hasData=false", () => {

@@ -12,6 +12,7 @@ import {
   markCommentPosted,
   getActiveAiProviderConfig,
   insertUsageEvent,
+  markWebhookEventStatus,
 } from "@reviewer/core";
 import type { Logger } from "@reviewer/core";
 import type { WebhookJobPayload } from "@reviewer/core";
@@ -309,6 +310,11 @@ export async function handleReviewJob(
         analyzedFilesCount: diffs.length,
         summaryMd,
       });
+
+      // 步骤 13: 把触发本次 run 的 webhook_event 翻成 'processed'
+      if (webhookEventId) {
+        await markWebhookEventStatus(webhookEventId, "processed");
+      }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
       logger.error("Review job failed", err instanceof Error ? err : new Error(errorMessage), {
@@ -328,6 +334,10 @@ export async function handleReviewJob(
           review_run_id: runId,
           error: updateErr instanceof Error ? updateErr.message : String(updateErr),
         });
+      }
+
+      if (webhookEventId) {
+        await markWebhookEventStatus(webhookEventId, "failed", errorMessage);
       }
 
       throw err;

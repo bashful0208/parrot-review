@@ -156,23 +156,38 @@ function formatAbsolute(d: Date): string {
 }
 
 function buildKpis(stats: WebhookEventStats): WebhookKpi[] {
+  const failed = stats.byStatus.failed ?? 0;
+  const pending =
+    (stats.byStatus.received ?? 0) + (stats.byStatus.enqueued ?? 0);
+  const processed = stats.byStatus.processed ?? 0;
+  const unmatched = stats.byStatus.unmatched ?? 0;
   const top = stats.topEventTypes[0];
   return [
-    { label: "Total events", value: String(stats.total) },
     {
-      label: "Signature failures",
-      value: String(stats.signatureInvalid),
-      tone: stats.signatureInvalid > 0 ? "warn" : "default",
+      label: "Total events",
+      value: String(stats.total),
+      hint:
+        stats.signatureInvalid > 0
+          ? `${stats.signatureInvalid} bad signature`
+          : top
+            ? `top: ${top.eventType} (${top.count})`
+            : undefined,
     },
     {
-      label: "By provider",
-      value: `${stats.byProvider.github ?? 0} / ${stats.byProvider.gitee ?? 0}`,
-      hint: "github / gitee",
+      label: "Failed",
+      value: String(failed),
+      tone: failed > 0 ? "warn" : "default",
+      hint: unmatched > 0 ? `${unmatched} unmatched` : undefined,
     },
     {
-      label: "Top event",
-      value: top ? top.eventType : "—",
-      hint: top ? `${top.count}` : undefined,
+      label: "Pending",
+      value: String(pending),
+      hint: `${stats.byStatus.received ?? 0} received / ${stats.byStatus.enqueued ?? 0} enqueued`,
+    },
+    {
+      label: "Processed",
+      value: String(processed),
+      hint: `${stats.byProvider.github ?? 0} gh / ${stats.byProvider.gitee ?? 0} gitee`,
     },
   ];
 }

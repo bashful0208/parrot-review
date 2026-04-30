@@ -27,6 +27,7 @@ const EMPTY_STATS = {
   total: 0,
   signatureInvalid: 0,
   byProvider: {} as Record<string, number>,
+  byStatus: {} as Record<string, number>,
   topEventTypes: [] as Array<{ eventType: string; count: number }>,
 };
 

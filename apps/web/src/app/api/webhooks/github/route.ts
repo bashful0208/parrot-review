@@ -5,6 +5,7 @@ import {
   enqueueWebhookJob,
   findRepoIntegrationByProviderRepoId,
   insertWebhookEvent,
+  markWebhookEventStatus,
 } from "@reviewer/core";
 import { GitHubProvider } from "@reviewer/git";
 
@@ -22,6 +23,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     insertEvent: insertWebhookEvent,
     enqueueJob: enqueueWebhookJob,
     normalize: (h, b, s) => provider.normalizeWebhookEvent(h, b, s),
+    markEventStatus: markWebhookEventStatus,
     logger,
   });
 

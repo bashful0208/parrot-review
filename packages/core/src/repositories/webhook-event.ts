@@ -57,6 +57,7 @@ export interface WebhookEventStats {
   total: number;
   signatureInvalid: number;
   byProvider: Record<string, number>;
+  byStatus: Record<string, number>;
   topEventTypes: Array<{ eventType: string; count: number }>;
 }
 
@@ -228,6 +229,48 @@ export async function getWebhookEventDetail(
   }
 }
 
+export type WebhookEventStatus =
+  | "received"
+  | "unmatched"
+  | "enqueued"
+  | "processed"
+  | "failed";
+
+/**
+ * Move a single webhook_events row to a new status. Idempotent — never throws
+ * just because the row vanished or was already in another state, since callers
+ * use it as best-effort audit; persistence failures only surface in logs.
+ *
+ * On terminal states (processed / failed) we also stamp `processed_at = now()`.
+ */
+export async function markWebhookEventStatus(
+  id: string,
+  status: WebhookEventStatus,
+  errorMessage?: string | null
+): Promise<void> {
+  const logger = createLogger({ component: "queue" });
+  const isTerminal = status === "processed" || status === "failed";
+  try {
+    await getPool().query(
+      `update public.webhook_events
+          set status = $2,
+              error_message = coalesce($3, error_message),
+              processed_at = case when $4::boolean then now() else processed_at end,
+              updated_at = now()
+        where id = $1`,
+      [id, status, errorMessage ?? null, isTerminal]
+    );
+  } catch (error) {
+    logger.warn("Failed to mark webhook_events status", {
+      operation: "mark_webhook_event_status",
+      webhook_event_id: id,
+      target_status: status,
+      error: (error as Error).message,
+    });
+    // Intentionally swallow — auditing must never break the webhook flow.
+  }
+}
+
 export async function getWebhookEventStats(
   organizationId: string,
   sinceDays: number
@@ -261,6 +304,19 @@ export async function getWebhookEventStats(
       signatureInvalid += Number(row.signature_invalid ?? 0);
     }
 
+    const statusRows = await getPool().query<{ status: string; cnt: string }>(
+      `select status, count(*)::bigint as cnt
+         from public.webhook_events
+        where organization_id = $1
+          and created_at >= now() - ($2::int * interval '1 day')
+        group by status`,
+      [organizationId, sinceDays]
+    );
+    const byStatus: Record<string, number> = {};
+    for (const row of statusRows.rows) {
+      byStatus[row.status] = Number(row.cnt);
+    }
+
     const top = await getPool().query<{ event_type: string; cnt: string }>(
       `select event_type, count(*)::bigint as cnt
          from public.webhook_events
@@ -276,6 +332,7 @@ export async function getWebhookEventStats(
       total,
       signatureInvalid,
       byProvider,
+      byStatus,
       topEventTypes: top.rows.map((row) => ({
         eventType: row.event_type,
         count: Number(row.cnt),
