@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
+
 import type {
   ReviewContext,
   ReviewFinding,
@@ -7,6 +8,14 @@ import type {
   ReviewSummary,
   ReviewSummaryResult,
 } from "./types.js";
+import {
+  noopUsageRecorder,
+  withUsageInstrumentation,
+  type AiProvider,
+  type UsageContext,
+  type UsageLogger,
+  type UsageRecorder,
+} from "./usage.js";
 
 // ---------------------------------------------------------------------------
 // Internal log helper
@@ -31,6 +40,28 @@ export type AiAdapterConfig = {
   model: string;
   apiKey: string;
   baseUrl?: string;
+};
+
+function buildUsageCtx(
+  context: ReviewContext,
+  provider: AiProvider,
+  model: string,
+  taskType: "review_findings" | "review_summary"
+): UsageContext {
+  return {
+    organizationId: context.organizationId,
+    repositoryId: context.repositoryId ?? null,
+    pullRequestId: context.pullRequestId ?? null,
+    reviewRunId: context.reviewRunId ?? null,
+    providerConfigId: context.providerConfigId ?? null,
+    provider,
+    model,
+    taskType,
+  };
+}
+
+const usageLogger: UsageLogger = {
+  warn: (msg, extra) => log("warn", msg, extra),
 };
 
 export interface AiAdapter {
@@ -329,10 +360,17 @@ const ANTHROPIC_SUMMARY_TOOL: Anthropic.Tool = {
 export class AnthropicAdapter implements AiAdapter {
   private readonly client: Anthropic;
   private readonly model: string;
+  private readonly recorder: UsageRecorder;
+  private readonly provider: AiProvider = "anthropic";
 
-  constructor(config: { apiKey: string; model: string }) {
+  constructor(config: {
+    apiKey: string;
+    model: string;
+    recorder?: UsageRecorder;
+  }) {
     this.client = new Anthropic({ apiKey: config.apiKey });
     this.model = config.model;
+    this.recorder = config.recorder ?? noopUsageRecorder;
   }
 
   async generateReviewFindings(context: ReviewContext): Promise<ReviewResult> {
@@ -341,43 +379,48 @@ export class AnthropicAdapter implements AiAdapter {
       return { findings: [] };
     }
 
-    let response: Awaited<ReturnType<typeof this.client.messages.create>>;
-    try {
-      response = await this.client.messages.create({
-        model: this.model,
-        max_tokens: 4096,
-        system: SYSTEM_PROMPT,
-        messages: [{ role: "user", content: buildUserMessage(context, diffText) }],
-        tools: [ANTHROPIC_TOOL],
-        tool_choice: { type: "tool", name: "report_findings" },
-      });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      log("error", "Anthropic API call failed", { error: message });
-      throw new Error(`Anthropic API call failed: ${message}`);
-    }
+    return withUsageInstrumentation(
+      buildUsageCtx(context, this.provider, this.model, "review_findings"),
+      async () => {
+        const response = await this.client.messages.create({
+          model: this.model,
+          max_tokens: 4096,
+          system: SYSTEM_PROMPT,
+          messages: [{ role: "user", content: buildUserMessage(context, diffText) }],
+          tools: [ANTHROPIC_TOOL],
+          tool_choice: { type: "tool", name: "report_findings" },
+        });
 
-    log("info", "Anthropic API call succeeded", {
-      prNumber: context.prNumber,
-      stop_reason: response.stop_reason,
-    });
+        log("info", "Anthropic API call succeeded", {
+          prNumber: context.prNumber,
+          stop_reason: response.stop_reason,
+        });
 
-    if (response.stop_reason === "max_tokens") {
-      throw new Error("Anthropic API response was truncated (max_tokens)");
-    }
+        const truncated = response.stop_reason === "max_tokens";
+        const toolUseBlock = response.content.find(
+          (block): block is Anthropic.ToolUseBlock => block.type === "tool_use"
+        );
 
-    const toolUseBlock = response.content.find(
-      (block): block is Anthropic.ToolUseBlock => block.type === "tool_use"
+        if (!toolUseBlock) {
+          throw new Error(
+            "Anthropic API did not return expected tool_use block for report_findings"
+          );
+        }
+
+        const findings = validateAndNormalizeFindings(toolUseBlock.input);
+        return {
+          result: { findings },
+          outcome: {
+            inputTokens: response.usage?.input_tokens ?? null,
+            outputTokens: response.usage?.output_tokens ?? null,
+            truncated,
+            metadata: { stop_reason: response.stop_reason },
+          },
+        };
+      },
+      this.recorder,
+      usageLogger
     );
-
-    if (!toolUseBlock) {
-      throw new Error(
-        "Anthropic API did not return expected tool_use block for report_findings"
-      );
-    }
-
-    const findings = validateAndNormalizeFindings(toolUseBlock.input);
-    return { findings };
   }
 
   async generateReviewSummary(
@@ -396,45 +439,50 @@ export class AnthropicAdapter implements AiAdapter {
       };
     }
 
-    let response: Awaited<ReturnType<typeof this.client.messages.create>>;
-    try {
-      response = await this.client.messages.create({
-        model: this.model,
-        max_tokens: 2048,
-        system: SUMMARY_SYSTEM_PROMPT,
-        messages: [
-          { role: "user", content: buildSummaryUserMessage(context, diffText) },
-        ],
-        tools: [ANTHROPIC_SUMMARY_TOOL],
-        tool_choice: { type: "tool", name: "report_summary" },
-      });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      log("error", "Anthropic API summary call failed", { error: message });
-      throw new Error(`Anthropic API summary call failed: ${message}`);
-    }
+    return withUsageInstrumentation(
+      buildUsageCtx(context, this.provider, this.model, "review_summary"),
+      async () => {
+        const response = await this.client.messages.create({
+          model: this.model,
+          max_tokens: 2048,
+          system: SUMMARY_SYSTEM_PROMPT,
+          messages: [
+            { role: "user", content: buildSummaryUserMessage(context, diffText) },
+          ],
+          tools: [ANTHROPIC_SUMMARY_TOOL],
+          tool_choice: { type: "tool", name: "report_summary" },
+        });
 
-    log("info", "Anthropic API summary call succeeded", {
-      prNumber: context.prNumber,
-      stop_reason: response.stop_reason,
-    });
+        log("info", "Anthropic API summary call succeeded", {
+          prNumber: context.prNumber,
+          stop_reason: response.stop_reason,
+        });
 
-    if (response.stop_reason === "max_tokens") {
-      throw new Error("Anthropic API summary response was truncated (max_tokens)");
-    }
+        const truncated = response.stop_reason === "max_tokens";
+        const toolUseBlock = response.content.find(
+          (block): block is Anthropic.ToolUseBlock => block.type === "tool_use"
+        );
 
-    const toolUseBlock = response.content.find(
-      (block): block is Anthropic.ToolUseBlock => block.type === "tool_use"
+        if (!toolUseBlock) {
+          throw new Error(
+            "Anthropic API did not return expected tool_use block for report_summary"
+          );
+        }
+
+        const summary = validateAndNormalizeSummary(toolUseBlock.input);
+        return {
+          result: { summary },
+          outcome: {
+            inputTokens: response.usage?.input_tokens ?? null,
+            outputTokens: response.usage?.output_tokens ?? null,
+            truncated,
+            metadata: { stop_reason: response.stop_reason },
+          },
+        };
+      },
+      this.recorder,
+      usageLogger
     );
-
-    if (!toolUseBlock) {
-      throw new Error(
-        "Anthropic API did not return expected tool_use block for report_summary"
-      );
-    }
-
-    const summary = validateAndNormalizeSummary(toolUseBlock.input);
-    return { summary };
   }
 }
 
@@ -464,13 +512,23 @@ const OPENAI_SUMMARY_TOOL: OpenAI.Chat.Completions.ChatCompletionTool = {
 export class OpenAICompatibleAdapter implements AiAdapter {
   private readonly client: OpenAI;
   private readonly model: string;
+  private readonly recorder: UsageRecorder;
+  private readonly provider: AiProvider;
 
-  constructor(config: { apiKey: string; model: string; baseUrl?: string }) {
+  constructor(config: {
+    apiKey: string;
+    model: string;
+    baseUrl?: string;
+    provider?: AiProvider;
+    recorder?: UsageRecorder;
+  }) {
     this.client = new OpenAI({
       apiKey: config.apiKey,
       ...(config.baseUrl ? { baseURL: config.baseUrl } : {}),
     });
     this.model = config.model;
+    this.provider = config.provider ?? "openai";
+    this.recorder = config.recorder ?? noopUsageRecorder;
   }
 
   async generateReviewFindings(context: ReviewContext): Promise<ReviewResult> {
@@ -479,68 +537,73 @@ export class OpenAICompatibleAdapter implements AiAdapter {
       return { findings: [] };
     }
 
-    let response: OpenAI.Chat.Completions.ChatCompletion;
-    try {
-      response = await this.client.chat.completions.create({
-        model: this.model,
-        max_tokens: 4096,
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: buildUserMessage(context, diffText) },
-        ],
-        tools: [OPENAI_TOOL],
-        tool_choice: "auto",
-      });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      log("error", "OpenAI-compatible API call failed", { error: message });
-      throw new Error(`OpenAI-compatible API call failed: ${message}`);
-    }
+    return withUsageInstrumentation(
+      buildUsageCtx(context, this.provider, this.model, "review_findings"),
+      async () => {
+        const response = await this.client.chat.completions.create({
+          model: this.model,
+          max_tokens: 4096,
+          messages: [
+            { role: "system", content: SYSTEM_PROMPT },
+            { role: "user", content: buildUserMessage(context, diffText) },
+          ],
+          tools: [OPENAI_TOOL],
+          tool_choice: "auto",
+        });
 
-    const choice = response.choices[0];
-    log("info", "OpenAI-compatible API call succeeded", {
-      prNumber: context.prNumber,
-      finish_reason: choice?.finish_reason,
-    });
+        const choice = response.choices[0];
+        log("info", "OpenAI-compatible API call succeeded", {
+          prNumber: context.prNumber,
+          finish_reason: choice?.finish_reason,
+        });
 
-    if (choice?.finish_reason === "length") {
-      throw new Error("OpenAI-compatible API response was truncated (length)");
-    }
+        const truncated = choice?.finish_reason === "length";
+        const toolCall = choice?.message?.tool_calls?.[0];
+        let parsed: unknown;
 
-    const toolCall = choice?.message?.tool_calls?.[0];
-    let parsed: unknown;
+        if (toolCall && toolCall.type === "function") {
+          if (toolCall.function.name !== "report_findings") {
+            throw new Error(
+              "OpenAI-compatible API did not return expected tool call for report_findings"
+            );
+          }
+          try {
+            parsed = JSON.parse(toolCall.function.arguments);
+          } catch {
+            throw new Error(
+              `Failed to parse report_findings arguments: ${toolCall.function.arguments}`
+            );
+          }
+        } else {
+          const content =
+            typeof choice?.message?.content === "string"
+              ? choice.message.content
+              : undefined;
+          parsed = extractJsonFromText(content);
+          if (parsed === undefined) {
+            throw new Error(
+              "OpenAI-compatible API did not return expected tool call for report_findings"
+            );
+          }
+          log("info", "OpenAI-compatible findings parsed via content fallback", {
+            prNumber: context.prNumber,
+          });
+        }
 
-    if (toolCall && toolCall.type === "function") {
-      if (toolCall.function.name !== "report_findings") {
-        throw new Error(
-          "OpenAI-compatible API did not return expected tool call for report_findings"
-        );
-      }
-      try {
-        parsed = JSON.parse(toolCall.function.arguments);
-      } catch {
-        throw new Error(
-          `Failed to parse report_findings arguments: ${toolCall.function.arguments}`
-        );
-      }
-    } else {
-      const content =
-        typeof choice?.message?.content === "string"
-          ? choice.message.content
-          : undefined;
-      parsed = extractJsonFromText(content);
-      if (parsed === undefined) {
-        throw new Error(
-          "OpenAI-compatible API did not return expected tool call for report_findings"
-        );
-      }
-      log("info", "OpenAI-compatible findings parsed via content fallback", {
-        prNumber: context.prNumber,
-      });
-    }
-
-    const findings = validateAndNormalizeFindings(parsed);
-    return { findings };
+        const findings = validateAndNormalizeFindings(parsed);
+        return {
+          result: { findings },
+          outcome: {
+            inputTokens: response.usage?.prompt_tokens ?? null,
+            outputTokens: response.usage?.completion_tokens ?? null,
+            truncated,
+            metadata: { finish_reason: choice?.finish_reason },
+          },
+        };
+      },
+      this.recorder,
+      usageLogger
+    );
   }
 
   async generateReviewSummary(
@@ -559,71 +622,76 @@ export class OpenAICompatibleAdapter implements AiAdapter {
       };
     }
 
-    let response: OpenAI.Chat.Completions.ChatCompletion;
-    try {
-      response = await this.client.chat.completions.create({
-        model: this.model,
-        max_tokens: 2048,
-        messages: [
-          { role: "system", content: SUMMARY_SYSTEM_PROMPT },
-          {
-            role: "user",
-            content: buildSummaryUserMessage(context, diffText),
+    return withUsageInstrumentation(
+      buildUsageCtx(context, this.provider, this.model, "review_summary"),
+      async () => {
+        const response = await this.client.chat.completions.create({
+          model: this.model,
+          max_tokens: 2048,
+          messages: [
+            { role: "system", content: SUMMARY_SYSTEM_PROMPT },
+            {
+              role: "user",
+              content: buildSummaryUserMessage(context, diffText),
+            },
+          ],
+          tools: [OPENAI_SUMMARY_TOOL],
+          tool_choice: "auto",
+        });
+
+        const choice = response.choices[0];
+        log("info", "OpenAI-compatible API summary call succeeded", {
+          prNumber: context.prNumber,
+          finish_reason: choice?.finish_reason,
+        });
+
+        const truncated = choice?.finish_reason === "length";
+        const toolCall = choice?.message?.tool_calls?.[0];
+        let parsed: unknown;
+
+        if (toolCall && toolCall.type === "function") {
+          if (toolCall.function.name !== "report_summary") {
+            throw new Error(
+              "OpenAI-compatible API did not return expected tool call for report_summary"
+            );
+          }
+          try {
+            parsed = JSON.parse(toolCall.function.arguments);
+          } catch {
+            throw new Error(
+              `Failed to parse report_summary arguments: ${toolCall.function.arguments}`
+            );
+          }
+        } else {
+          const content =
+            typeof choice?.message?.content === "string"
+              ? choice.message.content
+              : undefined;
+          parsed = extractJsonFromText(content);
+          if (parsed === undefined) {
+            throw new Error(
+              "OpenAI-compatible API did not return expected tool call for report_summary"
+            );
+          }
+          log("info", "OpenAI-compatible summary parsed via content fallback", {
+            prNumber: context.prNumber,
+          });
+        }
+
+        const summary = validateAndNormalizeSummary(parsed);
+        return {
+          result: { summary },
+          outcome: {
+            inputTokens: response.usage?.prompt_tokens ?? null,
+            outputTokens: response.usage?.completion_tokens ?? null,
+            truncated,
+            metadata: { finish_reason: choice?.finish_reason },
           },
-        ],
-        tools: [OPENAI_SUMMARY_TOOL],
-        tool_choice: "auto",
-      });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      log("error", "OpenAI-compatible API summary call failed", { error: message });
-      throw new Error(`OpenAI-compatible API summary call failed: ${message}`);
-    }
-
-    const choice = response.choices[0];
-    log("info", "OpenAI-compatible API summary call succeeded", {
-      prNumber: context.prNumber,
-      finish_reason: choice?.finish_reason,
-    });
-
-    if (choice?.finish_reason === "length") {
-      throw new Error("OpenAI-compatible API summary response was truncated (length)");
-    }
-
-    const toolCall = choice?.message?.tool_calls?.[0];
-    let parsed: unknown;
-
-    if (toolCall && toolCall.type === "function") {
-      if (toolCall.function.name !== "report_summary") {
-        throw new Error(
-          "OpenAI-compatible API did not return expected tool call for report_summary"
-        );
-      }
-      try {
-        parsed = JSON.parse(toolCall.function.arguments);
-      } catch {
-        throw new Error(
-          `Failed to parse report_summary arguments: ${toolCall.function.arguments}`
-        );
-      }
-    } else {
-      const content =
-        typeof choice?.message?.content === "string"
-          ? choice.message.content
-          : undefined;
-      parsed = extractJsonFromText(content);
-      if (parsed === undefined) {
-        throw new Error(
-          "OpenAI-compatible API did not return expected tool call for report_summary"
-        );
-      }
-      log("info", "OpenAI-compatible summary parsed via content fallback", {
-        prNumber: context.prNumber,
-      });
-    }
-
-    const summary = validateAndNormalizeSummary(parsed);
-    return { summary };
+        };
+      },
+      this.recorder,
+      usageLogger
+    );
   }
 }
 
@@ -633,9 +701,16 @@ export class OpenAICompatibleAdapter implements AiAdapter {
 
 const ALIBABA_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1";
 
-export function createAdapter(config: AiAdapterConfig): AiAdapter {
+export function createAdapter(
+  config: AiAdapterConfig,
+  recorder: UsageRecorder = noopUsageRecorder
+): AiAdapter {
   if (config.provider === "anthropic") {
-    return new AnthropicAdapter({ apiKey: config.apiKey, model: config.model });
+    return new AnthropicAdapter({
+      apiKey: config.apiKey,
+      model: config.model,
+      recorder,
+    });
   }
 
   const baseUrl =
@@ -645,5 +720,7 @@ export function createAdapter(config: AiAdapterConfig): AiAdapter {
     apiKey: config.apiKey,
     model: config.model,
     baseUrl,
+    provider: config.provider,
+    recorder,
   });
 }

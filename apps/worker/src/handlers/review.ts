@@ -11,6 +11,8 @@ import {
   insertReviewComment,
   markCommentPosted,
   getActiveAiProviderConfig,
+  insertUsageEvent,
+  markWebhookEventStatus,
 } from "@reviewer/core";
 import type { Logger } from "@reviewer/core";
 import type { WebhookJobPayload } from "@reviewer/core";
@@ -21,6 +23,7 @@ import {
   loadTargetRepoContext,
   renderBilingualFinding,
   renderBilingualSummary,
+  type UsageRecorder,
 } from "@reviewer/ai";
 import {
   GiteeProvider,
@@ -131,15 +134,50 @@ export async function handleReviewJob(
         diffs,
         guidelines,
         projectContext,
+        organizationId,
+        repositoryId,
+        pullRequestId,
+        reviewRunId: runId!,
+        providerConfigId: activeConfig.id,
       };
 
-      // 步骤 8a: 生成行级 findings
-      const result = await generateReviewFindings(reviewContext, adapterConfig);
+      // 步骤 8a: 调用治理 — 把每次 AI 调用落到 usage_events
+      const usageRecorder: UsageRecorder = async (draft) => {
+        await insertUsageEvent({
+          organizationId: draft.organizationId,
+          repositoryId: draft.repositoryId,
+          pullRequestId: draft.pullRequestId,
+          reviewRunId: draft.reviewRunId,
+          providerConfigId: draft.providerConfigId,
+          eventType: draft.eventType,
+          taskType: draft.taskType,
+          provider: draft.provider,
+          modelName: draft.modelName,
+          inputTokens: draft.inputTokens,
+          outputTokens: draft.outputTokens,
+          latencyMs: draft.latencyMs,
+          estimatedCost: draft.estimatedCost,
+          success: draft.success,
+          errorCode: draft.errorCode,
+          metadata: draft.metadata,
+        });
+      };
 
-      // 步骤 8b: 生成 PR 双语摘要（失败不中断行级链路；与回写策略一致）
+      // 步骤 8b: 生成行级 findings
+      const result = await generateReviewFindings(
+        reviewContext,
+        adapterConfig,
+        usageRecorder
+      );
+
+      // 步骤 8c: 生成 PR 双语摘要（失败不中断行级链路；与回写策略一致）
       let summaryMd: string | null = null;
       try {
-        const { summary } = await generateReviewSummary(reviewContext, adapterConfig);
+        const { summary } = await generateReviewSummary(
+          reviewContext,
+          adapterConfig,
+          usageRecorder
+        );
         summaryMd = renderBilingualSummary(summary);
       } catch (err) {
         logger.warn("Failed to generate PR summary", {
@@ -272,6 +310,11 @@ export async function handleReviewJob(
         analyzedFilesCount: diffs.length,
         summaryMd,
       });
+
+      // 步骤 13: 把触发本次 run 的 webhook_event 翻成 'processed'
+      if (webhookEventId) {
+        await markWebhookEventStatus(webhookEventId, "processed");
+      }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
       logger.error("Review job failed", err instanceof Error ? err : new Error(errorMessage), {
@@ -291,6 +334,10 @@ export async function handleReviewJob(
           review_run_id: runId,
           error: updateErr instanceof Error ? updateErr.message : String(updateErr),
         });
+      }
+
+      if (webhookEventId) {
+        await markWebhookEventStatus(webhookEventId, "failed", errorMessage);
       }
 
       throw err;

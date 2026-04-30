@@ -15,3 +15,5 @@ export * from "./repositories/review-run.ts";
 export * from "./repositories/review-issue.ts";
 export * from "./repositories/review-comment.ts";
 export * from "./repositories/ai-provider-config.ts";
+export * from "./repositories/usage-event.ts";
+export * from "./repositories/webhook-event.ts";

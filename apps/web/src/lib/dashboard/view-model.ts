@@ -17,6 +17,8 @@ export const DASHBOARD_NAVIGATION: DashboardNavItem[] = [
   { label: "Review Runs", href: "/review-runs", icon: "runs" },
   { label: "Policies", href: "/policies", icon: "policies" },
   { label: "Team", href: "/team", icon: "team" },
+  { label: "Usage", href: "/usage", icon: "usage" },
+  { label: "Webhooks", href: "/webhooks", icon: "webhooks" },
   { label: "Settings", href: "/settings/providers", icon: "settings" },
 ];
 

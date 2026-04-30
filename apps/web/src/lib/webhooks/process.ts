@@ -33,6 +33,14 @@ export interface WebhookProcessDeps {
     rawBody: string,
     secret: string
   ) => Promise<NormalizedWebhookEvent>;
+  /** Best-effort status write for the persisted webhook_events row.
+   * Implementations should swallow DB errors so audit failures never
+   * break the inbound webhook flow. */
+  markEventStatus: (
+    id: string,
+    status: "received" | "unmatched" | "enqueued" | "processed" | "failed",
+    errorMessage?: string | null
+  ) => Promise<void>;
   logger: Logger;
 }
 
@@ -48,7 +56,7 @@ export async function processProviderWebhook(
   headers: Record<string, string>,
   deps: WebhookProcessDeps
 ): Promise<WebhookResult> {
-  const { findRepoIntegration, insertEvent, enqueueJob, normalize, logger } = deps;
+  const { findRepoIntegration, insertEvent, enqueueJob, normalize, markEventStatus, logger } = deps;
 
   const providerRepoId = extractProviderRepoId(rawBody);
   const repoIntegration = providerRepoId
@@ -57,7 +65,7 @@ export async function processProviderWebhook(
 
   if (repoIntegration == null) {
     const event = await normalize(headers, rawBody, "");
-    await insertEvent({
+    const unmatchedRecord = await insertEvent({
       organizationId: null,
       repositoryId: null,
       provider,
@@ -67,6 +75,9 @@ export async function processProviderWebhook(
       rawBody,
       payload: event.rawPayload,
     });
+    if (unmatchedRecord) {
+      await markEventStatus(unmatchedRecord.id, "unmatched");
+    }
     logger.warn(`${provider} webhook received for unmatched repo`, {
       provider_repo_id: providerRepoId,
       delivery_id: event.deliveryId,
@@ -118,22 +129,32 @@ export async function processProviderWebhook(
     event.headSha != null &&
     event.baseSha != null
   ) {
-    await enqueueJob({
-      source: "webhook",
-      webhookEventId: record.id,
-      repositoryId: repoIntegration.repository_id,
-      organizationId: repoIntegration.organization_id,
-      provider,
-      prNumber: event.providerPrNumber,
-      headSha: event.headSha,
-      baseSha: event.baseSha,
-    });
+    try {
+      await enqueueJob({
+        source: "webhook",
+        webhookEventId: record.id,
+        repositoryId: repoIntegration.repository_id,
+        organizationId: repoIntegration.organization_id,
+        provider,
+        prNumber: event.providerPrNumber,
+        headSha: event.headSha,
+        baseSha: event.baseSha,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      await markEventStatus(record.id, "failed", `enqueue: ${message}`);
+      throw err;
+    }
 
+    await markEventStatus(record.id, "enqueued");
     logger.info(`Review job enqueued from ${provider} webhook`, {
       webhook_event_id: record.id,
       pr_number: event.providerPrNumber,
       review_trigger: event.reviewTrigger,
     });
+  } else {
+    // Non-reviewable event (e.g. ping, push to non-PR ref) — terminal.
+    await markEventStatus(record.id, "processed");
   }
 
   return { status: 202, body: { ok: true } };
