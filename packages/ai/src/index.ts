@@ -9,3 +9,16 @@ export {
   MAX_DOC_CHARS,
 } from "./context.js";
 export { renderBilingualSummary, renderBilingualFinding } from "./render.js";
+export {
+  withUsageInstrumentation,
+  noopUsageRecorder,
+  type UsageContext,
+  type UsageEventDraft,
+  type UsageRecorder,
+  type UsageLogger,
+  type CallOutcome,
+  type AiProvider,
+  type AiTaskType,
+} from "./usage.js";
+export { MODEL_PRICES, estimateCost, type ModelPrice } from "./pricing.js";
+export { classifyAiError, type AiErrorCode } from "./error-classifier.js";

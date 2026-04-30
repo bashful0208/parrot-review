@@ -7,6 +7,12 @@ export interface ReviewContext {
   diffs: FileDiff[];
   guidelines?: string;         // reviewer 自身规范（CLAUDE.md/AGENTS.md/...）
   projectContext?: string;     // 目标仓库背景（同名 4 文件）
+  // 调用治理 / usage_events FK —— 由 worker 在构造时填入
+  organizationId: string;
+  repositoryId?: string | null;
+  pullRequestId?: string | null;
+  reviewRunId?: string | null;
+  providerConfigId?: string | null;
 }
 
 export interface ReviewFinding {
