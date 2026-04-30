@@ -24,7 +24,14 @@ export interface DashboardQuickAction {
 export interface DashboardNavItem {
   label: string;
   href: string;
-  icon: "overview" | "repositories" | "runs" | "policies" | "team" | "settings";
+  icon:
+    | "overview"
+    | "repositories"
+    | "runs"
+    | "policies"
+    | "team"
+    | "settings"
+    | "usage";
 }
 
 export interface DashboardShellModel {

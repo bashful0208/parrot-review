@@ -13,6 +13,7 @@ function CompactIcon({ icon }: { icon: DashboardNavItem["icon"] }) {
     policies: "PO",
     team: "TE",
     settings: "SE",
+    usage: "US",
   };
 
   return (
