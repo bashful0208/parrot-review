@@ -31,7 +31,8 @@ export interface DashboardNavItem {
     | "policies"
     | "team"
     | "settings"
-    | "usage";
+    | "usage"
+    | "webhooks";
 }
 
 export interface DashboardShellModel {

@@ -14,6 +14,7 @@ function CompactIcon({ icon }: { icon: DashboardNavItem["icon"] }) {
     team: "TE",
     settings: "SE",
     usage: "US",
+    webhooks: "WH",
   };
 
   return (
