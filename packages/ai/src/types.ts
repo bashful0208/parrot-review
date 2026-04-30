@@ -1,23 +1,31 @@
 import type { FileDiff } from "@reviewer/git";
 
 export interface ReviewContext {
-  fullName: string;      // 仓库 full_name，如 "owner/repo"
+  fullName: string;            // 仓库 full_name，如 "owner/repo"
   prNumber: number;
   headSha: string;
   diffs: FileDiff[];
+  guidelines?: string;         // reviewer 自身规范（CLAUDE.md/AGENTS.md/...）
+  projectContext?: string;     // 目标仓库背景（同名 4 文件）
 }
 
 export interface ReviewFinding {
   filePath: string;
   startLine: number;
   endLine: number;
-  side: "LEFT" | "RIGHT";   // RIGHT = 新代码
+  side: "LEFT" | "RIGHT";
   issueType: "quality" | "security";
   severity: "low" | "medium" | "high" | "critical";
-  title: string;
-  summary: string;           // 问题描述
-  suggestion: string;        // 修复建议
-  confidenceScore: number;   // 0.0–1.0
+  title_en: string;
+  title_zh: string;
+  summary_en: string;
+  summary_zh: string;
+  suggestion_en: string;
+  suggestion_zh: string;
+  /** Detailed, copy-pasteable English instruction for AI coding agents
+   * (Cursor / Claude Code / etc.) to apply the fix end-to-end. */
+  aiPrompt: string;
+  confidenceScore: number;
 }
 
 export interface ReviewResult {
@@ -25,8 +33,11 @@ export interface ReviewResult {
 }
 
 export interface ReviewSummary {
-  summaryMd: string;
-  highlights: string[];
+  summaryMd_en: string;
+  summaryMd_zh: string;
+  highlights_en: string[];
+  highlights_zh: string[];
+  mermaid_flow: string;
 }
 
 export interface ReviewSummaryResult {

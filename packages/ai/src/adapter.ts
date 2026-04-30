@@ -47,13 +47,25 @@ const MAX_DIFF_CHARS = 80_000;
 const SUMMARY_SCHEMA = {
   type: "object" as const,
   properties: {
-    summaryMd: { type: "string" as const },
-    highlights: {
+    summaryMd_en: { type: "string" as const },
+    summaryMd_zh: { type: "string" as const },
+    highlights_en: {
       type: "array" as const,
       items: { type: "string" as const },
     },
+    highlights_zh: {
+      type: "array" as const,
+      items: { type: "string" as const },
+    },
+    mermaid_flow: { type: "string" as const },
   },
-  required: ["summaryMd", "highlights"] as string[],
+  required: [
+    "summaryMd_en",
+    "summaryMd_zh",
+    "highlights_en",
+    "highlights_zh",
+    "mermaid_flow",
+  ] as string[],
 };
 
 const FINDINGS_SCHEMA = {
@@ -73,9 +85,13 @@ const FINDINGS_SCHEMA = {
             type: "string" as const,
             enum: ["low", "medium", "high", "critical"],
           },
-          title: { type: "string" as const },
-          summary: { type: "string" as const },
-          suggestion: { type: "string" as const },
+          title_en: { type: "string" as const },
+          title_zh: { type: "string" as const },
+          summary_en: { type: "string" as const },
+          summary_zh: { type: "string" as const },
+          suggestion_en: { type: "string" as const },
+          suggestion_zh: { type: "string" as const },
+          aiPrompt: { type: "string" as const },
           confidenceScore: { type: "number" as const, minimum: 0, maximum: 1 },
         },
         required: [
@@ -85,9 +101,13 @@ const FINDINGS_SCHEMA = {
           "side",
           "issueType",
           "severity",
-          "title",
-          "summary",
-          "suggestion",
+          "title_en",
+          "title_zh",
+          "summary_en",
+          "summary_zh",
+          "suggestion_en",
+          "suggestion_zh",
+          "aiPrompt",
           "confidenceScore",
         ] as string[],
       },
@@ -120,9 +140,13 @@ const REQUIRED_FINDING_FIELDS = [
   "filePath",
   "startLine",
   "endLine",
-  "title",
-  "summary",
-  "suggestion",
+  "title_en",
+  "title_zh",
+  "summary_en",
+  "summary_zh",
+  "suggestion_en",
+  "suggestion_zh",
+  "aiPrompt",
 ] as const;
 
 function validateAndNormalizeFindings(input: unknown): ReviewFinding[] {
@@ -152,30 +176,65 @@ function buildUserMessage(context: ReviewContext, diffText: string): string {
 
 Please analyze the following diff and call the \`report_findings\` tool with all real issues you find. Only report findings with genuine impact — avoid noise and style nitpicks unless they indicate a real problem.
 
+For every finding produce both English and Simplified Chinese fields:
+
+- \`title_en\` / \`title_zh\`: a short title (≤ 80 chars). The Chinese version is independently idiomatic, not a literal translation.
+- \`summary_en\` / \`summary_zh\`: 1–3 sentences explaining the issue and its impact. Reference symbols / file paths verbatim.
+- \`suggestion_en\` / \`suggestion_zh\`: a concrete fix suggestion. Keep code identifiers in their original form.
+
+Both languages are required for every finding. Do not leave either side empty.
+
+Additionally, every finding MUST include \`aiPrompt\`: a detailed, copy-pasteable English instruction targeted at an AI coding agent (Cursor / Claude Code / similar) that, on its own, gives the agent enough context to apply the fix end-to-end. Write it as a single self-contained paragraph (no markdown headings, no bullet lists). It must include:
+
+- The exact file path (use the path verbatim from the diff, no \`@\` prefix), narrowed by line range or anchor symbol.
+- A precise description of what is wrong with the current code (the failure mode or invariant violation), so the agent can verify before changing anything.
+- A concrete description of the fix — names of new variables / data structures, the exact control-flow change, any imports or helpers to use, and what the post-fix code should look like at a high level.
+- An explicit verification step the agent can do after the fix (a property to check, a test to add or run).
+
+Aim for 80–250 English words. Prefer specifics over generality. Do not paste large code blocks; describe the change in prose, referring to identifiers by name.
+
 <diff>
 ${diffText}
 </diff>`;
 }
 
 function buildSummaryUserMessage(context: ReviewContext, diffText: string): string {
+  const guidelines = context.guidelines ?? "";
+  const projectContext = context.projectContext ?? "";
+
   return `You are summarizing pull request #${context.prNumber} in repository ${context.fullName} (head SHA: ${context.headSha}).
 
-Read the following diff and call the \`report_summary\` tool with:
-- \`summaryMd\`: a concise Markdown overview (3–8 sentences) describing what this PR changes and why, written for a reviewer who has not yet read the diff.
-- \`highlights\`: 2–6 short bullet strings naming the most important changes, risks, or things to double-check.
+<reviewer_guidelines>
+${guidelines}
+</reviewer_guidelines>
 
-Be specific. Reference file or module names where useful. Do not invent functionality not present in the diff.
+<project_context>
+${projectContext}
+</project_context>
 
 <diff>
 ${diffText}
-</diff>`;
+</diff>
+
+Call the \`report_summary\` tool with:
+
+- \`summaryMd_en\`: a concise English Markdown overview (3–8 sentences) of what this PR changes and why. Reference file/module names where useful. Do not invent functionality not in the diff.
+- \`summaryMd_zh\`: 等价的中文 Markdown 概述（3-8 句），独立成文，不是逐字翻译英文版本；保留专有名词和文件路径。
+- \`highlights_en\`: 2–6 short bullet strings naming the most important changes, risks, or things to double-check.
+- \`highlights_zh\`: 2-6 条对应中文要点，独立成文。
+- \`mermaid_flow\`: if and only if the diff introduces or modifies a discernible execution flow, call chain, or state transition, output a mermaid block (e.g. \`\`\`mermaid sequenceDiagram ...\`\`\`). Otherwise output an empty string.`;
 }
 
 const SYSTEM_PROMPT =
-  "You are a senior code reviewer. Your job is to identify real, impactful issues in code changes — bugs, security vulnerabilities, logic errors, and serious quality problems. Avoid reporting trivial style issues. Be precise about file paths and line numbers.";
+  "You are a senior code reviewer. Your job is to identify real, impactful issues in code changes — bugs, security vulnerabilities, logic errors, and serious quality problems. Avoid reporting trivial style issues. Be precise about file paths and line numbers. " +
+  "You produce every finding bilingually: English and Simplified Chinese versions of the title, summary, and suggestion that are independently idiomatic — not literal translations. Code identifiers, symbols, and file paths stay in their original form on both sides.";
 
 const SUMMARY_SYSTEM_PROMPT =
-  "You are a senior code reviewer summarizing a pull request for a teammate. Be accurate, specific, and concise. Describe what changed and why; flag noteworthy risks. Do not fabricate behavior that is not in the diff.";
+  "You are a senior code reviewer summarizing a pull request for a teammate. " +
+  "Be accurate, specific, and concise. Describe what changed and why; flag noteworthy risks. " +
+  "Do not fabricate behavior that is not in the diff. " +
+  "You produce both English and Simplified Chinese outputs that are independently idiomatic — not literal translations. " +
+  "When the diff introduces or alters a clear execution flow, call chain, or state transition, output a mermaid diagram in the mermaid_flow field; otherwise leave it empty.";
 
 function extractJsonFromText(text: string | null | undefined): unknown {
   if (typeof text !== "string" || text.trim() === "") return undefined;
@@ -213,19 +272,40 @@ function validateAndNormalizeSummary(input: unknown): ReviewSummary {
     throw new Error("Tool input: report_summary expected an object");
   }
   const obj = input as Record<string, unknown>;
-  const summaryMd = obj.summaryMd;
-  const highlights = obj.highlights;
-  if (typeof summaryMd !== "string" || summaryMd.trim() === "") {
-    throw new Error("Tool input: 'summaryMd' must be a non-empty string");
+  const en = obj.summaryMd_en;
+  const zh = obj.summaryMd_zh;
+  const hiEn = obj.highlights_en;
+  const hiZh = obj.highlights_zh;
+  const mermaid = obj.mermaid_flow;
+
+  if (typeof en !== "string" || en.trim() === "") {
+    throw new Error("Tool input: 'summaryMd_en' must be a non-empty string");
   }
-  if (!Array.isArray(highlights)) {
-    throw new Error("Tool input: 'highlights' must be an array");
+  if (typeof zh !== "string" || zh.trim() === "") {
+    throw new Error("Tool input: 'summaryMd_zh' must be a non-empty string");
   }
+  if (!Array.isArray(hiEn)) {
+    throw new Error("Tool input: 'highlights_en' must be an array");
+  }
+  if (!Array.isArray(hiZh)) {
+    throw new Error("Tool input: 'highlights_zh' must be an array");
+  }
+  if (typeof mermaid !== "string") {
+    throw new Error(
+      "Tool input: 'mermaid_flow' must be a string (use empty string when no flow)"
+    );
+  }
+
   return {
-    summaryMd,
-    highlights: highlights.filter(
+    summaryMd_en: en,
+    summaryMd_zh: zh,
+    highlights_en: hiEn.filter(
       (h): h is string => typeof h === "string" && h.trim() !== ""
     ),
+    highlights_zh: hiZh.filter(
+      (h): h is string => typeof h === "string" && h.trim() !== ""
+    ),
+    mermaid_flow: mermaid,
   };
 }
 
@@ -305,7 +385,15 @@ export class AnthropicAdapter implements AiAdapter {
   ): Promise<ReviewSummaryResult> {
     const diffText = buildDiffText(context);
     if (!diffText) {
-      return { summary: { summaryMd: "_No textual diff to summarize._", highlights: [] } };
+      return {
+        summary: {
+          summaryMd_en: "_No textual diff to summarize._",
+          summaryMd_zh: "_本次 PR 没有可用于总结的代码 diff。_",
+          highlights_en: [],
+          highlights_zh: [],
+          mermaid_flow: "",
+        },
+      };
     }
 
     let response: Awaited<ReturnType<typeof this.client.messages.create>>;
@@ -460,7 +548,15 @@ export class OpenAICompatibleAdapter implements AiAdapter {
   ): Promise<ReviewSummaryResult> {
     const diffText = buildDiffText(context);
     if (!diffText) {
-      return { summary: { summaryMd: "_No textual diff to summarize._", highlights: [] } };
+      return {
+        summary: {
+          summaryMd_en: "_No textual diff to summarize._",
+          summaryMd_zh: "_本次 PR 没有可用于总结的代码 diff。_",
+          highlights_en: [],
+          highlights_zh: [],
+          mermaid_flow: "",
+        },
+      };
     }
 
     let response: OpenAI.Chat.Completions.ChatCompletion;

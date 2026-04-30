@@ -82,13 +82,44 @@ function validateAndNormalizeFindings_reference(input) {
       "Anthropic tool input: 'findings' must be an array"
     );
   }
-  const REQUIRED = ["filePath", "startLine", "endLine", "title", "summary", "suggestion"];
+  const REQUIRED = [
+    "filePath",
+    "startLine",
+    "endLine",
+    "title_en",
+    "title_zh",
+    "summary_en",
+    "summary_zh",
+    "suggestion_en",
+    "suggestion_zh",
+    "aiPrompt",
+  ];
   return input.findings
     .filter((item) => REQUIRED.every((k) => item[k] !== undefined && item[k] !== null))
     .map((item) => ({
       ...item,
       confidenceScore: Math.min(1, Math.max(0, item.confidenceScore ?? 0)),
     }));
+}
+
+function bilingualFinding(overrides = {}) {
+  return {
+    filePath: "a.ts",
+    startLine: 1,
+    endLine: 2,
+    side: "RIGHT",
+    issueType: "quality",
+    severity: "low",
+    title_en: "T",
+    title_zh: "标题",
+    summary_en: "S",
+    summary_zh: "概述",
+    suggestion_en: "Fix",
+    suggestion_zh: "修复",
+    aiPrompt: "In `a.ts` around line 1, do X then verify Y.",
+    confidenceScore: 0.5,
+    ...overrides,
+  };
 }
 
 test("validateFindings: throws when findings is not an array", () => {
@@ -108,68 +139,24 @@ test("validateFindings: throws when findings key is missing", () => {
 test("validateFindings: filters out findings missing required fields", () => {
   const input = {
     findings: [
-      {
-        filePath: "a.ts",
-        startLine: 1,
-        endLine: 2,
-        title: "T",
-        summary: "S",
-        suggestion: "Fix",
-        confidenceScore: 0.9,
-      },
-      {
-        // missing filePath
-        startLine: 5,
-        endLine: 6,
-        title: "Bad",
-        summary: "S",
-        suggestion: "Fix",
-      },
-      {
-        filePath: "b.ts",
-        startLine: 3,
-        endLine: 4,
-        // missing title
-        summary: "S",
-        suggestion: "Fix",
-      },
+      bilingualFinding({ filePath: "a.ts", confidenceScore: 0.9 }),
+      // missing filePath
+      bilingualFinding({ filePath: undefined }),
+      // missing title_zh
+      bilingualFinding({ filePath: "c.ts", title_zh: undefined }),
     ],
   };
   const result = validateAndNormalizeFindings_reference(input);
-  assert.equal(result.length, 1, "only 1 valid finding should remain");
+  assert.equal(result.length, 1, "only 1 valid bilingual finding should remain");
   assert.equal(result[0].filePath, "a.ts");
 });
 
 test("validateFindings: normalizes confidenceScore to [0,1]", () => {
   const input = {
     findings: [
-      {
-        filePath: "a.ts",
-        startLine: 1,
-        endLine: 2,
-        title: "T",
-        summary: "S",
-        suggestion: "Fix",
-        confidenceScore: 1.5, // too high
-      },
-      {
-        filePath: "b.ts",
-        startLine: 1,
-        endLine: 2,
-        title: "T",
-        summary: "S",
-        suggestion: "Fix",
-        confidenceScore: -0.3, // too low
-      },
-      {
-        filePath: "c.ts",
-        startLine: 1,
-        endLine: 2,
-        title: "T",
-        summary: "S",
-        suggestion: "Fix",
-        // missing => default 0
-      },
+      bilingualFinding({ filePath: "a.ts", confidenceScore: 1.5 }), // too high
+      bilingualFinding({ filePath: "b.ts", confidenceScore: -0.3 }), // too low
+      bilingualFinding({ filePath: "c.ts", confidenceScore: undefined }), // missing
     ],
   };
   const result = validateAndNormalizeFindings_reference(input);
@@ -390,18 +377,7 @@ const validateSummaryRef = (input) => {
 };
 
 test("parseOpenAiCompatChoice: tool_call path returns findings", () => {
-  const finding = {
-    filePath: "a.ts",
-    startLine: 1,
-    endLine: 2,
-    side: "RIGHT",
-    issueType: "quality",
-    severity: "low",
-    title: "T",
-    summary: "S",
-    suggestion: "Fix",
-    confidenceScore: 0.5,
-  };
+  const finding = bilingualFinding();
   const choice = {
     message: {
       tool_calls: [
@@ -448,18 +424,7 @@ test("parseOpenAiCompatChoice: tool_call wrong name throws", () => {
 });
 
 test("parseOpenAiCompatChoice: no tool_call but bare-JSON content -> fallback findings", () => {
-  const finding = {
-    filePath: "a.ts",
-    startLine: 1,
-    endLine: 2,
-    side: "RIGHT",
-    issueType: "quality",
-    severity: "low",
-    title: "T",
-    summary: "S",
-    suggestion: "Fix",
-    confidenceScore: 0.7,
-  };
+  const finding = bilingualFinding({ confidenceScore: 0.7 });
   const choice = {
     message: {
       tool_calls: undefined,
@@ -518,5 +483,177 @@ test("parseOpenAiCompatChoice: missing message entirely throws", () => {
         validate: validateFindingsRef,
       }),
     /did not return expected tool call/
+  );
+});
+
+// ---------------------------------------------------------------------------
+// 5. validateAndNormalizeSummary: bilingual + mermaid contract
+// ---------------------------------------------------------------------------
+
+function validateAndNormalizeSummary_reference(input) {
+  if (typeof input !== "object" || input === null) {
+    throw new Error("Tool input: report_summary expected an object");
+  }
+  const obj = input;
+  const en = obj.summaryMd_en;
+  const zh = obj.summaryMd_zh;
+  const hi_en = obj.highlights_en;
+  const hi_zh = obj.highlights_zh;
+  const mermaid = obj.mermaid_flow;
+  if (typeof en !== "string" || en.trim() === "") {
+    throw new Error("Tool input: 'summaryMd_en' must be a non-empty string");
+  }
+  if (typeof zh !== "string" || zh.trim() === "") {
+    throw new Error("Tool input: 'summaryMd_zh' must be a non-empty string");
+  }
+  if (!Array.isArray(hi_en)) {
+    throw new Error("Tool input: 'highlights_en' must be an array");
+  }
+  if (!Array.isArray(hi_zh)) {
+    throw new Error("Tool input: 'highlights_zh' must be an array");
+  }
+  if (typeof mermaid !== "string") {
+    throw new Error("Tool input: 'mermaid_flow' must be a string (use empty string when no flow)");
+  }
+  return {
+    summaryMd_en: en,
+    summaryMd_zh: zh,
+    highlights_en: hi_en.filter((h) => typeof h === "string" && h.trim() !== ""),
+    highlights_zh: hi_zh.filter((h) => typeof h === "string" && h.trim() !== ""),
+    mermaid_flow: mermaid,
+  };
+}
+
+test("validateAndNormalizeSummary: accepts full bilingual payload", () => {
+  const out = validateAndNormalizeSummary_reference({
+    summaryMd_en: "Adds bilingual summary",
+    summaryMd_zh: "增加双语总评",
+    highlights_en: ["a", "b"],
+    highlights_zh: ["甲", "乙"],
+    mermaid_flow: "",
+  });
+  assert.equal(out.summaryMd_en, "Adds bilingual summary");
+  assert.equal(out.summaryMd_zh, "增加双语总评");
+  assert.deepEqual(out.highlights_en, ["a", "b"]);
+  assert.deepEqual(out.highlights_zh, ["甲", "乙"]);
+  assert.equal(out.mermaid_flow, "");
+});
+
+test("validateAndNormalizeSummary: keeps non-empty mermaid flow", () => {
+  const flow = "```mermaid\nflowchart LR\nA-->B\n```";
+  const out = validateAndNormalizeSummary_reference({
+    summaryMd_en: "x",
+    summaryMd_zh: "x",
+    highlights_en: [],
+    highlights_zh: [],
+    mermaid_flow: flow,
+  });
+  assert.equal(out.mermaid_flow, flow);
+});
+
+test("validateAndNormalizeSummary: rejects missing summaryMd_en", () => {
+  assert.throws(
+    () =>
+      validateAndNormalizeSummary_reference({
+        summaryMd_zh: "x",
+        highlights_en: [],
+        highlights_zh: [],
+        mermaid_flow: "",
+      }),
+    /summaryMd_en/
+  );
+});
+
+test("validateAndNormalizeSummary: rejects missing summaryMd_zh", () => {
+  assert.throws(
+    () =>
+      validateAndNormalizeSummary_reference({
+        summaryMd_en: "x",
+        highlights_en: [],
+        highlights_zh: [],
+        mermaid_flow: "",
+      }),
+    /summaryMd_zh/
+  );
+});
+
+test("validateAndNormalizeSummary: rejects non-string mermaid_flow", () => {
+  assert.throws(
+    () =>
+      validateAndNormalizeSummary_reference({
+        summaryMd_en: "x",
+        summaryMd_zh: "x",
+        highlights_en: [],
+        highlights_zh: [],
+      }),
+    /mermaid_flow/
+  );
+});
+
+test("validateAndNormalizeSummary: filters empty/non-string highlights", () => {
+  const out = validateAndNormalizeSummary_reference({
+    summaryMd_en: "x",
+    summaryMd_zh: "x",
+    highlights_en: ["a", "", null, "b"],
+    highlights_zh: ["甲", undefined, "乙"],
+    mermaid_flow: "",
+  });
+  assert.deepEqual(out.highlights_en, ["a", "b"]);
+  assert.deepEqual(out.highlights_zh, ["甲", "乙"]);
+});
+
+test("validateAndNormalizeSummary: rejects empty summaryMd_en (whitespace only)", () => {
+  assert.throws(
+    () =>
+      validateAndNormalizeSummary_reference({
+        summaryMd_en: "   ",
+        summaryMd_zh: "x",
+        highlights_en: [],
+        highlights_zh: [],
+        mermaid_flow: "",
+      }),
+    /summaryMd_en/
+  );
+});
+
+test("validateAndNormalizeSummary: rejects empty summaryMd_zh (whitespace only)", () => {
+  assert.throws(
+    () =>
+      validateAndNormalizeSummary_reference({
+        summaryMd_en: "x",
+        summaryMd_zh: "   ",
+        highlights_en: [],
+        highlights_zh: [],
+        mermaid_flow: "",
+      }),
+    /summaryMd_zh/
+  );
+});
+
+test("validateAndNormalizeSummary: rejects non-array highlights_en", () => {
+  assert.throws(
+    () =>
+      validateAndNormalizeSummary_reference({
+        summaryMd_en: "x",
+        summaryMd_zh: "x",
+        highlights_en: "not-an-array",
+        highlights_zh: [],
+        mermaid_flow: "",
+      }),
+    /highlights_en/
+  );
+});
+
+test("validateAndNormalizeSummary: rejects non-array highlights_zh", () => {
+  assert.throws(
+    () =>
+      validateAndNormalizeSummary_reference({
+        summaryMd_en: "x",
+        summaryMd_zh: "x",
+        highlights_en: [],
+        highlights_zh: null,
+        mermaid_flow: "",
+      }),
+    /highlights_zh/
   );
 });

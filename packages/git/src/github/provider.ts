@@ -293,6 +293,55 @@ export class GitHubProvider implements IProvider {
     );
   }
 
+  async getRepositoryFile(
+    fullName: string,
+    path: string,
+    ref: string,
+    credential: ProviderCredential,
+    logger?: Logger
+  ): Promise<string | null> {
+    const [owner, repo] = fullName.split("/");
+    if (!owner || !repo) {
+      throw new Error(`Invalid GitHub repository full_name: ${fullName}`);
+    }
+    const octokit = await buildOctokit(credential);
+    return withGitPlatformErrorBoundary(
+      async () => {
+        try {
+          const { data } = await (octokit as Awaited<ReturnType<typeof getPatOctokit>>).request(
+            "GET /repos/{owner}/{repo}/contents/{path}",
+            { owner, repo, path, ref }
+          );
+          if (Array.isArray(data) || !("content" in data) || data.type !== "file") {
+            return null;
+          }
+          const buf = Buffer.from(data.content as string, "base64");
+          const text = buf.toString("utf-8");
+          logger?.debug("Fetched GitHub repository file", {
+            fullName,
+            path,
+            ref,
+            bytes: buf.length,
+          });
+          return text;
+        } catch (err) {
+          if (
+            typeof err === "object" &&
+            err !== null &&
+            "status" in err &&
+            (err as { status?: number }).status === 404
+          ) {
+            return null;
+          }
+          throw err;
+        }
+      },
+      PROVIDER,
+      logger,
+      context({ operation: "getRepositoryFile", fullName, path, ref })
+    );
+  }
+
   async normalizeWebhookEvent(
     rawHeaders: Record<string, string>,
     rawBody: string,

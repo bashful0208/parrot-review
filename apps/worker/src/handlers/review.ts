@@ -14,7 +14,14 @@ import {
 } from "@reviewer/core";
 import type { Logger } from "@reviewer/core";
 import type { WebhookJobPayload } from "@reviewer/core";
-import { generateReviewFindings, generateReviewSummary } from "@reviewer/ai";
+import {
+  generateReviewFindings,
+  generateReviewSummary,
+  loadReviewerGuidelines,
+  loadTargetRepoContext,
+  renderBilingualFinding,
+  renderBilingualSummary,
+} from "@reviewer/ai";
 import {
   GiteeProvider,
   GitHubProvider,
@@ -100,6 +107,12 @@ export async function handleReviewJob(
       // 步骤 7: 拉取 diff
       const diffs = await provider.getPullRequestDiff(repo.full_name, prNumber, credential, logger);
 
+      // 步骤 7a: 并发加载 reviewer 自身规范 + 目标仓库背景
+      const [guidelines, projectContext] = await Promise.all([
+        loadReviewerGuidelines(),
+        loadTargetRepoContext(provider, repo.full_name, headSha, credential, logger),
+      ]);
+
       // 步骤 8: 从 DB 加载 AI provider 配置
       const activeConfig = await getActiveAiProviderConfig(organizationId);
       if (!activeConfig) {
@@ -116,21 +129,18 @@ export async function handleReviewJob(
         prNumber,
         headSha,
         diffs,
+        guidelines,
+        projectContext,
       };
 
       // 步骤 8a: 生成行级 findings
       const result = await generateReviewFindings(reviewContext, adapterConfig);
 
-      // 步骤 8b: 生成 PR 整体摘要（失败不中断行级链路；与回写策略一致）
+      // 步骤 8b: 生成 PR 双语摘要（失败不中断行级链路；与回写策略一致）
       let summaryMd: string | null = null;
       try {
         const { summary } = await generateReviewSummary(reviewContext, adapterConfig);
-        const highlightsMd =
-          summary.highlights.length > 0
-            ? "\n\n**Highlights:**\n" +
-              summary.highlights.map((h) => `- ${h}`).join("\n")
-            : "";
-        summaryMd = `${summary.summaryMd}${highlightsMd}`;
+        summaryMd = renderBilingualSummary(summary);
       } catch (err) {
         logger.warn("Failed to generate PR summary", {
           review_run_id: runId,
@@ -139,80 +149,29 @@ export async function handleReviewJob(
       }
 
       // 步骤 9: 计算 fingerprint 并写入 review_issues
+      // DB 字段保持单语；fingerprint 用 EN title 稳定（不随翻译漂移），
+      // title 同样存 EN，summary / suggestion 存双语 markdown 以便前端展示
       const issueInputs = result.findings.map((f) => ({
         organizationId,
         repositoryId,
         pullRequestId,
         reviewRunId: runId!,
         fingerprint: createHash("sha256")
-          .update(`${repositoryId}:${f.filePath}:${f.startLine}:${f.title}`)
+          .update(`${repositoryId}:${f.filePath}:${f.startLine}:${f.title_en}`)
           .digest("hex"),
         issueType: f.issueType,
-        title: f.title,
-        summary: f.summary,
+        title: f.title_en,
+        summary: `${f.summary_en}\n\n${f.summary_zh}`,
         severity: f.severity,
         confidenceScore: f.confidenceScore,
         filePath: f.filePath,
         startLine: f.startLine,
         endLine: f.endLine,
-        suggestionMd: f.suggestion,
+        suggestionMd: `${f.suggestion_en}\n\n${f.suggestion_zh}`,
       }));
       const insertedIssues = await insertReviewIssues(issueInputs);
 
-      // 步骤 10: 对每条 issue 回写 GitHub 评论
-      for (let i = 0; i < insertedIssues.length; i++) {
-        const issue = insertedIssues[i]!;
-        const finding = result.findings[i]!;
-
-        const bodyMd = `**${finding.title}** (${finding.severity})\n\n${finding.summary}\n\n**Suggestion:** ${finding.suggestion}`;
-
-        // a. 插入 review_comment 并发评论（整体失败则 warn 跳过，不中断循环）
-        try {
-          const { id: commentId } = await insertReviewComment({
-            organizationId,
-            pullRequestId,
-            reviewRunId: runId!,
-            reviewIssueId: issue.id,
-            provider: repo.provider,
-            bodyMd,
-            filePath: finding.filePath,
-            lineNumber: finding.endLine,
-            isInline: true,
-          });
-
-          // b. 调用 GitHub API 发评论（失败不抛，只 log）
-          try {
-            const posted = await provider.postReviewComment(
-              repo.full_name,
-              {
-                prNumber,
-                commitSha: headSha,
-                filePath: finding.filePath,
-                line: finding.endLine,
-                side: finding.side,
-                bodyMd,
-              },
-              credential,
-              logger
-            );
-
-            await markCommentPosted(commentId, posted.externalCommentId, posted.createdAt);
-          } catch (err) {
-            logger.warn("Failed to post review comment to GitHub", {
-              comment_id: commentId,
-              error: err instanceof Error ? err.message : String(err),
-            });
-          }
-        } catch (err) {
-          logger.warn("Failed to process review comment for finding", {
-            review_run_id: runId,
-            issue_id: issue.id,
-            error: err instanceof Error ? err.message : String(err),
-          });
-        }
-      }
-
-      // 步骤 11: 回写 PR 整体摘要评论（与 inline 评论同策略：失败仅 warn 不中断）
+      // 步骤 10: 先回写 PR 整体摘要评论（与 inline 评论同策略：失败仅 warn 不中断）
       if (summaryMd) {
         try {
           const { id: commentId } = await insertReviewComment({
@@ -245,6 +204,61 @@ export async function handleReviewJob(
         } catch (err) {
           logger.warn("Failed to insert PR summary comment record", {
             review_run_id: runId,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+      }
+
+      // 步骤 11: 再对每条 issue 回写行内评论
+      for (let i = 0; i < insertedIssues.length; i++) {
+        const issue = insertedIssues[i]!;
+        const finding = result.findings[i]!;
+
+        const bodyMd = renderBilingualFinding(finding);
+
+        // a. 插入 review_comment 并发评论（整体失败则 warn 跳过，不中断循环）
+        try {
+          const { id: commentId } = await insertReviewComment({
+            organizationId,
+            pullRequestId,
+            reviewRunId: runId!,
+            reviewIssueId: issue.id,
+            provider: repo.provider,
+            bodyMd,
+            filePath: finding.filePath,
+            lineNumber: finding.endLine,
+            isInline: true,
+          });
+
+          // b. 调用 provider API 发评论（失败不抛，只 log）
+          const fileDiff = diffs.find((d) => d.filePath === finding.filePath);
+          try {
+            const posted = await provider.postReviewComment(
+              repo.full_name,
+              {
+                prNumber,
+                commitSha: headSha,
+                filePath: finding.filePath,
+                line: finding.endLine,
+                side: finding.side,
+                bodyMd,
+                patch: fileDiff?.patch ?? null,
+              },
+              credential,
+              logger
+            );
+
+            await markCommentPosted(commentId, posted.externalCommentId, posted.createdAt);
+          } catch (err) {
+            logger.warn("Failed to post review comment to GitHub", {
+              comment_id: commentId,
+              error: err instanceof Error ? err.message : String(err),
+            });
+          }
+        } catch (err) {
+          logger.warn("Failed to process review comment for finding", {
+            review_run_id: runId,
+            issue_id: issue.id,
             error: err instanceof Error ? err.message : String(err),
           });
         }

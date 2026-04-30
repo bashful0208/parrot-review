@@ -62,6 +62,10 @@ export interface ReviewCommentInput {
   line: number;
   side: "LEFT" | "RIGHT";
   bodyMd: string;
+  /** Unified-diff patch for the target file. Required by providers that
+   * use diff position (e.g. Gitee); ignored by providers that take file
+   * line directly (e.g. GitHub). */
+  patch?: string | null;
 }
 
 export interface PostedComment {

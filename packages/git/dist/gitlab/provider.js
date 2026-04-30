@@ -25,6 +25,9 @@ export class GitLabProvider {
     postPullRequestComment(_fullName, _prNumber, _bodyMd, _credential) {
         return Promise.reject(new GitProviderNotImplementedError("gitlab", "postPullRequestComment"));
     }
+    async getRepositoryFile(_fullName, _path, _ref, _credential, _logger) {
+        throw new Error("GitLabProvider.getRepositoryFile is not implemented");
+    }
     normalizeWebhookEvent(_rawHeaders, _rawBody, _webhookSecret) {
         return Promise.reject(new GitProviderNotImplementedError("gitlab", "normalizeWebhookEvent"));
     }
