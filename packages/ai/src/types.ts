@@ -16,9 +16,12 @@ export interface ReviewFinding {
   side: "LEFT" | "RIGHT";
   issueType: "quality" | "security";
   severity: "low" | "medium" | "high" | "critical";
-  title: string;
-  summary: string;
-  suggestion: string;
+  title_en: string;
+  title_zh: string;
+  summary_en: string;
+  summary_zh: string;
+  suggestion_en: string;
+  suggestion_zh: string;
   confidenceScore: number;
 }
 

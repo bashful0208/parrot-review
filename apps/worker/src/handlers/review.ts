@@ -19,6 +19,7 @@ import {
   generateReviewSummary,
   loadReviewerGuidelines,
   loadTargetRepoContext,
+  renderBilingualFinding,
   renderBilingualSummary,
 } from "@reviewer/ai";
 import {
@@ -148,23 +149,25 @@ export async function handleReviewJob(
       }
 
       // 步骤 9: 计算 fingerprint 并写入 review_issues
+      // DB 字段保持单语；fingerprint 用 EN title 稳定（不随翻译漂移），
+      // title 同样存 EN，summary / suggestion 存双语 markdown 以便前端展示
       const issueInputs = result.findings.map((f) => ({
         organizationId,
         repositoryId,
         pullRequestId,
         reviewRunId: runId!,
         fingerprint: createHash("sha256")
-          .update(`${repositoryId}:${f.filePath}:${f.startLine}:${f.title}`)
+          .update(`${repositoryId}:${f.filePath}:${f.startLine}:${f.title_en}`)
           .digest("hex"),
         issueType: f.issueType,
-        title: f.title,
-        summary: f.summary,
+        title: f.title_en,
+        summary: `${f.summary_en}\n\n${f.summary_zh}`,
         severity: f.severity,
         confidenceScore: f.confidenceScore,
         filePath: f.filePath,
         startLine: f.startLine,
         endLine: f.endLine,
-        suggestionMd: f.suggestion,
+        suggestionMd: `${f.suggestion_en}\n\n${f.suggestion_zh}`,
       }));
       const insertedIssues = await insertReviewIssues(issueInputs);
 
@@ -211,7 +214,7 @@ export async function handleReviewJob(
         const issue = insertedIssues[i]!;
         const finding = result.findings[i]!;
 
-        const bodyMd = `**${finding.title}** (${finding.severity})\n\n${finding.summary}\n\n**Suggestion:** ${finding.suggestion}`;
+        const bodyMd = renderBilingualFinding(finding);
 
         // a. 插入 review_comment 并发评论（整体失败则 warn 跳过，不中断循环）
         try {
@@ -227,7 +230,8 @@ export async function handleReviewJob(
             isInline: true,
           });
 
-          // b. 调用 GitHub API 发评论（失败不抛，只 log）
+          // b. 调用 provider API 发评论（失败不抛，只 log）
+          const fileDiff = diffs.find((d) => d.filePath === finding.filePath);
           try {
             const posted = await provider.postReviewComment(
               repo.full_name,
@@ -238,6 +242,7 @@ export async function handleReviewJob(
                 line: finding.endLine,
                 side: finding.side,
                 bodyMd,
+                patch: fileDiff?.patch ?? null,
               },
               credential,
               logger

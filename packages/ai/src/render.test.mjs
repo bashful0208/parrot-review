@@ -117,3 +117,176 @@ test("renderBilingualSummary: trims whitespace from summary fields", () => {
   assert.ok(out.includes("含空白中文"));
   assert.ok(!out.includes("## Flow"), "whitespace-only mermaid is treated as empty");
 });
+
+// ---------------------------------------------------------------------------
+// renderBilingualFinding — inline review comment body
+// ---------------------------------------------------------------------------
+
+const ISSUE_TYPE_BADGE = {
+  quality: { icon: "⚠️", label: "Potential issue" },
+  security: { icon: "🛡️", label: "Security issue" },
+};
+
+const SEVERITY_BADGE = {
+  low: { icon: "🟡", label: "Minor" },
+  medium: { icon: "🟠", label: "Moderate" },
+  high: { icon: "🔴", label: "Major" },
+  critical: { icon: "🚨", label: "Critical" },
+};
+
+function formatFindingBadge_reference(f) {
+  const typeBadge = ISSUE_TYPE_BADGE[f.issueType] ?? {
+    icon: "⚠️",
+    label: "Potential issue",
+  };
+  const sevBadge = SEVERITY_BADGE[f.severity] ?? { icon: "🟡", label: "Minor" };
+  return `${typeBadge.icon} ${typeBadge.label} | ${sevBadge.icon} ${sevBadge.label}`;
+}
+
+function renderBilingualFinding_reference(f) {
+  const enFilled =
+    typeof f.title_en === "string" && f.title_en.trim() !== "" &&
+    typeof f.summary_en === "string" && f.summary_en.trim() !== "";
+  const zhFilled =
+    typeof f.title_zh === "string" && f.title_zh.trim() !== "" &&
+    typeof f.summary_zh === "string" && f.summary_zh.trim() !== "";
+
+  const blocks = [];
+  if (enFilled) {
+    const lines = [`**${f.title_en.trim()}**`, "", f.summary_en.trim()];
+    if (typeof f.suggestion_en === "string" && f.suggestion_en.trim() !== "") {
+      lines.push("", `**Suggestion:** ${f.suggestion_en.trim()}`);
+    }
+    blocks.push(lines.join("\n"));
+  }
+  if (zhFilled) {
+    const lines = [`**${f.title_zh.trim()}**`, "", f.summary_zh.trim()];
+    if (typeof f.suggestion_zh === "string" && f.suggestion_zh.trim() !== "") {
+      lines.push("", `**建议：** ${f.suggestion_zh.trim()}`);
+    }
+    blocks.push(lines.join("\n"));
+  }
+  if (blocks.length === 0) return "";
+  return `${formatFindingBadge_reference(f)}\n\n${blocks.join("\n\n---\n\n")}`;
+}
+
+test("renderBilingualFinding: badge header at top, EN -> sep -> ZH order", () => {
+  const out = renderBilingualFinding_reference({
+    issueType: "quality",
+    severity: "high",
+    title_en: "Off-by-one in loop",
+    title_zh: "循环边界错误",
+    summary_en: "The loop runs N+1 times because of <=.",
+    summary_zh: "因为使用了 <=，循环多跑了一次。",
+    suggestion_en: "Use < instead of <=.",
+    suggestion_zh: "请改用 < 代替 <=。",
+  });
+
+  const badgeIdx = out.indexOf("⚠️ Potential issue | 🔴 Major");
+  const enTitleIdx = out.indexOf("Off-by-one in loop");
+  const sepIdx = out.indexOf("\n---\n");
+  const zhTitleIdx = out.indexOf("循环边界错误");
+
+  assert.ok(badgeIdx === 0, "badge is the very first line");
+  assert.ok(enTitleIdx > badgeIdx, "EN title comes after badge");
+  assert.ok(sepIdx > enTitleIdx, "separator after EN block");
+  assert.ok(zhTitleIdx > sepIdx, "ZH title after separator");
+
+  // severity should NOT also appear inline next to titles
+  assert.ok(!out.includes("(high)"), "no redundant (severity) on EN title");
+  assert.ok(!out.includes("（high）"), "no redundant （severity） on ZH title");
+
+  assert.ok(out.includes("**Suggestion:**"));
+  assert.ok(out.includes("**建议：**"));
+});
+
+test("renderBilingualFinding: quality+low maps to ⚠️ Potential issue | 🟡 Minor", () => {
+  const out = renderBilingualFinding_reference({
+    issueType: "quality",
+    severity: "low",
+    title_en: "T",
+    title_zh: "标题",
+    summary_en: "S",
+    summary_zh: "概述",
+    suggestion_en: "",
+    suggestion_zh: "",
+  });
+  assert.ok(out.startsWith("⚠️ Potential issue | 🟡 Minor"));
+});
+
+test("renderBilingualFinding: security+critical maps to 🛡️ Security issue | 🚨 Critical", () => {
+  const out = renderBilingualFinding_reference({
+    issueType: "security",
+    severity: "critical",
+    title_en: "T",
+    title_zh: "标题",
+    summary_en: "S",
+    summary_zh: "概述",
+    suggestion_en: "",
+    suggestion_zh: "",
+  });
+  assert.ok(out.startsWith("🛡️ Security issue | 🚨 Critical"));
+});
+
+test("renderBilingualFinding: medium severity maps to 🟠 Moderate", () => {
+  const out = renderBilingualFinding_reference({
+    issueType: "quality",
+    severity: "medium",
+    title_en: "T",
+    title_zh: "标题",
+    summary_en: "S",
+    summary_zh: "概述",
+    suggestion_en: "",
+    suggestion_zh: "",
+  });
+  assert.ok(out.includes("🟠 Moderate"));
+});
+
+test("renderBilingualFinding: ZH only fields render badge + only ZH block (no separator)", () => {
+  const out = renderBilingualFinding_reference({
+    issueType: "quality",
+    severity: "low",
+    title_en: "",
+    title_zh: "循环边界错误",
+    summary_en: "",
+    summary_zh: "因为使用了 <=，循环多跑了一次。",
+    suggestion_en: "",
+    suggestion_zh: "请改用 <。",
+  });
+  assert.ok(out.startsWith("⚠️ Potential issue | 🟡 Minor"));
+  assert.ok(out.includes("循环边界错误"));
+  assert.ok(out.includes("**建议：**"));
+  assert.ok(!out.includes("**Suggestion:**"));
+  assert.ok(!out.includes("\n---\n"), "no separator when only one side rendered");
+});
+
+test("renderBilingualFinding: missing suggestion just omits the Suggestion line", () => {
+  const out = renderBilingualFinding_reference({
+    issueType: "quality",
+    severity: "medium",
+    title_en: "Issue",
+    title_zh: "问题",
+    summary_en: "Summary.",
+    summary_zh: "概述。",
+    suggestion_en: "",
+    suggestion_zh: "",
+  });
+  assert.ok(out.includes("**Issue**"));
+  assert.ok(out.includes("**问题**"));
+  assert.ok(!out.includes("**Suggestion:**"));
+  assert.ok(!out.includes("**建议：**"));
+});
+
+test("renderBilingualFinding: empty EN and ZH returns empty string", () => {
+  const out = renderBilingualFinding_reference({
+    issueType: "quality",
+    severity: "low",
+    title_en: "",
+    title_zh: "",
+    summary_en: "",
+    summary_zh: "",
+    suggestion_en: "",
+    suggestion_zh: "",
+  });
+  assert.equal(out, "");
+});

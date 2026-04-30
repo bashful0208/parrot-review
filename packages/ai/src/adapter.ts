@@ -85,9 +85,12 @@ const FINDINGS_SCHEMA = {
             type: "string" as const,
             enum: ["low", "medium", "high", "critical"],
           },
-          title: { type: "string" as const },
-          summary: { type: "string" as const },
-          suggestion: { type: "string" as const },
+          title_en: { type: "string" as const },
+          title_zh: { type: "string" as const },
+          summary_en: { type: "string" as const },
+          summary_zh: { type: "string" as const },
+          suggestion_en: { type: "string" as const },
+          suggestion_zh: { type: "string" as const },
           confidenceScore: { type: "number" as const, minimum: 0, maximum: 1 },
         },
         required: [
@@ -97,9 +100,12 @@ const FINDINGS_SCHEMA = {
           "side",
           "issueType",
           "severity",
-          "title",
-          "summary",
-          "suggestion",
+          "title_en",
+          "title_zh",
+          "summary_en",
+          "summary_zh",
+          "suggestion_en",
+          "suggestion_zh",
           "confidenceScore",
         ] as string[],
       },
@@ -132,9 +138,12 @@ const REQUIRED_FINDING_FIELDS = [
   "filePath",
   "startLine",
   "endLine",
-  "title",
-  "summary",
-  "suggestion",
+  "title_en",
+  "title_zh",
+  "summary_en",
+  "summary_zh",
+  "suggestion_en",
+  "suggestion_zh",
 ] as const;
 
 function validateAndNormalizeFindings(input: unknown): ReviewFinding[] {
@@ -163,6 +172,14 @@ function buildUserMessage(context: ReviewContext, diffText: string): string {
   return `You are reviewing pull request #${context.prNumber} in repository ${context.fullName} (head SHA: ${context.headSha}).
 
 Please analyze the following diff and call the \`report_findings\` tool with all real issues you find. Only report findings with genuine impact — avoid noise and style nitpicks unless they indicate a real problem.
+
+For every finding produce both English and Simplified Chinese fields:
+
+- \`title_en\` / \`title_zh\`: a short title (≤ 80 chars). The Chinese version is independently idiomatic, not a literal translation.
+- \`summary_en\` / \`summary_zh\`: 1–3 sentences explaining the issue and its impact. Reference symbols / file paths verbatim.
+- \`suggestion_en\` / \`suggestion_zh\`: a concrete fix suggestion. Keep code identifiers in their original form.
+
+Both languages are required for every finding. Do not leave either side empty.
 
 <diff>
 ${diffText}
@@ -197,7 +214,8 @@ Call the \`report_summary\` tool with:
 }
 
 const SYSTEM_PROMPT =
-  "You are a senior code reviewer. Your job is to identify real, impactful issues in code changes — bugs, security vulnerabilities, logic errors, and serious quality problems. Avoid reporting trivial style issues. Be precise about file paths and line numbers.";
+  "You are a senior code reviewer. Your job is to identify real, impactful issues in code changes — bugs, security vulnerabilities, logic errors, and serious quality problems. Avoid reporting trivial style issues. Be precise about file paths and line numbers. " +
+  "You produce every finding bilingually: English and Simplified Chinese versions of the title, summary, and suggestion that are independently idiomatic — not literal translations. Code identifiers, symbols, and file paths stay in their original form on both sides.";
 
 const SUMMARY_SYSTEM_PROMPT =
   "You are a senior code reviewer summarizing a pull request for a teammate. " +

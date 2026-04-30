@@ -8,4 +8,4 @@ export {
   REVIEWER_DOC_WHITELIST,
   MAX_DOC_CHARS,
 } from "./context.js";
-export { renderBilingualSummary } from "./render.js";
+export { renderBilingualSummary, renderBilingualFinding } from "./render.js";
