@@ -36,4 +36,12 @@ export interface IProvider {
      */
     postPullRequestComment(fullName: string, prNumber: number, bodyMd: string, credential: ProviderCredential, logger?: Logger): Promise<PostedComment>;
     normalizeWebhookEvent(rawHeaders: Record<string, string>, rawBody: string, webhookSecret: string): Promise<NormalizedWebhookEvent>;
+    /**
+     * 读取目标仓库某个文件的 utf-8 内容。
+     *
+     * - 返回 null 表示文件不存在 (404)，**不抛**。
+     * - 其他错误（401/403/5xx/网络）按平台错误处理（withGitPlatformErrorBoundary）抛出。
+     * - 调用方负责按字符截断和缓存策略。
+     */
+    getRepositoryFile(fullName: string, path: string, ref: string, credential: ProviderCredential, logger?: Logger): Promise<string | null>;
 }

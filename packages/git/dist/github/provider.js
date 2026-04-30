@@ -148,6 +148,39 @@ export class GitHubProvider {
             return mapPostedComment(data);
         }, PROVIDER, logger, context({ operation: "postPullRequestComment", repository: fullName }));
     }
+    async getRepositoryFile(fullName, path, ref, credential, logger) {
+        const [owner, repo] = fullName.split("/");
+        if (!owner || !repo) {
+            throw new Error(`Invalid GitHub repository full_name: ${fullName}`);
+        }
+        const octokit = await buildOctokit(credential);
+        return withGitPlatformErrorBoundary(async () => {
+            try {
+                const { data } = await octokit.request("GET /repos/{owner}/{repo}/contents/{path}", { owner, repo, path, ref });
+                if (Array.isArray(data) || !("content" in data) || data.type !== "file") {
+                    return null;
+                }
+                const buf = Buffer.from(data.content, "base64");
+                const text = buf.toString("utf-8");
+                logger?.debug("Fetched GitHub repository file", {
+                    fullName,
+                    path,
+                    ref,
+                    bytes: buf.length,
+                });
+                return text;
+            }
+            catch (err) {
+                if (typeof err === "object" &&
+                    err !== null &&
+                    "status" in err &&
+                    err.status === 404) {
+                    return null;
+                }
+                throw err;
+            }
+        }, PROVIDER, logger, context({ operation: "getRepositoryFile", fullName, path, ref }));
+    }
     async normalizeWebhookEvent(rawHeaders, rawBody, webhookSecret) {
         return normalizeGitHubEvent(rawHeaders, rawBody, webhookSecret);
     }

@@ -16,6 +16,7 @@ import type {
 } from "../provider.js";
 import { withGitPlatformErrorBoundary } from "../errors.js";
 import { getGiteePatClient } from "./client.js";
+import { computeDiffPosition } from "./diff-position.js";
 import {
   mapFileDiff,
   mapPostedComment,
@@ -223,9 +224,15 @@ export class GiteeProvider implements IProvider {
     const { owner, repo } = splitFullName(fullName);
     const cred = assertGitee(credential);
     const client = getGiteePatClient(cred);
+    const position = computeDiffPosition(input.patch, input.line, input.side);
+    if (position === null) {
+      throw new Error(
+        `Unable to compute Gitee diff position for ${input.filePath}:${input.line} (${input.side}); patch missing or line not in diff`
+      );
+    }
     return withGitPlatformErrorBoundary(
       async () => {
-        // Gitee 行级评论：comments 接口附带 path / position（position 即 diff 行号）
+        // Gitee 行级评论：position 是该行在 unified diff 中的行号（不是文件行号）
         const data = await client.request<GiteeComment>(
           `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls/${input.prNumber}/comments`,
           {
@@ -234,7 +241,7 @@ export class GiteeProvider implements IProvider {
               body: input.bodyMd,
               commit_id: input.commitSha,
               path: input.filePath,
-              position: input.line,
+              position,
             },
           }
         );
