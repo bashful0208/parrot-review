@@ -56,6 +56,19 @@ function formatFindingBadge(finding: ReviewFinding): string {
   return `${type.icon} ${type.label} | ${sev.icon} ${sev.label}`;
 }
 
+function pickFence(body: string): string {
+  const runs = body.match(/`+/g) ?? [];
+  let longest = 0;
+  for (const r of runs) longest = Math.max(longest, r.length);
+  return "`".repeat(Math.max(3, longest + 1));
+}
+
+function renderAiPromptBlock(prompt: string): string {
+  const trimmed = prompt.trim();
+  const fence = pickFence(trimmed);
+  return `<details>\n<summary>🤖 Prompt for AI Agents</summary>\n\n${fence}\n${trimmed}\n${fence}\n\n</details>`;
+}
+
 export function renderBilingualFinding(finding: ReviewFinding): string {
   const blocks: string[] = [];
 
@@ -76,5 +89,13 @@ export function renderBilingualFinding(finding: ReviewFinding): string {
   }
 
   if (blocks.length === 0) return "";
-  return `${formatFindingBadge(finding)}\n\n${blocks.join("\n\n---\n\n")}`;
+
+  const sections = [
+    formatFindingBadge(finding),
+    blocks.join("\n\n---\n\n"),
+  ];
+  if (nonEmpty(finding.aiPrompt)) {
+    sections.push(renderAiPromptBlock(finding.aiPrompt));
+  }
+  return sections.join("\n\n");
 }

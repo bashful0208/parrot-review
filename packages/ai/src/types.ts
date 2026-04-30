@@ -22,6 +22,9 @@ export interface ReviewFinding {
   summary_zh: string;
   suggestion_en: string;
   suggestion_zh: string;
+  /** Detailed, copy-pasteable English instruction for AI coding agents
+   * (Cursor / Claude Code / etc.) to apply the fix end-to-end. */
+  aiPrompt: string;
   confidenceScore: number;
 }
 

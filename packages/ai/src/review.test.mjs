@@ -92,6 +92,7 @@ function validateAndNormalizeFindings_reference(input) {
     "summary_zh",
     "suggestion_en",
     "suggestion_zh",
+    "aiPrompt",
   ];
   return input.findings
     .filter((item) => REQUIRED.every((k) => item[k] !== undefined && item[k] !== null))
@@ -115,6 +116,7 @@ function bilingualFinding(overrides = {}) {
     summary_zh: "概述",
     suggestion_en: "Fix",
     suggestion_zh: "修复",
+    aiPrompt: "In `a.ts` around line 1, do X then verify Y.",
     confidenceScore: 0.5,
     ...overrides,
   };

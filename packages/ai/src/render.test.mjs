@@ -143,6 +143,20 @@ function formatFindingBadge_reference(f) {
   return `${typeBadge.icon} ${typeBadge.label} | ${sevBadge.icon} ${sevBadge.label}`;
 }
 
+function pickFence_reference(body) {
+  // outer fence must be longer than the longest backtick run in the body
+  const runs = body.match(/`+/g) ?? [];
+  let longest = 0;
+  for (const r of runs) longest = Math.max(longest, r.length);
+  return "`".repeat(Math.max(3, longest + 1));
+}
+
+function renderAiPrompt_reference(prompt) {
+  const trimmed = prompt.trim();
+  const fence = pickFence_reference(trimmed);
+  return `<details>\n<summary>🤖 Prompt for AI Agents</summary>\n\n${fence}\n${trimmed}\n${fence}\n\n</details>`;
+}
+
 function renderBilingualFinding_reference(f) {
   const enFilled =
     typeof f.title_en === "string" && f.title_en.trim() !== "" &&
@@ -167,7 +181,15 @@ function renderBilingualFinding_reference(f) {
     blocks.push(lines.join("\n"));
   }
   if (blocks.length === 0) return "";
-  return `${formatFindingBadge_reference(f)}\n\n${blocks.join("\n\n---\n\n")}`;
+
+  const sections = [
+    formatFindingBadge_reference(f),
+    blocks.join("\n\n---\n\n"),
+  ];
+  if (typeof f.aiPrompt === "string" && f.aiPrompt.trim() !== "") {
+    sections.push(renderAiPrompt_reference(f.aiPrompt));
+  }
+  return sections.join("\n\n");
 }
 
 test("renderBilingualFinding: badge header at top, EN -> sep -> ZH order", () => {
@@ -289,4 +311,68 @@ test("renderBilingualFinding: empty EN and ZH returns empty string", () => {
     suggestion_zh: "",
   });
   assert.equal(out, "");
+});
+
+test("renderBilingualFinding: appends Prompt for AI Agents details block when aiPrompt present", () => {
+  const out = renderBilingualFinding_reference({
+    issueType: "quality",
+    severity: "high",
+    title_en: "Index drift",
+    title_zh: "索引漂移",
+    summary_en: "i may not match.",
+    summary_zh: "i 可能不匹配。",
+    suggestion_en: "use map by fingerprint",
+    suggestion_zh: "用 fingerprint 做 map",
+    aiPrompt:
+      "In `apps/worker/src/handlers/review.ts` around lines 213-216, change loop to map issues by fingerprint.",
+  });
+
+  assert.ok(out.includes("<details>"));
+  assert.ok(out.includes("<summary>🤖 Prompt for AI Agents</summary>"));
+  assert.ok(out.includes("</details>"));
+  assert.ok(out.includes("In `apps/worker/src/handlers/review.ts` around lines 213-216"));
+  // prompt body is inside a fenced code block so users get a copy button on GH
+  assert.ok(out.includes("\n```\n"), "prompt is wrapped in a triple-backtick fence");
+
+  const detailsIdx = out.indexOf("<details>");
+  const zhIdx = out.indexOf("索引漂移");
+  assert.ok(detailsIdx > zhIdx, "details block comes after the bilingual content");
+});
+
+test("renderBilingualFinding: omits Prompt for AI Agents block when aiPrompt missing or blank", () => {
+  const base = {
+    issueType: "quality",
+    severity: "low",
+    title_en: "T",
+    title_zh: "标题",
+    summary_en: "S",
+    summary_zh: "概述",
+    suggestion_en: "",
+    suggestion_zh: "",
+  };
+
+  const noField = renderBilingualFinding_reference(base);
+  assert.ok(!noField.includes("<details>"));
+  assert.ok(!noField.includes("Prompt for AI Agents"));
+
+  const emptyField = renderBilingualFinding_reference({ ...base, aiPrompt: "   " });
+  assert.ok(!emptyField.includes("<details>"));
+  assert.ok(!emptyField.includes("Prompt for AI Agents"));
+});
+
+test("renderBilingualFinding: aiPrompt with triple-backtick is escaped via 4-backtick fence", () => {
+  const out = renderBilingualFinding_reference({
+    issueType: "quality",
+    severity: "low",
+    title_en: "T",
+    title_zh: "标题",
+    summary_en: "S",
+    summary_zh: "概述",
+    suggestion_en: "",
+    suggestion_zh: "",
+    aiPrompt: "Replace ```js\nfoo()\n``` with bar()",
+  });
+  // Outer fence must be longer than any inner fence to avoid premature close.
+  assert.ok(out.includes("\n````\n"), "outer fence is 4 backticks when prompt contains 3");
+  assert.ok(out.includes("Replace ```js"));
 });

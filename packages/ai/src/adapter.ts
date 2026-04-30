@@ -91,6 +91,7 @@ const FINDINGS_SCHEMA = {
           summary_zh: { type: "string" as const },
           suggestion_en: { type: "string" as const },
           suggestion_zh: { type: "string" as const },
+          aiPrompt: { type: "string" as const },
           confidenceScore: { type: "number" as const, minimum: 0, maximum: 1 },
         },
         required: [
@@ -106,6 +107,7 @@ const FINDINGS_SCHEMA = {
           "summary_zh",
           "suggestion_en",
           "suggestion_zh",
+          "aiPrompt",
           "confidenceScore",
         ] as string[],
       },
@@ -144,6 +146,7 @@ const REQUIRED_FINDING_FIELDS = [
   "summary_zh",
   "suggestion_en",
   "suggestion_zh",
+  "aiPrompt",
 ] as const;
 
 function validateAndNormalizeFindings(input: unknown): ReviewFinding[] {
@@ -180,6 +183,15 @@ For every finding produce both English and Simplified Chinese fields:
 - \`suggestion_en\` / \`suggestion_zh\`: a concrete fix suggestion. Keep code identifiers in their original form.
 
 Both languages are required for every finding. Do not leave either side empty.
+
+Additionally, every finding MUST include \`aiPrompt\`: a detailed, copy-pasteable English instruction targeted at an AI coding agent (Cursor / Claude Code / similar) that, on its own, gives the agent enough context to apply the fix end-to-end. Write it as a single self-contained paragraph (no markdown headings, no bullet lists). It must include:
+
+- The exact file path (use the path verbatim from the diff, no \`@\` prefix), narrowed by line range or anchor symbol.
+- A precise description of what is wrong with the current code (the failure mode or invariant violation), so the agent can verify before changing anything.
+- A concrete description of the fix — names of new variables / data structures, the exact control-flow change, any imports or helpers to use, and what the post-fix code should look like at a high level.
+- An explicit verification step the agent can do after the fix (a property to check, a test to add or run).
+
+Aim for 80–250 English words. Prefer specifics over generality. Do not paste large code blocks; describe the change in prose, referring to identifiers by name.
 
 <diff>
 ${diffText}
