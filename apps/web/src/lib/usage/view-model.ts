@@ -17,7 +17,7 @@ import {
   formatUsd,
   rangeKeyFromDays,
   type UsageRangeKey,
-} from "./format.js";
+} from "./format";
 
 export interface UsageKpi {
   label: string;
