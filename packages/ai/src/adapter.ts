@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 
 import type {
+  CritiqueResult,
   ReviewContext,
   ReviewFinding,
   ReviewResult,
@@ -46,7 +47,11 @@ function buildUsageCtx(
   context: ReviewContext,
   provider: AiProvider,
   model: string,
-  taskType: "review_findings" | "review_summary"
+  taskType:
+    | "review_findings"
+    | "review_summary"
+    | "verify_finding"
+    | "regenerate_finding"
 ): UsageContext {
   return {
     organizationId: context.organizationId,
@@ -67,6 +72,15 @@ const usageLogger: UsageLogger = {
 export interface AiAdapter {
   generateReviewFindings(context: ReviewContext): Promise<ReviewResult>;
   generateReviewSummary(context: ReviewContext): Promise<ReviewSummaryResult>;
+  verifyFinding(
+    finding: ReviewFinding,
+    context: ReviewContext
+  ): Promise<CritiqueResult>;
+  regenerateFinding(
+    finding: ReviewFinding,
+    critique: CritiqueResult,
+    context: ReviewContext
+  ): Promise<ReviewFinding>;
 }
 
 // ---------------------------------------------------------------------------
@@ -145,6 +159,35 @@ const FINDINGS_SCHEMA = {
     },
   },
   required: ["findings"] as string[],
+};
+
+const FINDING_ITEM_SCHEMA = FINDINGS_SCHEMA.properties.findings.items;
+
+const VERIFY_SCHEMA = {
+  type: "object" as const,
+  properties: {
+    valid: { type: "boolean" as const },
+    reason: { type: "string" as const },
+    confidenceScore: { type: "number" as const, minimum: 0, maximum: 1 },
+    patchedFinding: {
+      type: "object" as const,
+      properties: FINDING_ITEM_SCHEMA.properties,
+      required: FINDING_ITEM_SCHEMA.required,
+    },
+  },
+  required: ["valid", "reason", "confidenceScore"] as string[],
+};
+
+const REGENERATE_SCHEMA = {
+  type: "object" as const,
+  properties: {
+    finding: {
+      type: "object" as const,
+      properties: FINDING_ITEM_SCHEMA.properties,
+      required: FINDING_ITEM_SCHEMA.required,
+    },
+  },
+  required: ["finding"] as string[],
 };
 
 // ---------------------------------------------------------------------------
@@ -290,6 +333,124 @@ const SUMMARY_SYSTEM_PROMPT =
   "You produce both English and Simplified Chinese outputs that are independently idiomatic — not literal translations. " +
   "When the diff introduces or alters a clear execution flow, call chain, or state transition, output a mermaid diagram in the mermaid_flow field; otherwise leave it empty.";
 
+const VERIFY_SYSTEM_PROMPT =
+  "You are a code review auditor. Your only job is to verify whether a draft finding is correct and useful. Be skeptical: reject hallucinated bugs, mismatched line ranges, and findings whose suggestion does not actually fix the problem. When the finding is mostly right but flawed, return valid=false with patchedFinding fixed.";
+
+const REGENERATE_SYSTEM_PROMPT =
+  "You are a code reviewer fixing a draft finding that an auditor rejected. Read the auditor's reason carefully, then rewrite the finding so the issue is real, the line range matches the diff, and bilingual fields are complete. Return the corrected finding via the report_finding tool.";
+
+function buildVerifyUserMessage(
+  finding: ReviewFinding,
+  context: ReviewContext
+): string {
+  const targetDiff =
+    context.diffs.find((d) => d.filePath === finding.filePath)?.patch ??
+    "(diff not found)";
+  return `You are auditing a code review finding for pull request #${context.prNumber} in ${context.fullName}.
+
+Decide whether the finding below is a real, well-formed issue worth posting to the developer.
+
+A finding should be REJECTED (valid=false) if:
+- the issue described is not actually present in the diff,
+- the file path / line range does not match the actual change,
+- the severity / issueType is grossly mismatched,
+- the suggestion would not fix the problem or would make it worse,
+- the bilingual fields are missing or one side is empty.
+
+If the finding is mostly correct but has fixable defects, set valid=false AND populate patchedFinding with a corrected full ReviewFinding object.
+
+If the finding is acceptable as-is, set valid=true and reason="ok".
+
+<finding>
+${JSON.stringify(finding, null, 2)}
+</finding>
+
+<diff_for_${finding.filePath}>
+\`\`\`diff
+${targetDiff}
+\`\`\`
+</diff_for_${finding.filePath}>
+
+Call the \`verify_finding\` tool with your decision.`;
+}
+
+function buildRegenerateUserMessage(
+  finding: ReviewFinding,
+  critique: CritiqueResult,
+  context: ReviewContext
+): string {
+  const targetDiff =
+    context.diffs.find((d) => d.filePath === finding.filePath)?.patch ??
+    "(diff not found)";
+  const auditorPatch = critique.patchedFinding
+    ? `<auditor_proposed_patch>\n${JSON.stringify(critique.patchedFinding, null, 2)}\n</auditor_proposed_patch>\n\n`
+    : "";
+  return `Auditor rejected the following draft finding for pull request #${context.prNumber} in ${context.fullName}:
+
+<auditor_reason>
+${critique.reason}
+</auditor_reason>
+
+<draft_finding>
+${JSON.stringify(finding, null, 2)}
+</draft_finding>
+
+${auditorPatch}<diff_for_${finding.filePath}>
+\`\`\`diff
+${targetDiff}
+\`\`\`
+</diff_for_${finding.filePath}>
+
+Rewrite the finding to address the auditor's reason. Keep the bilingual structure; do not regress existing-good fields. Call the \`report_finding\` tool with the corrected finding.`;
+}
+
+function validateAndNormalizeCritique(input: unknown): CritiqueResult {
+  if (typeof input !== "object" || input === null) {
+    throw new Error("Tool input: verify_finding expected an object");
+  }
+  const obj = input as Record<string, unknown>;
+  if (typeof obj.valid !== "boolean") {
+    throw new Error("Tool input: 'valid' must be boolean");
+  }
+  if (typeof obj.reason !== "string") {
+    throw new Error("Tool input: 'reason' must be string");
+  }
+  const score = typeof obj.confidenceScore === "number" ? obj.confidenceScore : 0;
+  const patched =
+    obj.patchedFinding && typeof obj.patchedFinding === "object"
+      ? (obj.patchedFinding as ReviewFinding)
+      : undefined;
+  return {
+    valid: obj.valid,
+    reason: obj.reason,
+    confidenceScore: Math.min(1, Math.max(0, score)),
+    patchedFinding: patched,
+  };
+}
+
+function validateAndNormalizeRegenerated(input: unknown): ReviewFinding {
+  if (typeof input !== "object" || input === null) {
+    throw new Error("Tool input: report_finding expected an object");
+  }
+  const obj = input as Record<string, unknown>;
+  const finding = obj.finding as Record<string, unknown> | undefined;
+  if (!finding || typeof finding !== "object") {
+    throw new Error("Tool input: 'finding' must be an object");
+  }
+  for (const k of REQUIRED_FINDING_FIELDS) {
+    if (finding[k] === undefined || finding[k] === null) {
+      throw new Error(`Tool input: regenerated finding missing field '${k}'`);
+    }
+  }
+  return {
+    ...(finding as unknown as ReviewFinding),
+    confidenceScore: Math.min(
+      1,
+      Math.max(0, (finding.confidenceScore as number) ?? 0)
+    ),
+  };
+}
+
 function extractJsonFromText(text: string | null | undefined): unknown {
   if (typeof text !== "string" || text.trim() === "") return undefined;
 
@@ -378,6 +539,18 @@ const ANTHROPIC_SUMMARY_TOOL: Anthropic.Tool = {
   description:
     "Report a concise overall summary and key highlights for the given pull request diff.",
   input_schema: SUMMARY_SCHEMA as Anthropic.Tool["input_schema"],
+};
+
+const ANTHROPIC_VERIFY_TOOL: Anthropic.Tool = {
+  name: "verify_finding",
+  description: "Audit a draft code review finding and return verdict.",
+  input_schema: VERIFY_SCHEMA as Anthropic.Tool["input_schema"],
+};
+
+const ANTHROPIC_REGENERATE_TOOL: Anthropic.Tool = {
+  name: "report_finding",
+  description: "Return a corrected single finding after auditor rejection.",
+  input_schema: REGENERATE_SCHEMA as Anthropic.Tool["input_schema"],
 };
 
 export class AnthropicAdapter implements AiAdapter {
@@ -507,6 +680,104 @@ export class AnthropicAdapter implements AiAdapter {
       usageLogger
     );
   }
+
+  async verifyFinding(
+    finding: ReviewFinding,
+    context: ReviewContext
+  ): Promise<CritiqueResult> {
+    return withUsageInstrumentation(
+      {
+        ...buildUsageCtx(context, this.provider, this.model, "verify_finding"),
+        agentRole: "critic",
+        attemptNumber: 0,
+      },
+      async () => {
+        const response = await this.client.messages.create({
+          model: this.model,
+          max_tokens: 2048,
+          system: VERIFY_SYSTEM_PROMPT,
+          messages: [
+            { role: "user", content: buildVerifyUserMessage(finding, context) },
+          ],
+          tools: [ANTHROPIC_VERIFY_TOOL],
+          tool_choice: { type: "tool", name: "verify_finding" },
+        });
+
+        const truncated = response.stop_reason === "max_tokens";
+        const toolUseBlock = response.content.find(
+          (block): block is Anthropic.ToolUseBlock => block.type === "tool_use"
+        );
+        if (!toolUseBlock) {
+          throw new Error(
+            "Anthropic API did not return expected tool_use block for verify_finding"
+          );
+        }
+        const critique = validateAndNormalizeCritique(toolUseBlock.input);
+        return {
+          result: critique,
+          outcome: {
+            inputTokens: response.usage?.input_tokens ?? null,
+            outputTokens: response.usage?.output_tokens ?? null,
+            truncated,
+            metadata: { stop_reason: response.stop_reason },
+          },
+        };
+      },
+      this.recorder,
+      usageLogger
+    );
+  }
+
+  async regenerateFinding(
+    finding: ReviewFinding,
+    critique: CritiqueResult,
+    context: ReviewContext
+  ): Promise<ReviewFinding> {
+    return withUsageInstrumentation(
+      {
+        ...buildUsageCtx(context, this.provider, this.model, "regenerate_finding"),
+        agentRole: "regenerator",
+        attemptNumber: 0,
+      },
+      async () => {
+        const response = await this.client.messages.create({
+          model: this.model,
+          max_tokens: 4096,
+          system: REGENERATE_SYSTEM_PROMPT,
+          messages: [
+            {
+              role: "user",
+              content: buildRegenerateUserMessage(finding, critique, context),
+            },
+          ],
+          tools: [ANTHROPIC_REGENERATE_TOOL],
+          tool_choice: { type: "tool", name: "report_finding" },
+        });
+
+        const truncated = response.stop_reason === "max_tokens";
+        const toolUseBlock = response.content.find(
+          (block): block is Anthropic.ToolUseBlock => block.type === "tool_use"
+        );
+        if (!toolUseBlock) {
+          throw new Error(
+            "Anthropic API did not return expected tool_use block for report_finding"
+          );
+        }
+        const fixed = validateAndNormalizeRegenerated(toolUseBlock.input);
+        return {
+          result: fixed,
+          outcome: {
+            inputTokens: response.usage?.input_tokens ?? null,
+            outputTokens: response.usage?.output_tokens ?? null,
+            truncated,
+            metadata: { stop_reason: response.stop_reason },
+          },
+        };
+      },
+      this.recorder,
+      usageLogger
+    );
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -529,6 +800,24 @@ const OPENAI_SUMMARY_TOOL: OpenAI.Chat.Completions.ChatCompletionTool = {
     description:
       "Report a concise overall summary and key highlights for the given pull request diff.",
     parameters: SUMMARY_SCHEMA,
+  },
+};
+
+const OPENAI_VERIFY_TOOL: OpenAI.Chat.Completions.ChatCompletionTool = {
+  type: "function",
+  function: {
+    name: "verify_finding",
+    description: "Audit a draft code review finding and return verdict.",
+    parameters: VERIFY_SCHEMA,
+  },
+};
+
+const OPENAI_REGENERATE_TOOL: OpenAI.Chat.Completions.ChatCompletionTool = {
+  type: "function",
+  function: {
+    name: "report_finding",
+    description: "Return a corrected single finding after auditor rejection.",
+    parameters: REGENERATE_SCHEMA,
   },
 };
 
@@ -704,6 +993,144 @@ export class OpenAICompatibleAdapter implements AiAdapter {
         const summary = validateAndNormalizeSummary(parsed);
         return {
           result: { summary },
+          outcome: {
+            inputTokens: response.usage?.prompt_tokens ?? null,
+            outputTokens: response.usage?.completion_tokens ?? null,
+            truncated,
+            metadata: { finish_reason: choice?.finish_reason },
+          },
+        };
+      },
+      this.recorder,
+      usageLogger
+    );
+  }
+
+  async verifyFinding(
+    finding: ReviewFinding,
+    context: ReviewContext
+  ): Promise<CritiqueResult> {
+    return withUsageInstrumentation(
+      {
+        ...buildUsageCtx(context, this.provider, this.model, "verify_finding"),
+        agentRole: "critic",
+        attemptNumber: 0,
+      },
+      async () => {
+        const response = await this.client.chat.completions.create({
+          model: this.model,
+          max_tokens: 2048,
+          messages: [
+            { role: "system", content: VERIFY_SYSTEM_PROMPT },
+            { role: "user", content: buildVerifyUserMessage(finding, context) },
+          ],
+          tools: [OPENAI_VERIFY_TOOL],
+          tool_choice: "auto",
+        });
+
+        const choice = response.choices[0];
+        const truncated = choice?.finish_reason === "length";
+        const toolCall = choice?.message?.tool_calls?.[0];
+        let parsed: unknown;
+        if (toolCall && toolCall.type === "function") {
+          if (toolCall.function.name !== "verify_finding") {
+            throw new Error(
+              "OpenAI-compatible API did not return expected tool call for verify_finding"
+            );
+          }
+          try {
+            parsed = JSON.parse(toolCall.function.arguments);
+          } catch {
+            throw new Error(
+              `Failed to parse verify_finding arguments: ${toolCall.function.arguments}`
+            );
+          }
+        } else {
+          const content =
+            typeof choice?.message?.content === "string"
+              ? choice.message.content
+              : undefined;
+          parsed = extractJsonFromText(content);
+          if (parsed === undefined) {
+            throw new Error(
+              "OpenAI-compatible API did not return expected tool call for verify_finding"
+            );
+          }
+        }
+        const critique = validateAndNormalizeCritique(parsed);
+        return {
+          result: critique,
+          outcome: {
+            inputTokens: response.usage?.prompt_tokens ?? null,
+            outputTokens: response.usage?.completion_tokens ?? null,
+            truncated,
+            metadata: { finish_reason: choice?.finish_reason },
+          },
+        };
+      },
+      this.recorder,
+      usageLogger
+    );
+  }
+
+  async regenerateFinding(
+    finding: ReviewFinding,
+    critique: CritiqueResult,
+    context: ReviewContext
+  ): Promise<ReviewFinding> {
+    return withUsageInstrumentation(
+      {
+        ...buildUsageCtx(context, this.provider, this.model, "regenerate_finding"),
+        agentRole: "regenerator",
+        attemptNumber: 0,
+      },
+      async () => {
+        const response = await this.client.chat.completions.create({
+          model: this.model,
+          max_tokens: 4096,
+          messages: [
+            { role: "system", content: REGENERATE_SYSTEM_PROMPT },
+            {
+              role: "user",
+              content: buildRegenerateUserMessage(finding, critique, context),
+            },
+          ],
+          tools: [OPENAI_REGENERATE_TOOL],
+          tool_choice: "auto",
+        });
+
+        const choice = response.choices[0];
+        const truncated = choice?.finish_reason === "length";
+        const toolCall = choice?.message?.tool_calls?.[0];
+        let parsed: unknown;
+        if (toolCall && toolCall.type === "function") {
+          if (toolCall.function.name !== "report_finding") {
+            throw new Error(
+              "OpenAI-compatible API did not return expected tool call for report_finding"
+            );
+          }
+          try {
+            parsed = JSON.parse(toolCall.function.arguments);
+          } catch {
+            throw new Error(
+              `Failed to parse report_finding arguments: ${toolCall.function.arguments}`
+            );
+          }
+        } else {
+          const content =
+            typeof choice?.message?.content === "string"
+              ? choice.message.content
+              : undefined;
+          parsed = extractJsonFromText(content);
+          if (parsed === undefined) {
+            throw new Error(
+              "OpenAI-compatible API did not return expected tool call for report_finding"
+            );
+          }
+        }
+        const fixed = validateAndNormalizeRegenerated(parsed);
+        return {
+          result: fixed,
           outcome: {
             inputTokens: response.usage?.prompt_tokens ?? null,
             outputTokens: response.usage?.completion_tokens ?? null,
