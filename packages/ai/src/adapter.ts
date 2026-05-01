@@ -203,9 +203,16 @@ function validateAndNormalizeFindings(input: unknown): ReviewFinding[] {
 }
 
 function buildUserMessage(context: ReviewContext, diffText: string): string {
+  const focusBlock =
+    context.focus === "quality"
+      ? "Scope: report ONLY code quality / correctness / maintainability / performance issues. Do NOT report security issues — a separate reviewer covers them. Skip if you'd otherwise mark issueType=security.\n\n"
+      : context.focus === "security"
+        ? "Scope: report ONLY security issues (auth, injection, secrets, unsafe deserialization, SSRF, etc.). Do NOT report style or quality nitpicks — a separate reviewer covers them. Skip if you'd otherwise mark issueType=quality.\n\n"
+        : "";
+
   return `You are reviewing pull request #${context.prNumber} in repository ${context.fullName} (head SHA: ${context.headSha}).
 
-Please analyze the following diff and call the \`report_findings\` tool with all real issues you find. Only report findings with genuine impact — avoid noise and style nitpicks unless they indicate a real problem.
+${focusBlock}Please analyze the following diff and call the \`report_findings\` tool with all real issues you find. Only report findings with genuine impact — avoid noise and style nitpicks unless they indicate a real problem.
 
 For every finding produce both English and Simplified Chinese fields:
 
@@ -233,6 +240,22 @@ function buildSummaryUserMessage(context: ReviewContext, diffText: string): stri
   const guidelines = context.guidelines ?? "";
   const projectContext = context.projectContext ?? "";
 
+  const findingsBlock =
+    context.finalFindings && context.finalFindings.length > 0
+      ? `<verified_findings>
+${context.finalFindings
+  .map(
+    (f, i) =>
+      `${i + 1}. [${f.severity}/${f.issueType}] ${f.filePath}:${f.startLine}–${f.endLine} — ${f.title_en}`
+  )
+  .join("\n")}
+</verified_findings>
+
+These are the final, auditor-verified findings. Reference them when describing risks but do not duplicate the per-finding details.
+
+`
+      : "";
+
   return `You are summarizing pull request #${context.prNumber} in repository ${context.fullName} (head SHA: ${context.headSha}).
 
 <reviewer_guidelines>
@@ -243,7 +266,7 @@ ${guidelines}
 ${projectContext}
 </project_context>
 
-<diff>
+${findingsBlock}<diff>
 ${diffText}
 </diff>
 
@@ -724,3 +747,14 @@ export function createAdapter(
     recorder,
   });
 }
+
+// ---------------------------------------------------------------------------
+// Test-only export. Do NOT use from production code.
+// ---------------------------------------------------------------------------
+
+export const _internalForTest = {
+  buildUserMessage,
+  buildSummaryUserMessage,
+  validateAndNormalizeFindings,
+  validateAndNormalizeSummary,
+};
