@@ -9,7 +9,9 @@ export type AiTaskType =
   | "review_summary"
   | "review_findings"
   | "fix_prompt"
-  | "embedding";
+  | "embedding"
+  | "verify_finding"
+  | "regenerate_finding";
 
 export interface UsageContext {
   organizationId: string;
@@ -20,6 +22,10 @@ export interface UsageContext {
   provider: AiProvider;
   model: string;
   taskType: AiTaskType;
+  /** LangGraph 节点角色，便于多 agent 归因；老代码不传时为 undefined。 */
+  agentRole?: string;
+  /** 反思循环迭代号（0-indexed）；老代码不传时为 0。 */
+  attemptNumber?: number;
 }
 
 export interface CallOutcome {
@@ -49,6 +55,8 @@ export interface UsageEventDraft {
   success: boolean;
   errorCode: string | null;
   metadata: Record<string, unknown>;
+  agentRole: string | null;
+  attemptNumber: number;
 }
 
 export type UsageRecorder = (event: UsageEventDraft) => Promise<void>;
@@ -76,6 +84,8 @@ function buildBaseDraft(
   | "provider"
   | "modelName"
   | "latencyMs"
+  | "agentRole"
+  | "attemptNumber"
 > {
   return {
     organizationId: ctx.organizationId,
@@ -88,6 +98,8 @@ function buildBaseDraft(
     provider: ctx.provider,
     modelName: ctx.model,
     latencyMs,
+    agentRole: ctx.agentRole ?? null,
+    attemptNumber: ctx.attemptNumber ?? 0,
   };
 }
 
