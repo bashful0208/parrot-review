@@ -160,6 +160,8 @@ export async function handleReviewJob(
           success: draft.success,
           errorCode: draft.errorCode,
           metadata: draft.metadata,
+          agentRole: draft.agentRole,
+          attemptNumber: draft.attemptNumber,
         });
       };
 
