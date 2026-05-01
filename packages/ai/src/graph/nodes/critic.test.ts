@@ -34,83 +34,91 @@ const sample: ReviewFinding = {
   aiPrompt: "p",
   confidenceScore: 0.5,
 };
-const patched: ReviewFinding = { ...sample, startLine: 9, title_en: "P" };
 
-const makeAdapter = (verify: (f: ReviewFinding) => Promise<CritiqueResult>): AiAdapter => ({
-  generateReviewFindings: async () => ({ findings: [] }),
-  generateReviewSummary: async () => ({ summary: {} as never }),
-  verifyFinding: async (f) => verify(f),
-  regenerateFinding: async () => sample,
-});
-
-const baseTask = (overrides: Partial<PerFindingTask> = {}): PerFindingTask => ({
+const baseTask = (over: Partial<PerFindingTask> = {}): PerFindingTask => ({
   findingKey: "k1",
   finding: sample,
-  attempts: 0,
   reviewRunId: "rr-c",
   contextRef: ctxRef,
-  lastCritique: null,
-  ...overrides,
+  ...over,
 });
 
-describe("critic node", () => {
-  it("valid=true → status=approved, finding unchanged", async () => {
+const buildAdapter = (
+  verifyImpl: (f: ReviewFinding) => Promise<CritiqueResult>,
+  regenImpl?: (f: ReviewFinding) => Promise<ReviewFinding>
+): AiAdapter => ({
+  generateReviewFindings: async () => ({ findings: [] }),
+  generateReviewSummary: async () => ({ summary: {} as never }),
+  verifyFinding: async (f) => verifyImpl(f),
+  regenerateFinding: async (f) => (regenImpl ? regenImpl(f) : { ...f }),
+});
+
+describe("critic node (with internal reflection loop)", () => {
+  it("first call valid=true → status=approved, attempts=0", async () => {
     setCtx("rr-c", { diffs: [], guidelines: "", projectContext: "" });
     const node = makeCriticNode(
-      makeAdapter(async () => ({ valid: true, reason: "ok", confidenceScore: 0.9 }))
+      buildAdapter(async () => ({ valid: true, reason: "ok", confidenceScore: 0.9 }))
     );
     const out = await node(baseTask());
     const entry = out.perFinding["k1"]!;
     assert.equal(entry.status, "approved");
-    assert.equal(entry.finding.title_en, "T");
+    assert.equal(entry.attempts, 0);
+    assert.equal(entry.lastCritique?.valid, true);
     clearCtx("rr-c");
   });
 
-  it("valid=false + attempts<MAX-1 → status=pending", async () => {
+  it("invalid then valid → status=approved on second iter, attempts=1, finding regenerated", async () => {
     setCtx("rr-c", { diffs: [], guidelines: "", projectContext: "" });
+    let verifyCount = 0;
     const node = makeCriticNode(
-      makeAdapter(async () => ({ valid: false, reason: "wrong", confidenceScore: 0.6 }))
+      buildAdapter(
+        async (f) => {
+          verifyCount++;
+          if (f.startLine === 1) {
+            return { valid: false, reason: "wrong line", confidenceScore: 0.6 };
+          }
+          return { valid: true, reason: "ok", confidenceScore: 0.95 };
+        },
+        async (f) => ({ ...f, startLine: 5 })
+      )
     );
-    const out = await node(baseTask({ attempts: 0 }));
-    assert.equal(out.perFinding["k1"]!.status, "pending");
+    const out = await node(baseTask());
+    const entry = out.perFinding["k1"]!;
+    assert.equal(entry.status, "approved");
+    assert.equal(entry.attempts, 1);
+    assert.equal(entry.finding.startLine, 5);
+    assert.equal(verifyCount, 2);
     clearCtx("rr-c");
   });
 
-  it("valid=false + attempts>=MAX-1 + patchedFinding → status=exhausted, finding=patched", async () => {
+  it("two invalid in a row + patchedFinding → status=exhausted with patched finding", async () => {
     setCtx("rr-c", { diffs: [], guidelines: "", projectContext: "" });
     const node = makeCriticNode(
-      makeAdapter(async () => ({
+      buildAdapter(async (f) => ({
         valid: false,
         reason: "still wrong",
         confidenceScore: 0.4,
-        patchedFinding: patched,
+        patchedFinding: { ...f, title_en: "PATCHED" },
       }))
     );
-    const out = await node(baseTask({ attempts: 1 }));
-    assert.equal(out.perFinding["k1"]!.status, "exhausted");
-    assert.equal(out.perFinding["k1"]!.finding.title_en, "P");
+    const out = await node(baseTask());
+    const entry = out.perFinding["k1"]!;
+    assert.equal(entry.status, "exhausted");
+    assert.equal(entry.attempts, 1);
+    assert.equal(entry.finding.title_en, "PATCHED");
     clearCtx("rr-c");
   });
 
-  it("valid=false + attempts>=MAX-1 + no patchedFinding → status=exhausted, finding=original", async () => {
-    setCtx("rr-c", { diffs: [], guidelines: "", projectContext: "" });
+  it("ctx-cache miss → status=exhausted bypass, no LLM call", async () => {
+    let verifyCalled = false;
     const node = makeCriticNode(
-      makeAdapter(async () => ({
-        valid: false,
-        reason: "still wrong",
-        confidenceScore: 0.4,
-      }))
+      buildAdapter(async () => {
+        verifyCalled = true;
+        return { valid: true, reason: "", confidenceScore: 1 };
+      })
     );
-    const out = await node(baseTask({ attempts: 1 }));
-    assert.equal(out.perFinding["k1"]!.status, "exhausted");
-    assert.equal(out.perFinding["k1"]!.finding.title_en, "T");
-    clearCtx("rr-c");
-  });
-
-  it("ctx-cache miss → exhausted bypass", async () => {
-    const node = makeCriticNode(makeAdapter(async () => ({ valid: true, reason: "", confidenceScore: 1 })));
     const out = await node(baseTask({ reviewRunId: "missing" }));
     assert.equal(out.perFinding["k1"]!.status, "exhausted");
-    assert.equal(out.perFinding["k1"]!.lastCritique?.reason, "ctx-cache miss");
+    assert.equal(verifyCalled, false);
   });
 });

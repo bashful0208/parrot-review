@@ -11,18 +11,24 @@ import { ReviewGraphState } from "./state.js";
 import { aggregator } from "./nodes/aggregator.js";
 import { makeReviewerNode } from "./nodes/reviewer.js";
 import { makeCriticNode } from "./nodes/critic.js";
-import { makeRegeneratorNode } from "./nodes/regenerator.js";
 import { collectFindings } from "./nodes/collect.js";
 import { makeSummarizerNode } from "./nodes/summarizer.js";
-import {
-  fanOutFindings,
-  fanOutFromCritic,
-  fanOutFromRegenerator,
-} from "./router.js";
+import { fanOutFindings } from "./router.js";
 
 /**
  * 编译 review graph。adapter 由调用方注入（带 usageRecorder）；
  * checkpointer 可选——生产用 PostgresSaver、测试用 MemorySaver；不传则节点级断点恢复失效。
+ *
+ * 节点拓扑：
+ *   START ─→ quality_reviewer ─┐
+ *   START ─→ security_reviewer ┴─→ aggregator
+ *                                   │
+ *                                   ├─Send per pending finding──→ critic*
+ *                                   │  (critic 节点内部跑反思循环 verify↔regenerate)
+ *                                   │
+ *                                   └─空时──┐
+ *                                            ▼
+ *                                  collect_findings ──→ summarizer ──→ END
  */
 export function buildReviewGraph(
   adapter: AiAdapter,
@@ -33,7 +39,6 @@ export function buildReviewGraph(
     .addNode("security_reviewer", makeReviewerNode("security", adapter))
     .addNode("aggregator", aggregator)
     .addNode("critic", makeCriticNode(adapter))
-    .addNode("regenerator", makeRegeneratorNode(adapter))
     .addNode("collect_findings", collectFindings)
     .addNode("summarizer", makeSummarizerNode(adapter))
     .addEdge(START, "quality_reviewer")
@@ -42,16 +47,9 @@ export function buildReviewGraph(
     .addEdge("security_reviewer", "aggregator")
     .addConditionalEdges("aggregator", fanOutFindings, [
       "critic",
-      "summarizer",
-    ])
-    .addConditionalEdges("critic", fanOutFromCritic, [
-      "regenerator",
       "collect_findings",
     ])
-    .addConditionalEdges("regenerator", fanOutFromRegenerator, [
-      "critic",
-      "collect_findings",
-    ])
+    .addEdge("critic", "collect_findings")
     .addEdge("collect_findings", "summarizer")
     .addEdge("summarizer", END);
 
