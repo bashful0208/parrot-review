@@ -36,19 +36,26 @@ export async function createReviewRun(
   const logger = createLogger({ component: "queue" });
   try {
     const result = await getPool().query<{ id: string }>(
-      `insert into public.review_runs
-         (organization_id, repository_id, pull_request_id, run_number,
-          trigger_type, trigger_event_id, review_mode, output_language,
-          status, base_sha, head_sha, queue_job_id, rule_snapshot)
-       values (
-         $1, $2, $3,
-         (select coalesce(max(run_number), 0) + 1
-            from public.review_runs
-           where pull_request_id = $3),
-         $4, $5, 'standard', 'en-US',
-         'queued', $6, $7, $8, '{}'
+      `with new_run as (
+         insert into public.review_runs
+           (organization_id, repository_id, pull_request_id, run_number,
+            trigger_type, trigger_event_id, review_mode, output_language,
+            status, base_sha, head_sha, queue_job_id, rule_snapshot)
+         values (
+           $1, $2, $3,
+           (select coalesce(max(run_number), 0) + 1
+              from public.review_runs
+             where pull_request_id = $3),
+           $4, $5, 'standard', 'en-US',
+           'queued', $6, $7, $8, '{}'
+         )
+         returning id
        )
-       returning id`,
+       update public.review_runs r
+          set graph_thread_id = nr.id
+         from new_run nr
+        where r.id = nr.id
+       returning r.id`,
       [
         input.organizationId,
         input.repositoryId,
