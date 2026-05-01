@@ -1,6 +1,8 @@
 import { pathToFileURL } from "node:url";
 
 import { Worker } from "bullmq";
+import { PostgresSaver } from "@langchain/langgraph-checkpoint-postgres";
+import type { BaseCheckpointSaver } from "@langchain/langgraph";
 
 import {
   assertRedisReachable,
@@ -37,10 +39,19 @@ export async function main(env = process.env): Promise<void> {
 
   await assertRedisReachable(config.redisUrl);
 
+  // LangGraph PostgresSaver 单例：worker 进程级共享，节点级 checkpoint 持久化
+  const databaseUrl = env.DATABASE_URL;
+  if (!databaseUrl) {
+    throw new Error("DATABASE_URL is required for LangGraph PostgresSaver");
+  }
+  const checkpointer: BaseCheckpointSaver = PostgresSaver.fromConnString(databaseUrl);
+  await (checkpointer as PostgresSaver).setup();
+  logger.info("LangGraph PostgresSaver ready");
+
   const connection = createRedisConnection(config.redisUrl);
   const worker = new Worker(
     config.queueName,
-    (job) => handleReviewJob(job, logger),
+    (job) => handleReviewJob(job, logger, checkpointer),
     {
       connection,
       concurrency: 2,
@@ -69,6 +80,7 @@ export async function main(env = process.env): Promise<void> {
   const shutdown = async (signal: string) => {
     logger.info(`Shutting down on ${signal}`);
     await worker.close();
+    await (checkpointer as PostgresSaver).end();
     await connection.quit();
     logger.info('Worker shutdown complete');
   };

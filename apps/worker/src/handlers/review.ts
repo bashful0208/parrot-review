@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 
 import type { Job } from "bullmq";
+import type { BaseCheckpointSaver } from "@langchain/langgraph";
 
 import {
   getRepositoryWithCredential,
@@ -17,12 +18,14 @@ import {
 import type { Logger } from "@reviewer/core";
 import type { WebhookJobPayload } from "@reviewer/core";
 import {
-  generateReviewFindings,
-  generateReviewSummary,
   loadReviewerGuidelines,
   loadTargetRepoContext,
   renderBilingualFinding,
   renderBilingualSummary,
+  buildReviewGraph,
+  setCtx,
+  clearCtx,
+  createAdapter,
   type UsageRecorder,
 } from "@reviewer/ai";
 import {
@@ -49,7 +52,8 @@ function buildCredential(
 
 export async function handleReviewJob(
   job: Job<WebhookJobPayload>,
-  logger: Logger
+  logger: Logger,
+  checkpointer: BaseCheckpointSaver
 ): Promise<void> {
   const {
     repositoryId,
@@ -127,19 +131,6 @@ export async function handleReviewJob(
         apiKey: activeConfig.apiKey,
         baseUrl: activeConfig.baseUrl ?? undefined,
       };
-      const reviewContext = {
-        fullName: repo.full_name,
-        prNumber,
-        headSha,
-        diffs,
-        guidelines,
-        projectContext,
-        organizationId,
-        repositoryId,
-        pullRequestId,
-        reviewRunId: runId!,
-        providerConfigId: activeConfig.id,
-      };
 
       // 步骤 8a: 调用治理 — 把每次 AI 调用落到 usage_events
       const usageRecorder: UsageRecorder = async (draft) => {
@@ -165,33 +156,64 @@ export async function handleReviewJob(
         });
       };
 
-      // 步骤 8b: 生成行级 findings
-      const result = await generateReviewFindings(
-        reviewContext,
-        adapterConfig,
-        usageRecorder
-      );
+      // 步骤 8b: 跑 LangGraph review 图（多 agent + 反思 + checkpoint）
+      // 大对象（diffs/guidelines/projectContext）走 ctx-cache，不进 LangGraph state
+      setCtx(runId!, { diffs, guidelines, projectContext });
 
-      // 步骤 8c: 生成 PR 双语摘要（失败不中断行级链路；与回写策略一致）
+      let finalFindings: import("@reviewer/ai").ReviewGraphStateType["finalFindings"] = [];
       let summaryMd: string | null = null;
       try {
-        const { summary } = await generateReviewSummary(
-          reviewContext,
-          adapterConfig,
-          usageRecorder
-        );
-        summaryMd = renderBilingualSummary(summary);
-      } catch (err) {
-        logger.warn("Failed to generate PR summary", {
-          review_run_id: runId,
-          error: err instanceof Error ? err.message : String(err),
-        });
+        const adapter = createAdapter(adapterConfig, usageRecorder);
+        const graph = buildReviewGraph(adapter, checkpointer);
+
+        const graphConfig = {
+          configurable: {
+            thread_id: runId!,
+            checkpoint_ns: "review_v1",
+          },
+        };
+        const initial = {
+          reviewRunId: runId!,
+          context: {
+            fullName: repo.full_name,
+            prNumber,
+            headSha,
+            organizationId,
+            repositoryId,
+            pullRequestId,
+            reviewRunId: runId!,
+            providerConfigId: activeConfig.id,
+          },
+        };
+
+        // 续跑判断：若 thread 已有 checkpoint（worker 重启 / job 重试同 review_run），从节点级 checkpoint 续；否则首跑
+        const existing = await checkpointer.getTuple(graphConfig);
+        const result = existing?.checkpoint
+          ? await graph.invoke(null, graphConfig)
+          : await graph.invoke(initial, graphConfig);
+
+        finalFindings = result.finalFindings ?? [];
+        if (result.summary) {
+          summaryMd = renderBilingualSummary(result.summary);
+        }
+
+        if (result.reviewerErrors && result.reviewerErrors.length > 0) {
+          for (const e of result.reviewerErrors) {
+            logger.warn("Reviewer node error", {
+              review_run_id: runId,
+              role: e.role,
+              error: e.error,
+            });
+          }
+        }
+      } finally {
+        clearCtx(runId!);
       }
 
       // 步骤 9: 计算 fingerprint 并写入 review_issues
       // DB 字段保持单语；fingerprint 用 EN title 稳定（不随翻译漂移），
       // title 同样存 EN，summary / suggestion 存双语 markdown 以便前端展示
-      const issueInputs = result.findings.map((f) => ({
+      const issueInputs = finalFindings.map((f) => ({
         organizationId,
         repositoryId,
         pullRequestId,
@@ -252,7 +274,7 @@ export async function handleReviewJob(
       // 步骤 11: 再对每条 issue 回写行内评论
       for (let i = 0; i < insertedIssues.length; i++) {
         const issue = insertedIssues[i]!;
-        const finding = result.findings[i]!;
+        const finding = finalFindings[i]!;
 
         const bodyMd = renderBilingualFinding(finding);
 

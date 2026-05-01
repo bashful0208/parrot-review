@@ -22,3 +22,16 @@ export {
 } from "./usage.js";
 export { MODEL_PRICES, estimateCost, type ModelPrice } from "./pricing.js";
 export { classifyAiError, type AiErrorCode } from "./error-classifier.js";
+export {
+  buildReviewGraph,
+  setCtx,
+  getCtx,
+  clearCtx,
+  ReviewGraphState,
+  MAX_REFLECTION_ATTEMPTS,
+  type ReviewGraph,
+  type ReviewCtxCacheEntry,
+  type PerFindingState,
+  type ReviewContextRef,
+  type ReviewGraphStateType,
+} from "./graph/index.js";
