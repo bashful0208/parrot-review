@@ -69,6 +69,16 @@ export const noopUsageRecorder: UsageRecorder = async () => {
   /* drop on the floor */
 };
 
+/**
+ * Builds the common base fields for a usage event draft from the usage context and measured latency.
+ *
+ * @param ctx - Usage instrumentation context containing organization/repository/pull request/review run/providerConfig IDs, provider, model, taskType, and optional `agentRole` and `attemptNumber`.
+ * @param latencyMs - Measured call latency in milliseconds.
+ * @returns A partial UsageEventDraft containing normalized identifiers and call metadata:
+ * - `organizationId`, `repositoryId` (or `null`), `pullRequestId` (or `null`), `reviewRunId` (or `null`), `providerConfigId` (or `null`)
+ * - `eventType` set to `"ai_call"`, `taskType`, `provider`, `modelName`, `latencyMs`
+ * - `agentRole` (or `null`) and `attemptNumber` (defaulted to `0` when not provided)
+ */
 function buildBaseDraft(
   ctx: UsageContext,
   latencyMs: number

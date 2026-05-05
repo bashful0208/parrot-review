@@ -17,6 +17,15 @@ import { handleReviewJob } from "./handlers/review.js";
 
 export { buildWorkerConfig } from "@reviewer/core";
 
+/**
+ * Start and run the review worker process, initializing Redis, LangGraph PostgresSaver, and a BullMQ worker.
+ *
+ * This function initializes logging and configuration, verifies Redis and database availability, constructs a
+ * LangGraph PostgresSaver checkpointer, creates and configures a BullMQ Worker (including job event handlers),
+ * and blocks the process until a graceful shutdown is triggered by SIGINT or SIGTERM.
+ *
+ * @param env - Environment variables used to configure the worker (e.g., `DATABASE_URL`). Defaults to `process.env`.
+ */
 export async function main(env = process.env): Promise<void> {
   const logger = createLogger({
     component: 'worker',

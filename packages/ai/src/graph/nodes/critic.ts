@@ -14,16 +14,20 @@ export interface PerFindingTask {
 }
 
 /**
- * critic 节点：per-finding 完整反思循环。
+ * Per-finding critic node factory that runs a verify/regenerate reflection loop for a single finding.
  *
- * 内部 while 跑 verify ↔ regenerate，最多 MAX 次：
- *   - 任一次 valid=true → status=approved
- *   - 用尽 MAX 次仍 invalid → status=exhausted（patchedFinding 兜底）
- *   - ctx-cache miss → status=exhausted bypass
+ * The returned node function obtains a cached context and, if present, iteratively calls the adapter's
+ * verify and regenerate methods up to MAX_REFLECTION_ATTEMPTS:
+ * - If a critique is `valid`, the finding is marked `approved` with the last critique.
+ * - If the final attempt yields an invalid critique, the finding is finalized as `exhausted`, using
+ *   `critique.patchedFinding` if available.
+ * - If the required context is missing from the cache, the finding is immediately marked `exhausted`
+ *   with `lastCritique.reason` set to `"ctx-cache miss"`.
+ * On thrown errors the node returns `exhausted` with `lastCritique.reason` containing the error message
+ * and includes a `criticErrors` entry for the finding key.
  *
- * 把反思循环放在节点内部，避免 LangGraph Send + conditional edge 的"每个子任务完成单独触发出边"
- * 语义对反思循环造成误派。代价：单个 finding 的反思中途 worker 挂了，重启后该 finding 整个 task
- * 重跑（其他 finding 已 checkpoint 的 approved/exhausted 状态保留）。
+ * @param adapter - AiAdapter used to verify and regenerate findings during the reflection loop.
+ * @returns A node function that accepts a `PerFindingTask` and returns a partial `ReviewGraphStateType`
  */
 export function makeCriticNode(adapter: AiAdapter) {
   return async function critic(

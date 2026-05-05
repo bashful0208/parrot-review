@@ -40,6 +40,13 @@ export interface InsertUsageEventInput {
   attemptNumber?: number;
 }
 
+/**
+ * Inserts a usage event into the `public.usage_events` table and returns the new row's identifier.
+ *
+ * @param input - Usage event data including organization, repository, request/review identifiers, provider and model info, token/latency/cost metrics, success/error details, optional `metadata`, optional `agentRole`, and optional `attemptNumber`.
+ * @returns The inserted row's `id` (empty string if the database did not return an id).
+ * @throws AppError with `ErrorCode.DependencyDatabaseConnection` when the database insert fails.
+ */
 export async function insertUsageEvent(
   input: InsertUsageEventInput
 ): Promise<{ id: string }> {

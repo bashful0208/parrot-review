@@ -13,14 +13,31 @@ export interface ReviewCtxCacheEntry {
 
 const cache = new Map<string, ReviewCtxCacheEntry>();
 
+/**
+ * Stores a cache entry for the given review run ID, replacing any existing entry.
+ *
+ * @param reviewRunId - The cache key identifying the review run
+ * @param entry - The review context to store (diffs, guidelines, and projectContext)
+ */
 export function setCtx(reviewRunId: string, entry: ReviewCtxCacheEntry): void {
   cache.set(reviewRunId, entry);
 }
 
+/**
+ * Retrieve the cached review context for a given review run.
+ *
+ * @param reviewRunId - The review run identifier whose cached context to retrieve
+ * @returns The `ReviewCtxCacheEntry` for `reviewRunId`, or `undefined` if no entry exists
+ */
 export function getCtx(reviewRunId: string): ReviewCtxCacheEntry | undefined {
   return cache.get(reviewRunId);
 }
 
+/**
+ * Removes the cached entry associated with the specified review run.
+ *
+ * @param reviewRunId - The review run identifier whose cache entry will be removed.
+ */
 export function clearCtx(reviewRunId: string): void {
   cache.delete(reviewRunId);
 }

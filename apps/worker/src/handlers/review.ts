@@ -50,6 +50,20 @@ function buildCredential(
   throw new Error(`Unsupported git provider for credential: ${provider}`);
 }
 
+/**
+ * Process a queued review job to run an AI-assisted code review for a pull request.
+ *
+ * Loads repository credentials, fetches PR details and diff, creates/updates the pull request
+ * and review run records, executes the LangGraph review workflow with checkpoint resume,
+ * persists review issues and comments (summary and inline), and updates run and webhook statuses.
+ * Failures in the critical path (graph execution, issue insertion, run status updates) mark the run
+ * as failed and are rethrown; failures when posting comments are logged and do not abort the run.
+ *
+ * @param job - The BullMQ job whose `data` must include:
+ *   `repositoryId`, `organizationId`, `prNumber`, `headSha`, `baseSha`, and optional `webhookEventId`.
+ * @param logger - Logger instance used for structured logging.
+ * @param checkpointer - LangGraph BaseCheckpointSaver used to resume or persist graph checkpoints.
+ */
 export async function handleReviewJob(
   job: Job<WebhookJobPayload>,
   logger: Logger,

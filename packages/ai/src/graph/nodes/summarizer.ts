@@ -3,8 +3,12 @@ import { getCtx } from "../ctx-cache.js";
 import type { ReviewGraphStateType } from "../state.js";
 
 /**
- * summarizer 节点：跑在 critic 之后，能看到过滤后的 finalFindings。
- * 异常仅 warn-and-continue 一致：summary=null，graph 仍正常返回，与 handler 现状 step 8c 行为对齐。
+ * Create a summarizer node that produces a review summary from the current state and cached context.
+ *
+ * The returned async node reads cached context for the state's reviewRunId; if no cached context is available it returns `{ summary: null }`. When context is present it invokes the adapter to generate a review summary and returns `{ summary }` on success. On error it returns `{ summary: null, summaryError }` where `summaryError` is the error message or stringified error.
+ *
+ * @param adapter - AI adapter used to generate the review summary
+ * @returns An async node function that accepts a `ReviewGraphStateType` and returns a partial state containing `summary` on success, or `summary: null` and `summaryError` on failure
  */
 export function makeSummarizerNode(adapter: AiAdapter) {
   return async function summarizer(

@@ -16,19 +16,13 @@ import { makeSummarizerNode } from "./nodes/summarizer.js";
 import { fanOutFindings } from "./router.js";
 
 /**
- * 编译 review graph。adapter 由调用方注入（带 usageRecorder）；
- * checkpointer 可选——生产用 PostgresSaver、测试用 MemorySaver；不传则节点级断点恢复失效。
+ * Build and compile the review workflow StateGraph used to run reviewers, aggregate findings, optionally reflect via a critic, collect findings, and produce a summary.
  *
- * 节点拓扑：
- *   START ─→ quality_reviewer ─┐
- *   START ─→ security_reviewer ┴─→ aggregator
- *                                   │
- *                                   ├─Send per pending finding──→ critic*
- *                                   │  (critic 节点内部跑反思循环 verify↔regenerate)
- *                                   │
- *                                   └─空时──┐
- *                                            ▼
- *                                  collect_findings ──→ summarizer ──→ END
+ * The graph wires two parallel reviewer nodes ("quality_reviewer" and "security_reviewer") into an "aggregator" which conditionally fans out pending findings to a "critic" (runs reflection loops) or to "collect_findings", then proceeds to "summarizer" and END.
+ *
+ * @param adapter - AiAdapter injected into nodes (used by reviewer, critic, and summarizer nodes)
+ * @param checkpointer - Optional BaseCheckpointSaver passed to compilation; if omitted, checkpoint-based recovery is disabled
+ * @returns The compiled StateGraph instance representing the review workflow
  */
 export function buildReviewGraph(
   adapter: AiAdapter,

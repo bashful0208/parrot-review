@@ -43,6 +43,18 @@ export type AiAdapterConfig = {
   baseUrl?: string;
 };
 
+/**
+ * Create a UsageContext from a ReviewContext and the given provider, model, and task type.
+ *
+ * The returned object contains organizationId, repositoryId, pullRequestId, reviewRunId, and providerConfigId
+ * (optional identifiers are set to `null` when absent), plus `provider`, `model`, and `taskType`.
+ *
+ * @param context - The review-level context containing organization and repository identifiers
+ * @param provider - The AI provider identifier (e.g., "anthropic", "openai")
+ * @param model - The model name used for the request
+ * @param taskType - The task category for usage recording
+ * @returns A populated UsageContext suitable for usage instrumentation and recording
+ */
 function buildUsageCtx(
   context: ReviewContext,
   provider: AiProvider,
@@ -223,6 +235,13 @@ const REQUIRED_FINDING_FIELDS = [
   "aiPrompt",
 ] as const;
 
+/**
+ * Validate a parsed tool response and produce a normalized array of findings.
+ *
+ * @param input - Raw parsed value expected to be an object with a `findings` array
+ * @returns An array of `ReviewFinding` objects where each item includes all required fields and `confidenceScore` is clamped to the range 0–1
+ * @throws If `input.findings` is not an array
+ */
 function validateAndNormalizeFindings(input: unknown): ReviewFinding[] {
   const raw = input as Record<string, unknown>;
   if (!Array.isArray(raw.findings)) {
@@ -245,6 +264,13 @@ function validateAndNormalizeFindings(input: unknown): ReviewFinding[] {
     }));
 }
 
+/**
+ * Builds the user-facing prompt instructing the model to call `report_findings` for a specific pull request and diff.
+ *
+ * @param context - Review context containing at minimum `prNumber`, `fullName`, `headSha`, and optional `focus` which can be `"quality"`, `"security"`, or undefined to control reporting scope.
+ * @param diffText - The diff text to embed in the prompt (may be truncated to fit size limits).
+ * @returns The complete user message string to send to the model, describing required fields for each finding (bilingual title/summary/suggestion, `aiPrompt` constraints, scoping rules) and embedding the provided diff inside a `<diff>...</diff>` block.
+ */
 function buildUserMessage(context: ReviewContext, diffText: string): string {
   const focusBlock =
     context.focus === "quality"
@@ -279,6 +305,12 @@ ${diffText}
 </diff>`;
 }
 
+/**
+ * Builds the user message prompt for generating a pull-request summary, embedding guidelines, project context, optionally auditor-verified findings, and the diff.
+ *
+ * @param context - ReviewContext containing repository and PR identifiers (e.g., `prNumber`, `fullName`, `headSha`), reviewer guidelines (`guidelines`), optional `projectContext`, and optional `finalFindings` which, when present, are listed in a `<verified_findings>` block.
+ * @param diffText - The diff content to include inside a `<diff>...</diff>` block (may be truncated before calling this function).
+ * @returns The assembled prompt string instructing the model to call `report_summary` with `summaryMd_en`, `summaryMd_zh`, `highlights_en`, `highlights_zh`, and `mermaid_flow`.
 function buildSummaryUserMessage(context: ReviewContext, diffText: string): string {
   const guidelines = context.guidelines ?? "";
   const projectContext = context.projectContext ?? "";
@@ -339,6 +371,15 @@ const VERIFY_SYSTEM_PROMPT =
 const REGENERATE_SYSTEM_PROMPT =
   "You are a code reviewer fixing a draft finding that an auditor rejected. Read the auditor's reason carefully, then rewrite the finding so the issue is real, the line range matches the diff, and bilingual fields are complete. Return the corrected finding via the report_finding tool.";
 
+/**
+ * Builds the user instruction message that asks the model to audit a single review finding and call `verify_finding`.
+ *
+ * The message embeds the provided `finding` as formatted JSON and includes the diff for `finding.filePath`; if the diff is not present in `context.diffs` the diff block contains the text "(diff not found)".
+ *
+ * @param finding - The draft review finding to be audited.
+ * @param context - The review context (repository, PR number, diffs, etc.) used to locate the relevant diff and identify the PR.
+ * @returns The complete user message string to send to the model, instructing it to validate the finding and call the `verify_finding` tool with its decision.
+ */
 function buildVerifyUserMessage(
   finding: ReviewFinding,
   context: ReviewContext
@@ -374,6 +415,18 @@ ${targetDiff}
 Call the \`verify_finding\` tool with your decision.`;
 }
 
+/**
+ * Builds the user-facing prompt instructing the model to rewrite a draft finding after an auditor's critique.
+ *
+ * The prompt includes the auditor's reason, the original draft finding serialized as JSON, an optional
+ * auditor-proposed patched finding (if present), the diff for the finding's file, and a clear instruction
+ * to call the `report_finding` tool with the corrected finding.
+ *
+ * @param finding - The original draft finding that should be rewritten
+ * @param critique - The auditor's critique, which may include `reason` and an optional `patchedFinding`
+ * @param context - Review context containing PR metadata and diffs used to locate the relevant patch
+ * @returns A single prompt string ready to be sent as the user message to the model
+ */
 function buildRegenerateUserMessage(
   finding: ReviewFinding,
   critique: CritiqueResult,
@@ -404,6 +457,17 @@ ${targetDiff}
 Rewrite the finding to address the auditor's reason. Keep the bilingual structure; do not regress existing-good fields. Call the \`report_finding\` tool with the corrected finding.`;
 }
 
+/**
+ * Validate and normalize a raw critique payload produced by the `verify_finding` tool.
+ *
+ * Ensures the payload is an object containing a boolean `valid` and a string `reason`,
+ * normalizes `confidenceScore` to a number (defaulting to `0` if absent) and clamps it to the range 0–1,
+ * and preserves an optional `patchedFinding` when provided as an object.
+ *
+ * @param input - The raw parsed tool output to validate and normalize
+ * @returns A `CritiqueResult` with `valid`, `reason`, `confidenceScore` (clamped to [0,1]), and optional `patchedFinding`
+ * @throws If `input` is not an object, if `valid` is not a boolean, or if `reason` is not a string
+ */
 function validateAndNormalizeCritique(input: unknown): CritiqueResult {
   if (typeof input !== "object" || input === null) {
     throw new Error("Tool input: verify_finding expected an object");
@@ -428,6 +492,13 @@ function validateAndNormalizeCritique(input: unknown): CritiqueResult {
   };
 }
 
+/**
+ * Validate and normalize a regenerated finding object produced by the `report_finding` tool.
+ *
+ * @param input - Raw parsed tool output expected to be an object with a `finding` property
+ * @returns A `ReviewFinding` with all required fields present and `confidenceScore` clamped to the range 0–1
+ * @throws If `input` is not an object, if `finding` is missing or not an object, or if any required finding field is `null` or `undefined`
+ */
 function validateAndNormalizeRegenerated(input: unknown): ReviewFinding {
   if (typeof input !== "object" || input === null) {
     throw new Error("Tool input: report_finding expected an object");
@@ -451,6 +522,14 @@ function validateAndNormalizeRegenerated(input: unknown): ReviewFinding {
   };
 }
 
+/**
+ * Attempt to parse and return the first JSON value found in a text string.
+ *
+ * Checks common JSON-containing formats and returns the parsed value when successful.
+ *
+ * @param text - The string that may contain JSON (may be null or undefined).
+ * @returns The parsed JSON value if parsing succeeds, `undefined` otherwise.
+ */
 function extractJsonFromText(text: string | null | undefined): unknown {
   if (typeof text !== "string" || text.trim() === "") return undefined;
 
@@ -1151,6 +1230,13 @@ export class OpenAICompatibleAdapter implements AiAdapter {
 
 const ALIBABA_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1";
 
+/**
+ * Create an AiAdapter instance configured for the given provider and credentials.
+ *
+ * @param config - Adapter configuration including `provider`, `apiKey`, `model`, and optional `baseUrl`
+ * @param recorder - Optional usage recorder to collect usage metrics; defaults to a no-op recorder
+ * @returns An AiAdapter configured for the provider specified in `config` (Anthropic when `provider` is `"anthropic"`, otherwise an OpenAI-compatible adapter using `baseUrl` if provided or a provider-specific default)
+ */
 export function createAdapter(
   config: AiAdapterConfig,
   recorder: UsageRecorder = noopUsageRecorder

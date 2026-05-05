@@ -30,6 +30,20 @@ export interface CreateReviewRunInput {
   queueJobId: string | null;
 }
 
+/**
+ * Creates a new review run record for the given pull request and returns its id.
+ *
+ * The function inserts a row into `public.review_runs`, computing `run_number` as
+ * one greater than the current maximum for the same `pull_request_id`, and initializes
+ * fixed fields (`review_mode` = 'standard', `output_language` = 'en-US', `status` = 'queued',
+ * `rule_snapshot` = '{}'). The database trigger synchronizes `trigger` and sets `graph_thread_id`.
+ *
+ * @param input - Creation parameters including `organizationId`, `repositoryId`, `pullRequestId`,
+ *   `triggerType`, `triggerEventId` (nullable), `baseSha`, `headSha`, and `queueJobId` (nullable).
+ * @returns The `id` of the newly created review run.
+ * @throws AppError with `ErrorCode.DependencyDatabaseConnection` if the database operation fails
+ *   or the database connection is unavailable.
+ */
 export async function createReviewRun(
   input: CreateReviewRunInput
 ): Promise<{ id: string }> {

@@ -4,8 +4,13 @@ import { getCtx } from "../ctx-cache.js";
 import type { ReviewGraphStateType } from "../state.js";
 
 /**
- * Reviewer 节点工厂；quality 与 security 共用同一份实现，仅 focus 不同。
- * 失败不抛：写 reviewerErrors 让 aggregator 看到部分结果，不阻塞另一路 reviewer。
+ * Creates a reviewer node function for the given review focus.
+ *
+ * The returned node reads cached context by `state.reviewRunId`, invokes the adapter to generate review findings with that context and the provided `focus`, and surfaces results or errors in the returned partial graph state.
+ *
+ * @param focus - The review role to run (e.g., quality or security)
+ * @param adapter - AI adapter used to generate review findings
+ * @returns A reviewer node function that accepts a `ReviewGraphStateType` and returns a partial state containing either `draftFindings` (from the adapter) or `reviewerErrors` with `{ role, error }`
  */
 export function makeReviewerNode(focus: ReviewFocus, adapter: AiAdapter) {
   return async function reviewer(

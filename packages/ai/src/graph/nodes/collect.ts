@@ -1,14 +1,16 @@
 import type { ReviewGraphStateType } from "../state.js";
 
 /**
- * collect_findings：把 perFinding 里 approved + exhausted 的全部合并到 finalFindings。
+ * Aggregate approved and exhausted per-finding entries into the final findings list.
  *
- * - approved → 用当前 finding（critic 通过的版本）
- * - exhausted + 有 patchedFinding → 用 critic 的修正版兜底
- * - exhausted + 无 patchedFinding → 保留最后一次 regenerator 写入的 finding
+ * Includes only entries whose `status` is `"approved"` or `"exhausted"`. For each included entry:
+ * - If `status` is `"exhausted"` and `lastCritique.patchedFinding` exists, use that patched finding.
+ * - Otherwise use the entry's current `finding`.
  *
- * pending 状态理论上不会出现在这里（router 已经把它们都派去 regenerator 或 critic），
- * 即便出现也不入 finalFindings，避免泄漏未完成的 finding。
+ * Entries with `pending` status are excluded.
+ *
+ * @param state - The review graph state containing `perFinding` entries
+ * @returns A partial state object with `finalFindings` set to the aggregated findings array
  */
 export async function collectFindings(
   state: ReviewGraphStateType
