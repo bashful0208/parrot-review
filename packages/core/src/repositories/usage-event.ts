@@ -36,6 +36,8 @@ export interface InsertUsageEventInput {
   success: boolean | null;
   errorCode: string | null;
   metadata?: Record<string, unknown>;
+  agentRole?: string | null;
+  attemptNumber?: number;
 }
 
 export async function insertUsageEvent(
@@ -49,10 +51,11 @@ export async function insertUsageEvent(
          (organization_id, repository_id, pull_request_id, review_run_id,
           provider_config_id, event_type, task_type, provider, model_name,
           input_tokens, output_tokens, latency_ms, estimated_cost,
-          success, error_code, metadata)
+          success, error_code, metadata, agent_role, attempt_number)
        values
          ($1, $2, $3, $4, $5, $6, $7::public.ai_task_type,
-          $8::public.ai_provider, $9, $10, $11, $12, $13, $14, $15, $16::jsonb)
+          $8::public.ai_provider, $9, $10, $11, $12, $13, $14, $15, $16::jsonb,
+          $17, $18)
        returning id`,
       [
         input.organizationId,
@@ -71,6 +74,8 @@ export async function insertUsageEvent(
         input.success,
         input.errorCode,
         JSON.stringify(input.metadata ?? {}),
+        input.agentRole ?? null,
+        input.attemptNumber ?? 0,
       ]
     );
 

@@ -35,6 +35,8 @@ export async function createReviewRun(
 ): Promise<{ id: string }> {
   const logger = createLogger({ component: "queue" });
   try {
+    // graph_thread_id 由 trg_review_runs_graph_thread (0008) BEFORE INSERT
+    // trigger 自动同步为 id::text；这里不显式写入避免重复维护。
     const result = await getPool().query<{ id: string }>(
       `insert into public.review_runs
          (organization_id, repository_id, pull_request_id, run_number,

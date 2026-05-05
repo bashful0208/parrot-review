@@ -12,10 +12,12 @@
   "scripts": {
     "lint": "pnpm --dir ../.. exec eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "pnpm exec tsx --test src/*.test.mjs src/*.test.ts"
+    "test": "pnpm exec tsx --test 'src/**/*.test.mjs' 'src/**/*.test.ts'"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.54.0",
+    "@langchain/core": "^1.1.42",
+    "@langchain/langgraph": "^1.2.9",
     "@reviewer/git": "workspace:*",
     "openai": "^6.33.0"
   },

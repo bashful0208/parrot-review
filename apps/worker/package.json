@@ -12,6 +12,8 @@
     "typecheck": "pnpm --dir ../../packages/core run build && tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "@langchain/langgraph": "^1.2.9",
+    "@langchain/langgraph-checkpoint-postgres": "^1.0.1",
     "@reviewer/ai": "workspace:*",
     "@reviewer/core": "workspace:*",
     "@reviewer/git": "workspace:*",

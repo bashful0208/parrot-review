@@ -261,3 +261,65 @@ async function processJob(job: Job, logger: Logger): Promise<void> {
 - PII 信息需要脱敏
 - 错误消息避免暴露内部实现细节
 - 生产环境不输出堆栈跟踪
+
+---
+
+# AI Review Pipeline (LangGraph)
+
+PR review 处理流程从两次单 agent LLM 调用，改造成 LangGraph 多 agent 协作 + per-finding 反思循环 + Postgres checkpoint 节点级断点恢复。BullMQ 仍管 job 级重试，LangGraph 管 job 内部图执行。
+
+## 节点拓扑
+
+```
+START ─→ quality_reviewer  ─┐
+START ─→ security_reviewer ─┴─→ aggregator
+                                  │
+                                  ├─Send per pending finding──→ critic*
+                                  │  (节点内部 while 跑反思循环 verify ↔ regenerate)
+                                  │
+                                  └─空时──┐
+                                          ▼
+                                collect_findings ──→ summarizer ──→ END
+```
+
+- **quality_reviewer / security_reviewer** 并行扫描；prompt 通过 `ReviewContext.focus` 收敛到各自维度。任一失败仅写 `reviewerErrors`，不阻塞另一路。
+- **aggregator** 按 sha256(repositoryId:filePath:startLine:title_en) 去重 + severity desc 排序，初始化 `PerFindingState`。
+- **critic** 每条 finding 一个 Send 子任务并行执行；节点**内部** while 循环：verify 通过 → approved；用尽 MAX 次 → exhausted（patchedFinding 兜底）；中间步用 `regenerateFinding` 重写 finding 后再 verify。**MAX_REFLECTION_ATTEMPTS = 2**。
+- **collect_findings** 把 perFinding 中 approved + exhausted 合并到 `finalFindings`。
+- **summarizer** 看到过滤后的 `finalFindings`，prompt 中注入 verified_findings 块；异常仅 warn，summary=null（与 handler 现状一致）。
+
+> 反思循环刻意放在 critic 节点内部而非图边——LangGraph Send + conditional edge 在每个子任务完成时单独触发出边，会让 router 看到中间态而误派。
+
+## agent_role 枚举
+
+`usage_events.agent_role` 列：
+- `quality` / `security`：reviewer 节点对应的 LLM 调用
+- `critic`：verifyFinding 调用（task_type = `verify_finding`）
+- `regenerator`：regenerateFinding 调用（task_type = `regenerate_finding`）
+- `summarizer`：generateReviewSummary（task_type = `review_summary`）
+
+`attempt_number` 列：critic/regenerator 反思循环里的 0-indexed 迭代次数；非反思节点固定为 0。
+
+## Checkpoint
+
+worker 启动时一次性 `PostgresSaver.fromConnString(DATABASE_URL).setup()`，自动建 `checkpoints` / `checkpoint_blobs` / `checkpoint_writes` 三张表（**不写入 `postgres/migrations/`**，由 SDK 自管）。
+
+handler 用 `thread_id = review_run.id` 调 `graph.invoke`。重试同 review_run 时：
+- `checkpointer.getTuple({ thread_id })` 有 checkpoint → `graph.invoke(null, config)` 从最近一次写过 checkpoint 的节点续跑
+- 没有 checkpoint → `graph.invoke(initial, config)` 首跑
+
+worker 进程在 shutdown 时 `await checkpointer.end()`。
+
+ctx-cache（`packages/ai/src/graph/ctx-cache.ts`）是进程内 `Map<reviewRunId, {diffs, guidelines, projectContext}>`，让大对象不进 LangGraph state（避免 checkpoint 表膨胀）。worker 重启后由 handler 重新加载并 `setCtx`，再通过 `graph.invoke(null)` 续跑。
+
+## 边界
+
+- 图只产出 `finalFindings[]` + `summary`，**不写业务表、不调 PR 平台 API**。所有持久化 / 评论回写仍在 handler 图外完成。
+- BullMQ 管 job 级重试 / 并发 / 死信；LangGraph 管 job 内部图执行 + checkpoint。**不要让 LangGraph 替代 BullMQ**。
+
+## 巡检建议
+
+- 监控 checkpoint 表大小：`select pg_size_pretty(pg_total_relation_size('checkpoints'));`
+- 必要时 cron 清理 30 天前已 succeeded/failed 的 thread checkpoint
+- 反思命中率分析：`select agent_role, attempt_number, success, count(*) from usage_events where review_run_id = $1 group by 1,2,3;`
+- 多 agent 调用成本：`select agent_role, sum(estimated_cost) from usage_events where occurred_at > now() - interval '7 day' group by 1;`
