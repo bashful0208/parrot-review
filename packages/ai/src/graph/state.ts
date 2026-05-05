@@ -63,6 +63,14 @@ export const ReviewGraphState = Annotation.Root({
     reducer: overwriteReducer,
     default: () => null,
   }),
+  summaryError: Annotation<string | null>({
+    reducer: overwriteReducer,
+    default: () => null,
+  }),
+  criticErrors: Annotation<Array<{ key: string; error: string }>>({
+    reducer: appendArrayReducer,
+    default: () => [],
+  }),
 });
 
 export type ReviewGraphStateType = typeof ReviewGraphState.State;

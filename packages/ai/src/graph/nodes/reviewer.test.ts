@@ -42,6 +42,8 @@ const baseState = (reviewRunId = "rr"): ReviewGraphStateType => ({
   perFinding: {},
   finalFindings: [],
   summary: null,
+  summaryError: null,
+  criticErrors: [],
 });
 
 describe("reviewer node", () => {

@@ -265,7 +265,7 @@ For every finding produce both English and Simplified Chinese fields:
 
 Both languages are required for every finding. Do not leave either side empty.
 
-Additionally, every finding MUST include \`aiPrompt\`: a detailed, copy-pasteable English instruction targeted at an AI coding agent (Cursor / Claude Code / similar) that, on its own, gives the agent enough context to apply the fix end-to-end. Write it as a single self-contained paragraph (no markdown headings, no bullet lists). It must include:
+Additionally, every finding MUST include \`aiPrompt\`: a detailed, copy-pasteable English instruction targeted at an AI coding agent (Cursor / Claude Code / similar) that, on its own, gives the agent enough context to apply the fix end-to-end. Structure it with blank lines between logical sections — do NOT use markdown headings or bullet lists. It must include:
 
 - The exact file path (use the path verbatim from the diff, no \`@\` prefix), narrowed by line range or anchor symbol.
 - A precise description of what is wrong with the current code (the failure mode or invariant violation), so the agent can verify before changing anything.

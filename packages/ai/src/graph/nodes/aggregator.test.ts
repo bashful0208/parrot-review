@@ -37,6 +37,8 @@ const baseState = (draftFindings: ReviewFinding[]): ReviewGraphStateType => ({
   perFinding: {},
   finalFindings: [],
   summary: null,
+  summaryError: null,
+  criticErrors: [],
 });
 
 describe("aggregator", () => {

@@ -22,8 +22,11 @@ export function makeSummarizerNode(adapter: AiAdapter) {
         finalFindings: state.finalFindings,
       });
       return { summary };
-    } catch {
-      return { summary: null };
+    } catch (err) {
+      return {
+        summary: null,
+        summaryError: err instanceof Error ? err.message : String(err),
+      };
     }
   };
 }

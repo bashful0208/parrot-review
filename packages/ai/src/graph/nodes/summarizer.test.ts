@@ -33,6 +33,8 @@ const baseState = (id = "rr"): ReviewGraphStateType => ({
   perFinding: {},
   finalFindings: [],
   summary: null,
+  summaryError: null,
+  criticErrors: [],
 });
 
 describe("summarizer node", () => {

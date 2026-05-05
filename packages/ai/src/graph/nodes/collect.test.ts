@@ -32,6 +32,8 @@ const stateWith = (perFinding: ReviewGraphStateType["perFinding"]): ReviewGraphS
   perFinding,
   finalFindings: [],
   summary: null,
+  summaryError: null,
+  criticErrors: [],
 });
 
 describe("collect_findings", () => {

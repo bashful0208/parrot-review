@@ -60,7 +60,7 @@ describe("critic node (with internal reflection loop)", () => {
       buildAdapter(async () => ({ valid: true, reason: "ok", confidenceScore: 0.9 }))
     );
     const out = await node(baseTask());
-    const entry = out.perFinding["k1"]!;
+    const entry = out.perFinding!["k1"]!;
     assert.equal(entry.status, "approved");
     assert.equal(entry.attempts, 0);
     assert.equal(entry.lastCritique?.valid, true);
@@ -83,7 +83,7 @@ describe("critic node (with internal reflection loop)", () => {
       )
     );
     const out = await node(baseTask());
-    const entry = out.perFinding["k1"]!;
+    const entry = out.perFinding!["k1"]!;
     assert.equal(entry.status, "approved");
     assert.equal(entry.attempts, 1);
     assert.equal(entry.finding.startLine, 5);
@@ -102,7 +102,7 @@ describe("critic node (with internal reflection loop)", () => {
       }))
     );
     const out = await node(baseTask());
-    const entry = out.perFinding["k1"]!;
+    const entry = out.perFinding!["k1"]!;
     assert.equal(entry.status, "exhausted");
     assert.equal(entry.attempts, 1);
     assert.equal(entry.finding.title_en, "PATCHED");
@@ -118,7 +118,7 @@ describe("critic node (with internal reflection loop)", () => {
       })
     );
     const out = await node(baseTask({ reviewRunId: "missing" }));
-    assert.equal(out.perFinding["k1"]!.status, "exhausted");
+    assert.equal(out.perFinding!["k1"]!.status, "exhausted");
     assert.equal(verifyCalled, false);
   });
 });

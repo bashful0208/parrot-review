@@ -43,6 +43,8 @@ const stateWith = (
   perFinding,
   finalFindings: [],
   summary: null,
+  summaryError: null,
+  criticErrors: [],
 });
 
 describe("MAX_REFLECTION_ATTEMPTS", () => {

@@ -55,6 +55,7 @@ export async function main(env = process.env): Promise<void> {
     {
       connection,
       concurrency: 2,
+      lockDuration: 300_000, // 5 min — multi-agent graph 多次 LLM 调用可能超过默认 30s
     }
   );
 

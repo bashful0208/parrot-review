@@ -1,7 +1,7 @@
 import type { AiAdapter } from "../../adapter.js";
 import type { ReviewFinding, CritiqueResult } from "../../types.js";
 import { getCtx } from "../ctx-cache.js";
-import type { PerFindingState, ReviewContextRef } from "../state.js";
+import type { PerFindingState, ReviewContextRef, ReviewGraphStateType } from "../state.js";
 
 import { MAX_REFLECTION_ATTEMPTS } from "../router-constants.js";
 
@@ -28,7 +28,7 @@ export interface PerFindingTask {
 export function makeCriticNode(adapter: AiAdapter) {
   return async function critic(
     task: PerFindingTask
-  ): Promise<{ perFinding: Record<string, PerFindingState> }> {
+  ): Promise<Partial<ReviewGraphStateType>> {
     const ctx = getCtx(task.reviewRunId);
     if (!ctx) {
       return {
@@ -54,51 +54,67 @@ export function makeCriticNode(adapter: AiAdapter) {
     let critique: CritiqueResult | null = null;
     let attempts = 0;
 
-    while (attempts < MAX_REFLECTION_ATTEMPTS) {
-      critique = await adapter.verifyFinding(finding, ctxFull);
+    try {
+      while (attempts < MAX_REFLECTION_ATTEMPTS) {
+        critique = await adapter.verifyFinding(finding, ctxFull);
 
-      if (critique.valid) {
-        return {
-          perFinding: {
-            [task.findingKey]: {
-              finding,
-              attempts,
-              lastCritique: critique,
-              status: "approved",
+        if (critique.valid) {
+          return {
+            perFinding: {
+              [task.findingKey]: {
+                finding,
+                attempts,
+                lastCritique: critique,
+                status: "approved",
+              },
             },
-          },
-        };
+          };
+        }
+
+        if (attempts === MAX_REFLECTION_ATTEMPTS - 1) {
+          return {
+            perFinding: {
+              [task.findingKey]: {
+                finding: critique.patchedFinding ?? finding,
+                attempts,
+                lastCritique: critique,
+                status: "exhausted",
+              },
+            },
+          };
+        }
+
+        finding = await adapter.regenerateFinding(finding, critique, ctxFull);
+        attempts++;
       }
 
-      // 用尽前最后一次 invalid → exhausted（用 patched 兜底）
-      if (attempts === MAX_REFLECTION_ATTEMPTS - 1) {
-        return {
-          perFinding: {
-            [task.findingKey]: {
-              finding: critique.patchedFinding ?? finding,
-              attempts,
-              lastCritique: critique,
-              status: "exhausted",
-            },
+      return {
+        perFinding: {
+          [task.findingKey]: {
+            finding,
+            attempts,
+            lastCritique: critique,
+            status: "exhausted",
           },
-        };
-      }
-
-      // 还有重试机会：让 regenerator 重写 finding，attempts++
-      finding = await adapter.regenerateFinding(finding, critique, ctxFull);
-      attempts++;
-    }
-
-    // 不该走到这里（while 条件已覆盖），保护性兜底
-    return {
-      perFinding: {
-        [task.findingKey]: {
-          finding,
-          attempts,
-          lastCritique: critique,
-          status: "exhausted",
         },
-      },
-    };
+      };
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      return {
+        perFinding: {
+          [task.findingKey]: {
+            finding,
+            attempts,
+            lastCritique: {
+              valid: false,
+              reason: `critic error: ${errorMessage}`,
+              confidenceScore: 0,
+            },
+            status: "exhausted",
+          },
+        },
+        criticErrors: [{ key: task.findingKey, error: errorMessage }],
+      };
+    }
   };
 }

@@ -206,6 +206,23 @@ export async function handleReviewJob(
             });
           }
         }
+
+        if (result.summaryError) {
+          logger.warn("Summarizer node error", {
+            review_run_id: runId,
+            error: result.summaryError,
+          });
+        }
+
+        if (result.criticErrors && result.criticErrors.length > 0) {
+          for (const e of result.criticErrors) {
+            logger.warn("Critic node error", {
+              review_run_id: runId,
+              finding_key: e.key,
+              error: e.error,
+            });
+          }
+        }
       } finally {
         clearCtx(runId!);
       }
