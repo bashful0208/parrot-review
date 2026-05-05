@@ -95,7 +95,7 @@ export async function handleReviewJob(
     });
 
     // 步骤 5: 创建 review_run（queued）
-    runId = (await createReviewRun({
+    const { id, runNumber } = await createReviewRun({
       organizationId,
       repositoryId,
       pullRequestId,
@@ -104,12 +104,62 @@ export async function handleReviewJob(
       baseSha,
       headSha,
       queueJobId: String(job.id ?? ""),
-    })).id;
+    });
+    runId = id;
 
     // 步骤 6-11: 在 try/catch 中执行，失败时更新 run 状态
     try {
       // 步骤 6: 更新 review_run 为 running
       await updateReviewRun(runId, { status: "running", startedAt: new Date() });
+
+      // 步骤 6a: 首次跑评论一次表示 review 已开始
+      if (runNumber === 1) {
+        const startCommentMd = [
+          "> [!NOTE]",
+          "> 👁️ **Big Brother is watching you!**",
+          "> ",
+          "> Your code is under review. Resistance is futile. This may take a few minutes — please stand by.",
+          "> ",
+          "> 👁️ **老大哥正在看着你！**",
+          "> ",
+          "> 你的代码正在被审视，反抗是徒劳的。请稍候几分钟。",
+        ].join("\n");
+
+        try {
+          const { id: commentId } = await insertReviewComment({
+            organizationId,
+            pullRequestId,
+            reviewRunId: runId,
+            reviewIssueId: null,
+            provider: repo.provider,
+            bodyMd: startCommentMd,
+            filePath: null,
+            lineNumber: null,
+            isInline: false,
+          });
+
+          try {
+            const posted = await provider.postPullRequestComment(
+              repo.full_name,
+              prNumber,
+              startCommentMd,
+              credential,
+              logger
+            );
+            await markCommentPosted(commentId, posted.externalCommentId, posted.createdAt);
+          } catch (err) {
+            logger.warn("Failed to post start comment to platform", {
+              comment_id: commentId,
+              error: err instanceof Error ? err.message : String(err),
+            });
+          }
+        } catch (err) {
+          logger.warn("Failed to post start comment", {
+            review_run_id: runId,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+      }
 
       // 步骤 7: 拉取 diff
       const diffs = await provider.getPullRequestDiff(repo.full_name, prNumber, credential, logger);

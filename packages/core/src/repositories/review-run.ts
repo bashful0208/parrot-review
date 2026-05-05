@@ -32,12 +32,12 @@ export interface CreateReviewRunInput {
 
 export async function createReviewRun(
   input: CreateReviewRunInput
-): Promise<{ id: string }> {
+): Promise<{ id: string; runNumber: number }> {
   const logger = createLogger({ component: "queue" });
   try {
     // graph_thread_id 由 trg_review_runs_graph_thread (0008) BEFORE INSERT
     // trigger 自动同步为 id::text；这里不显式写入避免重复维护。
-    const result = await getPool().query<{ id: string }>(
+    const result = await getPool().query<{ id: string; run_number: number }>(
       `insert into public.review_runs
          (organization_id, repository_id, pull_request_id, run_number,
           trigger_type, trigger_event_id, review_mode, output_language,
@@ -50,7 +50,7 @@ export async function createReviewRun(
          $4, $5, 'standard', 'en-US',
          'queued', $6, $7, $8, '{}'
        )
-       returning id`,
+       returning id, run_number`,
       [
         input.organizationId,
         input.repositoryId,
@@ -70,7 +70,7 @@ export async function createReviewRun(
       trigger_type: input.triggerType,
     });
 
-    return { id: row.id };
+    return { id: row.id, runNumber: row.run_number };
   } catch (error) {
     logger.error("Failed to create review run", error as Error, {
       operation: "create_review_run",
