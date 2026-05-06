@@ -57,21 +57,25 @@ describe("review graph end-to-end (MemorySaver)", () => {
     setCtx("rr-A", { diffs: [], guidelines: "", projectContext: "" });
     setCtx("rr-B", { diffs: [], guidelines: "", projectContext: "" });
     setCtx("rr-C", { diffs: [], guidelines: "", projectContext: "" });
+    setCtx("rr-D", { diffs: [], guidelines: "", projectContext: "" });
   });
   afterEach(() => {
     clearCtx("rr-A");
     clearCtx("rr-B");
     clearCtx("rr-C");
+    clearCtx("rr-D");
   });
 
   it("Scenario A: all findings approved on first critic", async () => {
     const adapter: AiAdapter = {
-      generateReviewFindings: async (ctx: ReviewContext) => ({
-        findings:
-          ctx.focus === "quality"
-            ? [f({ title_en: "Q1" })]
-            : [f({ title_en: "S1", issueType: "security" })],
-      }),
+      generateReviewFindings: async (ctx: ReviewContext) => {
+        if (ctx.focus === "quality")
+          return { findings: [f({ title_en: "Q1", confidenceScore: 0.9 })] };
+        if (ctx.focus === "security")
+          return { findings: [f({ title_en: "S1", issueType: "security" })] };
+        // error_handling — no findings for this scenario
+        return { findings: [] };
+      },
       verifyFinding: async (): Promise<CritiqueResult> => ({
         valid: true,
         reason: "ok",
@@ -153,5 +157,54 @@ describe("review graph end-to-end (MemorySaver)", () => {
     for (const ps of Object.values(out.perFinding)) {
       assert.equal(ps.status, "exhausted");
     }
+  });
+
+  it("Scenario D: three reviewers (quality+security+error_handler) aggregate correctly", async () => {
+    const adapter: AiAdapter = {
+      generateReviewFindings: async (ctx) => {
+        if (ctx.focus === "quality")
+          return { findings: [f({ title_en: "Q1", confidenceScore: 0.9 })] };
+        if (ctx.focus === "security")
+          return {
+            findings: [
+              f({
+                title_en: "S1",
+                filePath: "b.ts",
+                issueType: "security",
+              }),
+            ],
+          };
+        // error_handling
+        return {
+          findings: [
+            f({
+              title_en: "E1",
+              filePath: "c.ts",
+              issueType: "error_handling" as never,
+              confidenceScore: 0.85,
+            }),
+          ],
+        };
+      },
+      verifyFinding: async (): Promise<CritiqueResult> => ({
+        valid: true,
+        reason: "ok",
+        confidenceScore: 0.9,
+      }),
+      regenerateFinding: async () => {
+        throw new Error("regenerator should not be called");
+      },
+      generateReviewSummary: async () => ({ summary: sampleSummary }),
+    };
+
+    const graph = buildReviewGraph(adapter, new MemorySaver());
+    const out = await graph.invoke(baseInitial("rr-D"), {
+      configurable: { thread_id: "rr-D" },
+    });
+
+    assert.equal(out.finalFindings.length, 3);
+    // All three issueTypes should appear
+    const types = out.finalFindings.map((f) => f.issueType).sort();
+    assert.deepEqual(types, ["error_handling", "quality", "security"]);
   });
 });

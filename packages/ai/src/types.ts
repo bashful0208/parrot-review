@@ -1,7 +1,7 @@
 import type { FileDiff } from "@reviewer/git";
 
 /** Reviewer 节点的 prompt scope；不传则保持原有综合扫描行为。 */
-export type ReviewFocus = "quality" | "security";
+export type ReviewFocus = "quality" | "security" | "error_handling";
 
 export interface ReviewContext {
   fullName: string;            // 仓库 full_name，如 "owner/repo"
@@ -27,7 +27,7 @@ export interface ReviewFinding {
   startLine: number;
   endLine: number;
   side: "LEFT" | "RIGHT";
-  issueType: "quality" | "security";
+  issueType: "quality" | "security" | "error_handling";
   severity: "low" | "medium" | "high" | "critical";
   title_en: string;
   title_zh: string;

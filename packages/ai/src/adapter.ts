@@ -125,7 +125,7 @@ const FINDINGS_SCHEMA = {
           startLine: { type: "integer" as const },
           endLine: { type: "integer" as const },
           side: { type: "string" as const, enum: ["LEFT", "RIGHT"] },
-          issueType: { type: "string" as const, enum: ["quality", "security"] },
+          issueType: { type: "string" as const, enum: ["quality", "security", "error_handling"] },
           severity: {
             type: "string" as const,
             enum: ["low", "medium", "high", "critical"],
@@ -248,14 +248,31 @@ function validateAndNormalizeFindings(input: unknown): ReviewFinding[] {
 function buildUserMessage(context: ReviewContext, diffText: string): string {
   const focusBlock =
     context.focus === "quality"
-      ? "Scope: report ONLY code quality / correctness / maintainability / performance issues. Do NOT report security issues — a separate reviewer covers them. Skip if you'd otherwise mark issueType=security.\n\n"
+      ? "Scope: report ONLY code quality / correctness / maintainability / performance issues. Do NOT report security issues — a separate reviewer covers them. Skip if you'd otherwise mark issueType=security. " +
+        "Check compliance with the reviewer guidelines provided below. Only report findings with confidenceScore >= 0.80 — skip borderline or trivial observations.\n\n"
       : context.focus === "security"
         ? "Scope: report ONLY security issues (auth, injection, secrets, unsafe deserialization, SSRF, etc.). Do NOT report style or quality nitpicks — a separate reviewer covers them. Skip if you'd otherwise mark issueType=quality.\n\n"
-        : "";
+        : context.focus === "error_handling"
+          ? "Scope: report ONLY error handling issues. Analyze every try/catch, error callback, .catch() promise handler, and error-return path in the diff. " +
+            "Detect: (1) empty catch blocks that suppress errors, (2) overly broad catch (e.g. catch all Exception / Throwable / unknown) that swallows unexpected errors, " +
+            "(3) missing or downgraded error logging (errors caught but only logged as warn/info/debug instead of error), " +
+            "(4) fallback or default-value behavior that silently masks the underlying error, " +
+            "(5) error messages that are not actionable (generic strings like 'something went wrong'), " +
+            "(6) missing error code or classification that prevents programmatic handling, " +
+            "(7) orphaned resources on error paths (DB records, file handles, network connections created before a failure point but not cleaned up). " +
+            "Do NOT report quality/style issues or security vulnerabilities — separate reviewers cover those. Mark issueType='error_handling' for every finding.\n\n"
+          : "";
+
+  const guidelinesBlock = context.guidelines
+    ? `<reviewer_guidelines>\n${context.guidelines}\n</reviewer_guidelines>\n\n`
+    : "";
+  const projectBlock = context.projectContext
+    ? `<project_context>\n${context.projectContext}\n</project_context>\n\n`
+    : "";
 
   return `You are reviewing pull request #${context.prNumber} in repository ${context.fullName} (head SHA: ${context.headSha}).
 
-${focusBlock}Please analyze the following diff and call the \`report_findings\` tool with all real issues you find. Only report findings with genuine impact — avoid noise and style nitpicks unless they indicate a real problem.
+${focusBlock}${guidelinesBlock}${projectBlock}Please analyze the following diff and call the \`report_findings\` tool with all real issues you find. Only report findings with genuine impact — avoid noise and style nitpicks unless they indicate a real problem.
 
 For every finding produce both English and Simplified Chinese fields:
 

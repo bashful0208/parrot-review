@@ -10,6 +10,11 @@ export {
 } from "./context.js";
 export { renderBilingualSummary, renderBilingualFinding } from "./render.js";
 export {
+  scanErrorHandlingPatterns,
+  formatScannedPatternsForPrompt,
+} from "./graph/nodes/error-handler-scanner.js";
+export type { ScannedErrorPattern } from "./graph/nodes/error-handler-scanner.js";
+export {
   withUsageInstrumentation,
   noopUsageRecorder,
   type UsageContext,
