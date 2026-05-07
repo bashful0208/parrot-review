@@ -699,7 +699,7 @@ export class AnthropicAdapter implements AiAdapter {
               });
               const response = await this.client.messages.create({
                 model: this.model,
-                max_tokens: 8192,
+                max_tokens: 16384,
                 system: SYSTEM_PROMPT,
                 messages: [{ role: "user", content: retryMsg }],
                 tools: [ANTHROPIC_TOOL],
@@ -806,7 +806,7 @@ export class AnthropicAdapter implements AiAdapter {
       async () => {
         const response = await this.client.messages.create({
           model: this.model,
-          max_tokens: 8192,
+          max_tokens: 16384,
           system: SUMMARY_SYSTEM_PROMPT,
           messages: [
             { role: "user", content: buildSummaryUserMessage(context, diffText) },
@@ -860,7 +860,7 @@ export class AnthropicAdapter implements AiAdapter {
       async () => {
         const response = await this.client.messages.create({
           model: this.model,
-          max_tokens: 8192,
+          max_tokens: 16384,
           system: VERIFY_SYSTEM_PROMPT,
           messages: [
             { role: "user", content: buildVerifyUserMessage(finding, context) },
@@ -908,7 +908,7 @@ export class AnthropicAdapter implements AiAdapter {
       async () => {
         const response = await this.client.messages.create({
           model: this.model,
-          max_tokens: 8192,
+          max_tokens: 16384,
           system: REGENERATE_SYSTEM_PROMPT,
           messages: [
             {
@@ -1059,7 +1059,7 @@ export class OpenAICompatibleAdapter implements AiAdapter {
               });
               const response = await this.client.chat.completions.create({
                 model: this.model,
-                max_tokens: 8192,
+                max_tokens: 16384,
                 messages: [
                   { role: "system", content: SYSTEM_PROMPT },
                   { role: "user", content: retryMsg },
@@ -1187,7 +1187,7 @@ export class OpenAICompatibleAdapter implements AiAdapter {
       async () => {
         const response = await this.client.chat.completions.create({
           model: this.model,
-          max_tokens: 8192,
+          max_tokens: 16384,
           messages: [
             { role: "system", content: SUMMARY_SYSTEM_PROMPT },
             {
@@ -1267,7 +1267,7 @@ export class OpenAICompatibleAdapter implements AiAdapter {
       async () => {
         const response = await this.client.chat.completions.create({
           model: this.model,
-          max_tokens: 8192,
+          max_tokens: 16384,
           messages: [
             { role: "system", content: VERIFY_SYSTEM_PROMPT },
             { role: "user", content: buildVerifyUserMessage(finding, context) },
@@ -1335,7 +1335,7 @@ export class OpenAICompatibleAdapter implements AiAdapter {
       async () => {
         const response = await this.client.chat.completions.create({
           model: this.model,
-          max_tokens: 8192,
+          max_tokens: 16384,
           messages: [
             { role: "system", content: REGENERATE_SYSTEM_PROMPT },
             {
