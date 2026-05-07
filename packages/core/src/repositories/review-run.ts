@@ -164,3 +164,383 @@ export async function updateReviewRun(
     );
   }
 }
+
+export interface ReviewRunListRow {
+  id: string;
+  runNumber: number;
+  triggerType: string;
+  status: string;
+  reviewMode: string;
+  outputLanguage: string;
+  summaryMd: string | null;
+  findingsCount: number;
+  analyzedFilesCount: number;
+  securityFindingsCount: number;
+  startedAt: Date | null;
+  finishedAt: Date | null;
+  errorCode: string | null;
+  errorMessage: string | null;
+  baseSha: string;
+  headSha: string;
+  aiModelName: string | null;
+  createdAt: Date;
+  pullRequestId: string;
+  prTitle: string;
+  prNumber: number;
+  providerPrId: string;
+  repositoryId: string;
+  repositoryName: string;
+  repositoryFullName: string;
+}
+
+export interface ReviewRunDetailRow extends ReviewRunListRow {
+  triggerEventId: string | null;
+  queueJobId: string | null;
+  retryCount: number;
+  ruleSnapshot: unknown;
+}
+
+export interface ListReviewRunsOptions {
+  organizationId: string;
+  status?: string | null;
+  page: number;
+  perPage: number;
+}
+
+export interface ListReviewRunsResult {
+  rows: ReviewRunListRow[];
+  totalCount: number;
+}
+
+const VALID_RUN_STATUSES = new Set([
+  "queued",
+  "running",
+  "succeeded",
+  "failed",
+  "retrying",
+  "cancelled",
+]);
+
+function normalizeStatusFilter(
+  status: string | null | undefined
+): string | null {
+  if (!status) return null;
+  return VALID_RUN_STATUSES.has(status) ? status : null;
+}
+
+export async function listReviewRuns(
+  opts: ListReviewRunsOptions
+): Promise<ListReviewRunsResult> {
+  const logger = createLogger({ component: "queue" });
+  try {
+    const status = normalizeStatusFilter(opts.status);
+    const limit = Math.max(1, Math.min(opts.perPage, 100));
+    const offset = Math.max(0, (opts.page - 1) * limit);
+
+    const params: unknown[] = [opts.organizationId];
+    let statusFilter = "";
+    if (status) {
+      params.push(status);
+      statusFilter = `and rr.status = $${params.length}::public.review_run_status`;
+    }
+
+    const countResult = await getPool().query<{ total: string }>(
+      `select count(*)::bigint as total
+         from public.review_runs rr
+        where rr.organization_id = $1
+          ${statusFilter}`,
+      params
+    );
+    const totalCount = Number(countResult.rows[0]?.total ?? 0);
+
+    params.push(limit, offset);
+    const result = await getPool().query<{
+      id: string;
+      run_number: string;
+      trigger_type: string;
+      status: string;
+      review_mode: string;
+      output_language: string;
+      summary_md: string | null;
+      findings_count: string;
+      analyzed_files_count: string;
+      security_findings_count: string;
+      started_at: Date | null;
+      finished_at: Date | null;
+      error_code: string | null;
+      error_message: string | null;
+      base_sha: string;
+      head_sha: string;
+      ai_model_name: string | null;
+      created_at: Date;
+      pr_id: string;
+      pr_title: string;
+      pr_number: string;
+      provider_pr_id: string;
+      repo_id: string;
+      repo_name: string;
+      repo_full_name: string;
+    }>(
+      `select rr.id, rr.run_number, rr.trigger_type, rr.status,
+              rr.review_mode, rr.output_language, rr.summary_md,
+              rr.findings_count, rr.analyzed_files_count,
+              rr.security_findings_count,
+              rr.started_at, rr.finished_at,
+              rr.error_code, rr.error_message,
+              rr.base_sha, rr.head_sha, rr.ai_model_name,
+              rr.created_at,
+              pr.id as pr_id, pr.title as pr_title,
+              pr.provider_pr_number as pr_number,
+              pr.provider_pr_id,
+              r.id as repo_id, r.name as repo_name,
+              r.full_name as repo_full_name
+         from public.review_runs rr
+         join public.pull_requests pr on pr.id = rr.pull_request_id
+         join public.repositories r on r.id = rr.repository_id
+        where rr.organization_id = $1
+          ${statusFilter}
+        order by rr.created_at desc
+        limit $${params.length - 1} offset $${params.length}`,
+      params
+    );
+
+    return {
+      rows: result.rows.map((row) => ({
+        id: row.id,
+        runNumber: Number(row.run_number),
+        triggerType: row.trigger_type,
+        status: row.status,
+        reviewMode: row.review_mode,
+        outputLanguage: row.output_language,
+        summaryMd: row.summary_md,
+        findingsCount: Number(row.findings_count),
+        analyzedFilesCount: Number(row.analyzed_files_count),
+        securityFindingsCount: Number(row.security_findings_count),
+        startedAt: row.started_at,
+        finishedAt: row.finished_at,
+        errorCode: row.error_code,
+        errorMessage: row.error_message,
+        baseSha: row.base_sha,
+        headSha: row.head_sha,
+        aiModelName: row.ai_model_name,
+        createdAt: row.created_at,
+        pullRequestId: row.pr_id,
+        prTitle: row.pr_title,
+        prNumber: Number(row.pr_number),
+        providerPrId: row.provider_pr_id,
+        repositoryId: row.repo_id,
+        repositoryName: row.repo_name,
+        repositoryFullName: row.repo_full_name,
+      })),
+      totalCount,
+    };
+  } catch (error) {
+    logger.error("Failed to list review runs", error as Error, {
+      operation: "list_review_runs",
+      organization_id: opts.organizationId,
+    });
+    throw new AppError(
+      ErrorCode.DependencyDatabaseConnection,
+      "Failed to list review runs"
+    );
+  }
+}
+
+export async function getReviewRunDetail(
+  id: string,
+  organizationId: string
+): Promise<ReviewRunDetailRow | null> {
+  const logger = createLogger({ component: "queue" });
+  try {
+    const result = await getPool().query<{
+      id: string;
+      run_number: string;
+      trigger_type: string;
+      status: string;
+      review_mode: string;
+      output_language: string;
+      summary_md: string | null;
+      findings_count: string;
+      analyzed_files_count: string;
+      security_findings_count: string;
+      started_at: Date | null;
+      finished_at: Date | null;
+      error_code: string | null;
+      error_message: string | null;
+      base_sha: string;
+      head_sha: string;
+      ai_model_name: string | null;
+      created_at: Date;
+      trigger_event_id: string | null;
+      queue_job_id: string | null;
+      retry_count: string;
+      rule_snapshot: unknown;
+      pr_id: string;
+      pr_title: string;
+      pr_number: string;
+      provider_pr_id: string;
+      repo_id: string;
+      repo_name: string;
+      repo_full_name: string;
+    }>(
+      `select rr.id, rr.run_number, rr.trigger_type, rr.status,
+              rr.review_mode, rr.output_language, rr.summary_md,
+              rr.findings_count, rr.analyzed_files_count,
+              rr.security_findings_count,
+              rr.started_at, rr.finished_at,
+              rr.error_code, rr.error_message,
+              rr.base_sha, rr.head_sha, rr.ai_model_name,
+              rr.created_at,
+              rr.trigger_event_id, rr.queue_job_id,
+              rr.retry_count, rr.rule_snapshot,
+              pr.id as pr_id, pr.title as pr_title,
+              pr.provider_pr_number as pr_number,
+              pr.provider_pr_id,
+              r.id as repo_id, r.name as repo_name,
+              r.full_name as repo_full_name
+         from public.review_runs rr
+         join public.pull_requests pr on pr.id = rr.pull_request_id
+         join public.repositories r on r.id = rr.repository_id
+        where rr.id = $1
+          and rr.organization_id = $2`,
+      [id, organizationId]
+    );
+    const row = result.rows[0];
+    if (!row) return null;
+    return {
+      id: row.id,
+      runNumber: Number(row.run_number),
+      triggerType: row.trigger_type,
+      status: row.status,
+      reviewMode: row.review_mode,
+      outputLanguage: row.output_language,
+      summaryMd: row.summary_md,
+      findingsCount: Number(row.findings_count),
+      analyzedFilesCount: Number(row.analyzed_files_count),
+      securityFindingsCount: Number(row.security_findings_count),
+      startedAt: row.started_at,
+      finishedAt: row.finished_at,
+      errorCode: row.error_code,
+      errorMessage: row.error_message,
+      baseSha: row.base_sha,
+      headSha: row.head_sha,
+      aiModelName: row.ai_model_name,
+      createdAt: row.created_at,
+      pullRequestId: row.pr_id,
+      prTitle: row.pr_title,
+      prNumber: Number(row.pr_number),
+      providerPrId: row.provider_pr_id,
+      repositoryId: row.repo_id,
+      repositoryName: row.repo_name,
+      repositoryFullName: row.repo_full_name,
+      triggerEventId: row.trigger_event_id,
+      queueJobId: row.queue_job_id,
+      retryCount: Number(row.retry_count),
+      ruleSnapshot: row.rule_snapshot,
+    };
+  } catch (error) {
+    logger.error("Failed to fetch review run detail", error as Error, {
+      operation: "get_review_run_detail",
+      review_run_id: id,
+      organization_id: organizationId,
+    });
+    throw new AppError(
+      ErrorCode.DependencyDatabaseConnection,
+      "Failed to fetch review run detail"
+    );
+  }
+}
+
+export async function listRecentReviewRuns(
+  organizationId: string,
+  limit: number
+): Promise<ReviewRunListRow[]> {
+  const logger = createLogger({ component: "queue" });
+  try {
+    const result = await getPool().query<{
+      id: string;
+      run_number: string;
+      trigger_type: string;
+      status: string;
+      review_mode: string;
+      output_language: string;
+      summary_md: string | null;
+      findings_count: string;
+      analyzed_files_count: string;
+      security_findings_count: string;
+      started_at: Date | null;
+      finished_at: Date | null;
+      error_code: string | null;
+      error_message: string | null;
+      base_sha: string;
+      head_sha: string;
+      ai_model_name: string | null;
+      created_at: Date;
+      pr_id: string;
+      pr_title: string;
+      pr_number: string;
+      provider_pr_id: string;
+      repo_id: string;
+      repo_name: string;
+      repo_full_name: string;
+    }>(
+      `select rr.id, rr.run_number, rr.trigger_type, rr.status,
+              rr.review_mode, rr.output_language, rr.summary_md,
+              rr.findings_count, rr.analyzed_files_count,
+              rr.security_findings_count,
+              rr.started_at, rr.finished_at,
+              rr.error_code, rr.error_message,
+              rr.base_sha, rr.head_sha, rr.ai_model_name,
+              rr.created_at,
+              pr.id as pr_id, pr.title as pr_title,
+              pr.provider_pr_number as pr_number,
+              pr.provider_pr_id,
+              r.id as repo_id, r.name as repo_name,
+              r.full_name as repo_full_name
+         from public.review_runs rr
+         join public.pull_requests pr on pr.id = rr.pull_request_id
+         join public.repositories r on r.id = rr.repository_id
+        where rr.organization_id = $1
+        order by rr.created_at desc
+        limit $2`,
+      [organizationId, limit]
+    );
+
+    return result.rows.map((row) => ({
+      id: row.id,
+      runNumber: Number(row.run_number),
+      triggerType: row.trigger_type,
+      status: row.status,
+      reviewMode: row.review_mode,
+      outputLanguage: row.output_language,
+      summaryMd: row.summary_md,
+      findingsCount: Number(row.findings_count),
+      analyzedFilesCount: Number(row.analyzed_files_count),
+      securityFindingsCount: Number(row.security_findings_count),
+      startedAt: row.started_at,
+      finishedAt: row.finished_at,
+      errorCode: row.error_code,
+      errorMessage: row.error_message,
+      baseSha: row.base_sha,
+      headSha: row.head_sha,
+      aiModelName: row.ai_model_name,
+      createdAt: row.created_at,
+      pullRequestId: row.pr_id,
+      prTitle: row.pr_title,
+      prNumber: Number(row.pr_number),
+      providerPrId: row.provider_pr_id,
+      repositoryId: row.repo_id,
+      repositoryName: row.repo_name,
+      repositoryFullName: row.repo_full_name,
+    }));
+  } catch (error) {
+    logger.error("Failed to list recent review runs", error as Error, {
+      operation: "list_recent_review_runs",
+      organization_id: organizationId,
+    });
+    throw new AppError(
+      ErrorCode.DependencyDatabaseConnection,
+      "Failed to list recent review runs"
+    );
+  }
+}

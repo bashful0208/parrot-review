@@ -28,7 +28,7 @@ export const DASHBOARD_QUICK_ACTIONS: DashboardQuickAction[] = [
   {
     label: "View All Runs",
     description: "Inspect recent review activity across the org.",
-    href: "/reviews",
+    href: "/review-runs",
   },
 ];
 

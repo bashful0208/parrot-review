@@ -101,3 +101,89 @@ export async function insertReviewIssues(
     );
   }
 }
+
+export interface ReviewIssueRow {
+  id: string;
+  reviewRunId: string;
+  fingerprint: string;
+  issueType: string;
+  title: string;
+  summary: string;
+  severity: string;
+  confidenceScore: number;
+  filePath: string | null;
+  startLine: number | null;
+  endLine: number | null;
+  suggestionMd: string | null;
+  status: string;
+  createdAt: Date;
+}
+
+export async function listReviewIssuesByRun(
+  reviewRunId: string,
+  organizationId: string
+): Promise<ReviewIssueRow[]> {
+  const logger = createLogger({ component: "queue" });
+  try {
+    const result = await getPool().query<{
+      id: string;
+      review_run_id: string;
+      fingerprint: string;
+      issue_type: string;
+      title: string;
+      summary: string;
+      severity: string;
+      confidence_score: string;
+      file_path: string | null;
+      start_line: string | null;
+      end_line: string | null;
+      suggestion_md: string | null;
+      status: string;
+      created_at: Date;
+    }>(
+      `select ri.id, ri.review_run_id, ri.fingerprint, ri.issue_type,
+              ri.title, ri.summary, ri.severity, ri.confidence_score,
+              ri.file_path, ri.start_line, ri.end_line, ri.suggestion_md,
+              ri.status, ri.created_at
+         from public.review_issues ri
+        where ri.review_run_id = $1
+          and ri.organization_id = $2
+        order by
+          case ri.severity
+            when 'critical' then 1
+            when 'high' then 2
+            when 'medium' then 3
+            when 'low' then 4
+            else 5
+          end,
+          ri.confidence_score desc`,
+      [reviewRunId, organizationId]
+    );
+
+    return result.rows.map((row) => ({
+      id: row.id,
+      reviewRunId: row.review_run_id,
+      fingerprint: row.fingerprint,
+      issueType: row.issue_type,
+      title: row.title,
+      summary: row.summary,
+      severity: row.severity,
+      confidenceScore: Number(row.confidence_score),
+      filePath: row.file_path,
+      startLine: row.start_line ? Number(row.start_line) : null,
+      endLine: row.end_line ? Number(row.end_line) : null,
+      suggestionMd: row.suggestion_md,
+      status: row.status,
+      createdAt: row.created_at,
+    }));
+  } catch (error) {
+    logger.error("Failed to list review issues by run", error as Error, {
+      operation: "list_review_issues_by_run",
+      review_run_id: reviewRunId,
+    });
+    throw new AppError(
+      ErrorCode.DependencyDatabaseConnection,
+      "Failed to list review issues by run"
+    );
+  }
+}

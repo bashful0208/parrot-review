@@ -1,7 +1,12 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { AUTH_SESSION_COOKIE, getSessionUser } from "@reviewer/core";
+import {
+  AUTH_SESSION_COOKIE,
+  getOrgIdForUser,
+  getSessionUser,
+  listRecentReviewRuns,
+} from "@reviewer/core";
 
 import AdminShell from "@/components/dashboard/AdminShell";
 import DashboardHero from "@/components/dashboard/DashboardHero";
@@ -21,7 +26,11 @@ export default async function Home() {
     redirect("/login");
   }
 
-  const dashboard = buildDashboardViewModel(user);
+  const orgId = await getOrgIdForUser(user.id);
+  const recentRunRows = orgId
+    ? await listRecentReviewRuns(orgId, 5)
+    : [];
+  const dashboard = buildDashboardViewModel(user, recentRunRows);
 
   return (
     <AdminShell

@@ -10,8 +10,6 @@ function CompactIcon({ icon }: { icon: DashboardNavItem["icon"] }) {
     overview: "OV",
     repositories: "RE",
     runs: "RU",
-    policies: "PO",
-    team: "TE",
     settings: "SE",
     usage: "US",
     webhooks: "WH",
