@@ -83,14 +83,14 @@ export async function listWebhookEvents(
     let providerFilter = "";
     if (provider) {
       params.push(provider);
-      providerFilter = `and provider = $${params.length}::public.git_provider`;
+      providerFilter = `and w.provider = $${params.length}::public.git_provider`;
     }
 
     const countResult = await getPool().query<{ total: string }>(
       `select count(*)::bigint as total
-         from public.webhook_events
-        where organization_id = $1
-          and created_at >= now() - ($2::int * interval '1 day')
+         from public.webhook_events w
+        where w.organization_id = $1
+          and w.created_at >= now() - ($2::int * interval '1 day')
           ${providerFilter}`,
       params
     );
@@ -150,14 +150,13 @@ export async function listWebhookEvents(
       totalCount,
     };
   } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Failed to list webhook events";
     logger.error("Failed to list webhook events", error as Error, {
       operation: "list_webhook_events",
       organization_id: opts.organizationId,
     });
-    throw new AppError(
-      ErrorCode.DependencyDatabaseConnection,
-      "Failed to list webhook events"
-    );
+    throw new AppError(ErrorCode.DependencyDatabaseConnection, message);
   }
 }
 
