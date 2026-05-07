@@ -118,6 +118,7 @@ const FINDINGS_SCHEMA = {
   properties: {
     findings: {
       type: "array" as const,
+          maxItems: 5,
       items: {
         type: "object" as const,
         properties: {
@@ -157,8 +158,9 @@ const FINDINGS_SCHEMA = {
         ] as string[],
       },
     },
+    hasMore: { type: "boolean" as const },
   },
-  required: ["findings"] as string[],
+  required: ["findings", "hasMore"] as string[],
 };
 
 const FINDING_ITEM_SCHEMA = FINDINGS_SCHEMA.properties.findings.items;
@@ -290,6 +292,30 @@ Additionally, every finding MUST include \`aiPrompt\`: a detailed, copy-pasteabl
 - An explicit verification step the agent can do after the fix (a property to check, a test to add or run).
 
 Aim for 80–250 English words. Prefer specifics over generality. Do not paste large code blocks; describe the change in prose, referring to identifiers by name.
+
+Report at most 5 findings in this batch. If there are more issues beyond those 5, set "hasMore": true so the system will prompt you for the next batch. If you have exhausted all real issues, set "hasMore": false.
+
+<diff>
+${diffText}
+</diff>`;
+}
+
+function buildContinuationMessage(
+  context: ReviewContext,
+  diffText: string,
+  previousFindings: ReviewFinding[]
+): string {
+  const summary = previousFindings
+    .map((f, i) => `${i + 1}. [${f.severity}/${f.issueType}] ${f.filePath}:${f.startLine} — ${f.title_en}`)
+    .join("\n");
+
+  return `You have already reported the following ${previousFindings.length} issue(s):
+
+${summary}
+
+Continue reviewing the SAME diff below. Find additional issues NOT listed above. Avoid duplicates.
+
+Report up to 5 more findings in this batch. If you find more issues beyond these, set "hasMore": true. If you have exhausted all real issues, set "hasMore": false and "findings": [].
 
 <diff>
 ${diffText}
@@ -468,6 +494,52 @@ function validateAndNormalizeRegenerated(input: unknown): ReviewFinding {
   };
 }
 
+function repairTruncatedJson(partial: string): unknown {
+  let repaired = partial;
+  let inString = false;
+  let escaped = false;
+  let openBraces = 0;
+  let closeBraces = 0;
+  let openBrackets = 0;
+  let closeBrackets = 0;
+
+  for (const ch of partial) {
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (ch === "\\") {
+      escaped = true;
+      continue;
+    }
+    if (ch === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (inString) continue;
+    if (ch === "{") openBraces++;
+    if (ch === "}") closeBraces++;
+    if (ch === "[") openBrackets++;
+    if (ch === "]") closeBrackets++;
+  }
+
+  if (inString) repaired += '"';
+  repaired += "]".repeat(Math.max(0, openBrackets - closeBrackets));
+  repaired += "}".repeat(Math.max(0, openBraces - closeBraces));
+
+  return JSON.parse(repaired);
+}
+
+function deduplicateFindings(findings: ReviewFinding[]): ReviewFinding[] {
+  const seen = new Set<string>();
+  return findings.filter((f) => {
+    const key = `${f.filePath}:${f.startLine}:${f.title_en}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 function extractJsonFromText(text: string | null | undefined): unknown {
   if (typeof text !== "string" || text.trim() === "") return undefined;
 
@@ -595,39 +667,116 @@ export class AnthropicAdapter implements AiAdapter {
     return withUsageInstrumentation(
       buildUsageCtx(context, this.provider, this.model, "review_findings"),
       async () => {
-        const response = await this.client.messages.create({
-          model: this.model,
-          max_tokens: 4096,
-          system: SYSTEM_PROMPT,
-          messages: [{ role: "user", content: buildUserMessage(context, diffText) }],
-          tools: [ANTHROPIC_TOOL],
-          tool_choice: { type: "tool", name: "report_findings" },
-        });
+        const MAX_ROUNDS = 6;
+        const MAX_FORMAT_RETRIES = 3;
 
-        log("info", "Anthropic API call succeeded", {
-          prNumber: context.prNumber,
-          stop_reason: response.stop_reason,
-        });
+        const allFindings: ReviewFinding[] = [];
+        let previousFindings: ReviewFinding[] = [];
+        let totalInputTokens = 0;
+        let totalOutputTokens = 0;
+        let anyTruncated = false;
 
-        const truncated = response.stop_reason === "max_tokens";
-        const toolUseBlock = response.content.find(
-          (block): block is Anthropic.ToolUseBlock => block.type === "tool_use"
-        );
+        for (let round = 0; round < MAX_ROUNDS; round++) {
+          const userMsg =
+            round === 0
+              ? buildUserMessage(context, diffText)
+              : buildContinuationMessage(context, diffText, previousFindings);
 
-        if (!toolUseBlock) {
-          throw new Error(
-            "Anthropic API did not return expected tool_use block for report_findings"
-          );
+          let formatRetries = 0;
+          let parsed: unknown = undefined;
+          let roundTruncated = false;
+
+          while (formatRetries <= MAX_FORMAT_RETRIES && parsed === undefined) {
+            const retryMsg =
+              formatRetries === 0
+                ? userMsg
+                : `Please call the report_findings tool with valid JSON. Do not leave string fields empty or unclosed.\n\n${userMsg}`;
+            try {
+              log("info", "Anthropic batch round start", {
+                prNumber: context.prNumber,
+                round,
+                attempt: formatRetries,
+              });
+              const response = await this.client.messages.create({
+                model: this.model,
+                max_tokens: 8192,
+                system: SYSTEM_PROMPT,
+                messages: [{ role: "user", content: retryMsg }],
+                tools: [ANTHROPIC_TOOL],
+                tool_choice: { type: "tool", name: "report_findings" },
+              });
+
+              totalInputTokens += response.usage?.input_tokens ?? 0;
+              totalOutputTokens += response.usage?.output_tokens ?? 0;
+              roundTruncated = response.stop_reason === "max_tokens";
+              if (roundTruncated) anyTruncated = true;
+              log("info", "Anthropic batch round done", {
+                prNumber: context.prNumber,
+                round,
+                attempt: formatRetries,
+                stop_reason: response.stop_reason,
+                input_tokens: response.usage?.input_tokens,
+                output_tokens: response.usage?.output_tokens,
+                truncated: roundTruncated,
+              });
+
+              const toolUseBlock = response.content.find(
+                (block): block is Anthropic.ToolUseBlock => block.type === "tool_use"
+              );
+
+              if (toolUseBlock) {
+                parsed = toolUseBlock.input;
+              }
+            } catch (apiErr) {
+              log("warn", "Anthropic API error in batch round", {
+                prNumber: context.prNumber,
+                round,
+                attempt: formatRetries,
+                error: apiErr instanceof Error ? apiErr.message : String(apiErr),
+              });
+              break;
+            }
+
+            if (parsed !== undefined) break;
+            formatRetries++;
+          }
+
+          if (parsed === undefined) {
+            log("warn", "Anthropic batch round skipped (no parsed result)", {
+              prNumber: context.prNumber,
+              round,
+            });
+            continue;
+          }
+
+          const data = parsed as Record<string, unknown>;
+          const hasMore = data.hasMore === true;
+          const newFindings = validateAndNormalizeFindings(parsed);
+          log("info", "Anthropic batch round parsed", {
+            prNumber: context.prNumber,
+            round,
+            findingsCount: newFindings.length,
+            hasMore,
+            truncated: roundTruncated,
+          });
+
+          allFindings.push(...newFindings);
+          previousFindings = newFindings;
+
+          if (!hasMore) {
+            if (roundTruncated && newFindings.length > 0) continue;
+            break;
+          }
+          if (newFindings.length === 0) break;
         }
 
-        const findings = validateAndNormalizeFindings(toolUseBlock.input);
         return {
-          result: { findings },
+          result: { findings: deduplicateFindings(allFindings) },
           outcome: {
-            inputTokens: response.usage?.input_tokens ?? null,
-            outputTokens: response.usage?.output_tokens ?? null,
-            truncated,
-            metadata: { stop_reason: response.stop_reason },
+            inputTokens: totalInputTokens,
+            outputTokens: totalOutputTokens,
+            truncated: anyTruncated,
+            metadata: {},
           },
         };
       },
@@ -657,7 +806,7 @@ export class AnthropicAdapter implements AiAdapter {
       async () => {
         const response = await this.client.messages.create({
           model: this.model,
-          max_tokens: 2048,
+          max_tokens: 8192,
           system: SUMMARY_SYSTEM_PROMPT,
           messages: [
             { role: "user", content: buildSummaryUserMessage(context, diffText) },
@@ -711,7 +860,7 @@ export class AnthropicAdapter implements AiAdapter {
       async () => {
         const response = await this.client.messages.create({
           model: this.model,
-          max_tokens: 2048,
+          max_tokens: 8192,
           system: VERIFY_SYSTEM_PROMPT,
           messages: [
             { role: "user", content: buildVerifyUserMessage(finding, context) },
@@ -759,7 +908,7 @@ export class AnthropicAdapter implements AiAdapter {
       async () => {
         const response = await this.client.messages.create({
           model: this.model,
-          max_tokens: 4096,
+          max_tokens: 8192,
           system: REGENERATE_SYSTEM_PROMPT,
           messages: [
             {
@@ -860,6 +1009,15 @@ export class OpenAICompatibleAdapter implements AiAdapter {
     this.recorder = config.recorder ?? noopUsageRecorder;
   }
 
+  /**
+   * tool_choice 策略：统一使用 "auto"。
+   * DeepSeek 多个模型（reasoner、v4-pro 等）不支持 "required"，
+   * 强制使用会导致 400 错误。JSON 截断问题通过 repairTruncatedJson 兜底。
+   */
+  private toolChoice(): "auto" | "required" {
+    return "auto";
+  }
+
   async generateReviewFindings(context: ReviewContext): Promise<ReviewResult> {
     const diffText = buildDiffText(context);
     if (!diffText) {
@@ -869,64 +1027,137 @@ export class OpenAICompatibleAdapter implements AiAdapter {
     return withUsageInstrumentation(
       buildUsageCtx(context, this.provider, this.model, "review_findings"),
       async () => {
-        const response = await this.client.chat.completions.create({
-          model: this.model,
-          max_tokens: 4096,
-          messages: [
-            { role: "system", content: SYSTEM_PROMPT },
-            { role: "user", content: buildUserMessage(context, diffText) },
-          ],
-          tools: [OPENAI_TOOL],
-          tool_choice: "auto",
-        });
+        const MAX_ROUNDS = 6;
+        const MAX_FORMAT_RETRIES = 3;
 
-        const choice = response.choices[0];
-        log("info", "OpenAI-compatible API call succeeded", {
-          prNumber: context.prNumber,
-          finish_reason: choice?.finish_reason,
-        });
+        const allFindings: ReviewFinding[] = [];
+        let previousFindings: ReviewFinding[] = [];
+        let totalInputTokens = 0;
+        let totalOutputTokens = 0;
+        let anyTruncated = false;
 
-        const truncated = choice?.finish_reason === "length";
-        const toolCall = choice?.message?.tool_calls?.[0];
-        let parsed: unknown;
+        for (let round = 0; round < MAX_ROUNDS; round++) {
+          const userMsg =
+            round === 0
+              ? buildUserMessage(context, diffText)
+              : buildContinuationMessage(context, diffText, previousFindings);
 
-        if (toolCall && toolCall.type === "function") {
-          if (toolCall.function.name !== "report_findings") {
-            throw new Error(
-              "OpenAI-compatible API did not return expected tool call for report_findings"
-            );
+          let formatRetries = 0;
+          let parsed: unknown = undefined;
+          let roundTruncated = false;
+
+          while (formatRetries <= MAX_FORMAT_RETRIES && parsed === undefined) {
+            const retryMsg =
+              formatRetries === 0
+                ? userMsg
+                : `Please call the report_findings tool with valid JSON. Do not leave string fields empty or unclosed.\n\n${userMsg}`;
+            try {
+              log("info", "OpenAI batch round start", {
+                prNumber: context.prNumber,
+                round,
+                attempt: formatRetries,
+              });
+              const response = await this.client.chat.completions.create({
+                model: this.model,
+                max_tokens: 8192,
+                messages: [
+                  { role: "system", content: SYSTEM_PROMPT },
+                  { role: "user", content: retryMsg },
+                ],
+                tools: [OPENAI_TOOL],
+                tool_choice: this.toolChoice(),
+              });
+
+              const choice = response.choices[0];
+              totalInputTokens += response.usage?.prompt_tokens ?? 0;
+              totalOutputTokens += response.usage?.completion_tokens ?? 0;
+              roundTruncated = choice?.finish_reason === "length";
+              if (roundTruncated) anyTruncated = true;
+              log("info", "OpenAI batch round done", {
+                prNumber: context.prNumber,
+                round,
+                attempt: formatRetries,
+                finish_reason: choice?.finish_reason,
+                has_tool_call: !!choice?.message?.tool_calls?.[0],
+                input_tokens: response.usage?.prompt_tokens,
+                output_tokens: response.usage?.completion_tokens,
+                truncated: roundTruncated,
+              });
+
+              const toolCall = choice?.message?.tool_calls?.[0];
+
+              if (toolCall && toolCall.type === "function") {
+                if (toolCall.function.name !== "report_findings") {
+                  formatRetries++;
+                  continue;
+                }
+                try {
+                  parsed = JSON.parse(toolCall.function.arguments);
+                } catch {
+                  if (roundTruncated) {
+                    try {
+                      parsed = repairTruncatedJson(toolCall.function.arguments);
+                    } catch {
+                      // repair also failed
+                    }
+                  }
+                  if (parsed === undefined) formatRetries++;
+                }
+              } else {
+                const content =
+                  typeof choice?.message?.content === "string"
+                    ? choice.message.content
+                    : undefined;
+                parsed = extractJsonFromText(content);
+                if (parsed === undefined) formatRetries++;
+              }
+            } catch (apiErr) {
+              log("warn", "OpenAI API error in batch round", {
+                prNumber: context.prNumber,
+                round,
+                attempt: formatRetries,
+                error: apiErr instanceof Error ? apiErr.message : String(apiErr),
+              });
+              break;
+            }
           }
-          try {
-            parsed = JSON.parse(toolCall.function.arguments);
-          } catch {
-            throw new Error(
-              `Failed to parse report_findings arguments: ${toolCall.function.arguments}`
-            );
-          }
-        } else {
-          const content =
-            typeof choice?.message?.content === "string"
-              ? choice.message.content
-              : undefined;
-          parsed = extractJsonFromText(content);
+
           if (parsed === undefined) {
-            throw new Error(
-              "OpenAI-compatible API did not return expected tool call for report_findings"
-            );
+            log("warn", "OpenAI batch round skipped (no parsed result)", {
+              prNumber: context.prNumber,
+              round,
+            });
+            continue;
           }
-          log("info", "OpenAI-compatible findings parsed via content fallback", {
+
+          const data = parsed as Record<string, unknown>;
+          const hasMore = data.hasMore === true;
+          const newFindings = validateAndNormalizeFindings(parsed);
+          log("info", "OpenAI batch round parsed", {
             prNumber: context.prNumber,
+            round,
+            findingsCount: newFindings.length,
+            hasMore,
+            truncated: roundTruncated,
           });
+
+          allFindings.push(...newFindings);
+          previousFindings = newFindings;
+
+          if (!hasMore) {
+            if (roundTruncated && newFindings.length > 0) continue;
+            break;
+          }
+          if (newFindings.length === 0) break;
         }
 
-        const findings = validateAndNormalizeFindings(parsed);
         return {
-          result: { findings },
+          result: { findings: deduplicateFindings(allFindings) },
           outcome: {
-            inputTokens: response.usage?.prompt_tokens ?? null,
-            outputTokens: response.usage?.completion_tokens ?? null,
-            truncated,
-            metadata: { finish_reason: choice?.finish_reason },
+            inputTokens: totalInputTokens,
+            outputTokens: totalOutputTokens,
+            truncated: anyTruncated,
+            metadata: {},
           },
         };
       },
@@ -956,7 +1187,7 @@ export class OpenAICompatibleAdapter implements AiAdapter {
       async () => {
         const response = await this.client.chat.completions.create({
           model: this.model,
-          max_tokens: 2048,
+          max_tokens: 8192,
           messages: [
             { role: "system", content: SUMMARY_SYSTEM_PROMPT },
             {
@@ -965,7 +1196,7 @@ export class OpenAICompatibleAdapter implements AiAdapter {
             },
           ],
           tools: [OPENAI_SUMMARY_TOOL],
-          tool_choice: "auto",
+          tool_choice: this.toolChoice(),
         });
 
         const choice = response.choices[0];
@@ -1036,13 +1267,13 @@ export class OpenAICompatibleAdapter implements AiAdapter {
       async () => {
         const response = await this.client.chat.completions.create({
           model: this.model,
-          max_tokens: 2048,
+          max_tokens: 8192,
           messages: [
             { role: "system", content: VERIFY_SYSTEM_PROMPT },
             { role: "user", content: buildVerifyUserMessage(finding, context) },
           ],
           tools: [OPENAI_VERIFY_TOOL],
-          tool_choice: "auto",
+          tool_choice: this.toolChoice(),
         });
 
         const choice = response.choices[0];
@@ -1104,7 +1335,7 @@ export class OpenAICompatibleAdapter implements AiAdapter {
       async () => {
         const response = await this.client.chat.completions.create({
           model: this.model,
-          max_tokens: 4096,
+          max_tokens: 8192,
           messages: [
             { role: "system", content: REGENERATE_SYSTEM_PROMPT },
             {
@@ -1113,7 +1344,7 @@ export class OpenAICompatibleAdapter implements AiAdapter {
             },
           ],
           tools: [OPENAI_REGENERATE_TOOL],
-          tool_choice: "auto",
+          tool_choice: this.toolChoice(),
         });
 
         const choice = response.choices[0];
