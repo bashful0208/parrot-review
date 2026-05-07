@@ -154,13 +154,19 @@ export async function withUsageInstrumentation<T>(
 
   const latencyMs = Math.round(performance.now() - start);
   const truncated = outcome.truncated === true;
+  const emptyOutput =
+    outcome.outputTokens !== null && outcome.outputTokens === 0;
   const draft: UsageEventDraft = {
     ...buildBaseDraft(ctx, latencyMs),
     inputTokens: outcome.inputTokens,
     outputTokens: outcome.outputTokens,
     estimatedCost: estimateCost(ctx.model, outcome.inputTokens, outcome.outputTokens),
-    success: !truncated,
-    errorCode: truncated ? "truncated" : null,
+    success: !truncated && !emptyOutput,
+    errorCode: truncated
+      ? "truncated"
+      : emptyOutput
+        ? "empty_output"
+        : null,
     metadata: outcome.metadata ?? {},
   };
   await safeRecord(record, draft, logger);

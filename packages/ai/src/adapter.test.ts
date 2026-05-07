@@ -28,6 +28,14 @@ describe("buildUserMessage with focus", () => {
     assert.match(msg, /Do NOT report security/i);
   });
 
+  it("focus=quality includes confidence threshold >= 0.80 instruction", () => {
+    const msg = _internalForTest.buildUserMessage(
+      { ...baseCtx, focus: "quality" },
+      "DIFF"
+    );
+    assert.match(msg, /confidenceScore >= 0\.80/);
+  });
+
   it("focus=security narrows scope to security and excludes quality", () => {
     const msg = _internalForTest.buildUserMessage(
       { ...baseCtx, focus: "security" },
@@ -37,10 +45,51 @@ describe("buildUserMessage with focus", () => {
     assert.match(msg, /Do NOT report style or quality/i);
   });
 
+  it("focus=error_handling narrows scope to error handling issues", () => {
+    const msg = _internalForTest.buildUserMessage(
+      { ...baseCtx, focus: "error_handling" },
+      "DIFF"
+    );
+    assert.match(msg, /error handling/i);
+    assert.match(msg, /empty catch blocks/i);
+    assert.match(msg, /orphaned resources/i);
+    assert.match(msg, /issueType='error_handling'/);
+  });
+
   it("no focus keeps existing comprehensive prompt (no Scope: line)", () => {
     const msg = _internalForTest.buildUserMessage(baseCtx, "DIFF");
     assert.match(msg, /report_findings/);
     assert.doesNotMatch(msg, /^Scope:/m);
+  });
+});
+
+describe("buildUserMessage with guidelines and project context", () => {
+  it("includes guidelines block when guidelines is non-empty", () => {
+    const msg = _internalForTest.buildUserMessage(
+      { ...baseCtx, guidelines: "Use createLogger() not console.log" },
+      "DIFF"
+    );
+    assert.match(msg, /<reviewer_guidelines>/);
+    assert.match(msg, /createLogger/);
+    assert.match(msg, /<\/reviewer_guidelines>/);
+  });
+
+  it("skips guidelines block when guidelines is empty", () => {
+    const msg = _internalForTest.buildUserMessage(
+      { ...baseCtx, guidelines: "" },
+      "DIFF"
+    );
+    assert.doesNotMatch(msg, /<reviewer_guidelines>/);
+  });
+
+  it("includes project context block when non-empty", () => {
+    const msg = _internalForTest.buildUserMessage(
+      { ...baseCtx, projectContext: "This is a Next.js app with Prisma" },
+      "DIFF"
+    );
+    assert.match(msg, /<project_context>/);
+    assert.match(msg, /Next\.js/);
+    assert.match(msg, /<\/project_context>/);
   });
 });
 

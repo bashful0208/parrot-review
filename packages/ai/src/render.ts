@@ -37,6 +37,7 @@ const ISSUE_TYPE_BADGE: Record<
 > = {
   quality: { icon: "⚠️", label: "Potential issue" },
   security: { icon: "🛡️", label: "Security issue" },
+  error_handling: { icon: "🪲", label: "Error handling issue" },
 };
 
 const SEVERITY_BADGE: Record<

@@ -69,6 +69,9 @@ export function classifyAiError(err: unknown): AiErrorCode {
   if (msg.includes("rate limit") || msg.includes("rate-limit") || msg.includes("rate_limit"))
     return "rate_limit";
 
+  // JSON parse failures from our own parsing
+  if (msg.includes("failed to parse")) return "parse_error";
+
   // Our own validation throws use these phrasings — see adapter.ts validators.
   if (
     msg.includes("must be an array") ||

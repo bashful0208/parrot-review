@@ -166,6 +166,50 @@ test("withUsageInstrumentation: recorder failure on error path -> original error
   assert.equal(logger.warnings.length, 1);
 });
 
+test("withUsageInstrumentation: zero output -> success=false, errorCode=empty_output", async () => {
+  const { record, drafts } = makeRecorder();
+  const logger = makeLogger();
+
+  const result = await withUsageInstrumentation(
+    ctx,
+    async () => ({
+      result: { findings: [] },
+      outcome: { inputTokens: 0, outputTokens: 0, truncated: false },
+    }),
+    record,
+    logger
+  );
+
+  assert.deepEqual(result, { findings: [] });
+  assert.equal(drafts.length, 1);
+  const d = drafts[0]!;
+  assert.equal(d.success, false);
+  assert.equal(d.errorCode, "empty_output");
+  assert.equal(d.inputTokens, 0);
+  assert.equal(d.outputTokens, 0);
+});
+
+test("withUsageInstrumentation: null output tokens treated as unknown -> success stays true", async () => {
+  const { record, drafts } = makeRecorder();
+  const logger = makeLogger();
+
+  const result = await withUsageInstrumentation(
+    ctx,
+    async () => ({
+      result: "ok",
+      outcome: { inputTokens: null, outputTokens: null, truncated: false },
+    }),
+    record,
+    logger
+  );
+
+  assert.equal(result, "ok");
+  assert.equal(drafts.length, 1);
+  const d = drafts[0]!;
+  assert.equal(d.success, true);
+  assert.equal(d.errorCode, null);
+});
+
 test("withUsageInstrumentation: unknown model -> estimatedCost null but row still written", async () => {
   const { record, drafts } = makeRecorder();
   const logger = makeLogger();

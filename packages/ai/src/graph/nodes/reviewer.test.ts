@@ -7,22 +7,25 @@ import type { AiAdapter } from "../../adapter.js";
 import type { ReviewFinding } from "../../types.js";
 import type { ReviewGraphStateType } from "../state.js";
 
-const fakeFinding: ReviewFinding = {
-  filePath: "a.ts",
-  startLine: 1,
-  endLine: 1,
-  side: "RIGHT",
-  issueType: "quality",
-  severity: "low",
-  title_en: "x",
-  title_zh: "x",
-  summary_en: "x",
-  summary_zh: "x",
-  suggestion_en: "x",
-  suggestion_zh: "x",
-  aiPrompt: "x",
-  confidenceScore: 0.5,
-};
+function fakeFinding(over: Partial<ReviewFinding> = {}): ReviewFinding {
+  return {
+    filePath: "a.ts",
+    startLine: 1,
+    endLine: 1,
+    side: "RIGHT",
+    issueType: "quality",
+    severity: "low",
+    title_en: "x",
+    title_zh: "x",
+    summary_en: "x",
+    summary_zh: "x",
+    suggestion_en: "x",
+    suggestion_zh: "x",
+    aiPrompt: "x",
+    confidenceScore: 0.5,
+    ...over,
+  };
+}
 
 const baseState = (reviewRunId = "rr"): ReviewGraphStateType => ({
   reviewRunId,
@@ -53,11 +56,11 @@ describe("reviewer node", () => {
     const adapter: AiAdapter = {
       generateReviewFindings: async (ctx) => {
         receivedFocus = ctx.focus;
-        return { findings: [fakeFinding] };
+        return { findings: [fakeFinding()] };
       },
       generateReviewSummary: async () => ({ summary: {} as never }),
       verifyFinding: async () => ({ valid: true, reason: "", confidenceScore: 1 }),
-      regenerateFinding: async () => fakeFinding,
+      regenerateFinding: async () => fakeFinding(),
     };
     const node = makeReviewerNode("quality", adapter);
     const result = await node(baseState("rr-success"));
@@ -74,7 +77,7 @@ describe("reviewer node", () => {
       },
       generateReviewSummary: async () => ({ summary: {} as never }),
       verifyFinding: async () => ({ valid: true, reason: "", confidenceScore: 1 }),
-      regenerateFinding: async () => fakeFinding,
+      regenerateFinding: async () => fakeFinding(),
     };
     const node = makeReviewerNode("security", adapter);
     const result = await node(baseState("rr-throw"));
@@ -89,10 +92,84 @@ describe("reviewer node", () => {
       generateReviewFindings: async () => ({ findings: [] }),
       generateReviewSummary: async () => ({ summary: {} as never }),
       verifyFinding: async () => ({ valid: true, reason: "", confidenceScore: 1 }),
-      regenerateFinding: async () => fakeFinding,
+      regenerateFinding: async () => fakeFinding(),
     };
     const node = makeReviewerNode("quality", adapter);
     const result = await node(baseState("missing"));
     assert.match(result.reviewerErrors![0]!.error, /ctx-cache miss/);
+  });
+
+  it("filters out findings below confidenceThreshold", async () => {
+    setCtx("rr-filter", { diffs: [], guidelines: "", projectContext: "" });
+    const adapter: AiAdapter = {
+      generateReviewFindings: async () => ({
+        findings: [
+          fakeFinding({ confidenceScore: 0.9, title_en: "keep" }),
+          fakeFinding({ confidenceScore: 0.5, title_en: "drop" }),
+          fakeFinding({ confidenceScore: 0.81, title_en: "keep-edge" }),
+        ],
+      }),
+      generateReviewSummary: async () => ({ summary: {} as never }),
+      verifyFinding: async () => ({ valid: true, reason: "", confidenceScore: 1 }),
+      regenerateFinding: async () => fakeFinding(),
+    };
+    const node = makeReviewerNode("quality", adapter, {
+      confidenceThreshold: 0.8,
+    });
+    const result = await node(baseState("rr-filter"));
+    assert.equal(result.draftFindings!.length, 2);
+    assert.equal(result.draftFindings![0]!.title_en, "keep");
+    assert.equal(result.draftFindings![1]!.title_en, "keep-edge");
+    clearCtx("rr-filter");
+  });
+
+  it("keeps all findings when confidenceThreshold is 0", async () => {
+    setCtx("rr-nofilter", { diffs: [], guidelines: "", projectContext: "" });
+    const adapter: AiAdapter = {
+      generateReviewFindings: async () => ({
+        findings: [
+          fakeFinding({ confidenceScore: 0.1, title_en: "low" }),
+          fakeFinding({ confidenceScore: 0.9, title_en: "high" }),
+        ],
+      }),
+      generateReviewSummary: async () => ({ summary: {} as never }),
+      verifyFinding: async () => ({ valid: true, reason: "", confidenceScore: 1 }),
+      regenerateFinding: async () => fakeFinding(),
+    };
+    const node = makeReviewerNode("quality", adapter);
+    const result = await node(baseState("rr-nofilter"));
+    assert.equal(result.draftFindings!.length, 2);
+    clearCtx("rr-nofilter");
+  });
+
+  it("calls preScanContextFn and injects result into guidelines", async () => {
+    setCtx("rr-prescan", {
+      diffs: [],
+      guidelines: "original-guidelines",
+      projectContext: "",
+    });
+    let receivedGuidelines: string | undefined;
+    const adapter: AiAdapter = {
+      generateReviewFindings: async (ctx) => {
+        receivedGuidelines = ctx.guidelines;
+        return { findings: [] };
+      },
+      generateReviewSummary: async () => ({ summary: {} as never }),
+      verifyFinding: async () => ({ valid: true, reason: "", confidenceScore: 1 }),
+      regenerateFinding: async () => fakeFinding(),
+    };
+    const node = makeReviewerNode("error_handling", adapter, {
+      preScanContextFn: (_diffs) => "<pre_scan>found patterns</pre_scan>",
+    });
+    await node(baseState("rr-prescan"));
+    assert.ok(
+      receivedGuidelines!.includes("<pre_scan>found patterns</pre_scan>"),
+      "Expected pre-scan output prepended to guidelines"
+    );
+    assert.ok(
+      receivedGuidelines!.includes("original-guidelines"),
+      "Expected original guidelines preserved"
+    );
+    clearCtx("rr-prescan");
   });
 });
