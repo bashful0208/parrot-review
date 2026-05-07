@@ -108,3 +108,78 @@ export async function markCommentPosted(
     );
   }
 }
+
+export interface ReviewCommentRow {
+  id: string;
+  reviewRunId: string;
+  reviewIssueId: string;
+  provider: string | null;
+  bodyMd: string;
+  status: string;
+  isInline: boolean;
+  filePath: string | null;
+  lineNumber: number | null;
+  externalCommentId: string | null;
+  postedAt: Date | null;
+  errorMessage: string | null;
+  createdAt: Date;
+}
+
+export async function listReviewCommentsByRun(
+  reviewRunId: string,
+  organizationId: string
+): Promise<ReviewCommentRow[]> {
+  const logger = createLogger({ component: "queue" });
+  try {
+    const result = await getPool().query<{
+      id: string;
+      review_run_id: string;
+      review_issue_id: string;
+      provider: string | null;
+      body_md: string;
+      status: string;
+      is_inline: boolean;
+      file_path: string | null;
+      line_number: string | null;
+      external_comment_id: string | null;
+      posted_at: Date | null;
+      error_message: string | null;
+      created_at: Date;
+    }>(
+      `select rc.id, rc.review_run_id, rc.review_issue_id, rc.provider,
+              rc.body_md, rc.status, rc.is_inline, rc.file_path,
+              rc.line_number, rc.external_comment_id, rc.posted_at,
+              rc.error_message, rc.created_at
+         from public.review_comments rc
+        where rc.review_run_id = $1
+          and rc.organization_id = $2
+        order by rc.created_at asc`,
+      [reviewRunId, organizationId]
+    );
+
+    return result.rows.map((row) => ({
+      id: row.id,
+      reviewRunId: row.review_run_id,
+      reviewIssueId: row.review_issue_id,
+      provider: row.provider,
+      bodyMd: row.body_md,
+      status: row.status,
+      isInline: row.is_inline,
+      filePath: row.file_path,
+      lineNumber: row.line_number ? Number(row.line_number) : null,
+      externalCommentId: row.external_comment_id,
+      postedAt: row.posted_at,
+      errorMessage: row.error_message,
+      createdAt: row.created_at,
+    }));
+  } catch (error) {
+    logger.error("Failed to list review comments by run", error as Error, {
+      operation: "list_review_comments_by_run",
+      review_run_id: reviewRunId,
+    });
+    throw new AppError(
+      ErrorCode.DependencyDatabaseConnection,
+      "Failed to list review comments by run"
+    );
+  }
+}

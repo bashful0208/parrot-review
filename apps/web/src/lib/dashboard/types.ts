@@ -28,8 +28,6 @@ export interface DashboardNavItem {
     | "overview"
     | "repositories"
     | "runs"
-    | "policies"
-    | "team"
     | "settings"
     | "usage"
     | "webhooks";
