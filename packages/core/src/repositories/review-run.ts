@@ -544,3 +544,60 @@ export async function listRecentReviewRuns(
     );
   }
 }
+
+export async function getReviewRunCount(
+  organizationId: string,
+  sinceDays: number
+): Promise<number> {
+  const logger = createLogger({ component: "queue" });
+  try {
+    const result = await getPool().query<{ count: string }>(
+      `select count(*)::bigint as count
+         from public.review_runs
+        where organization_id = $1
+          and created_at >= now() - ($2::int * interval '1 day')`,
+      [organizationId, sinceDays]
+    );
+    return Number(result.rows[0]?.count ?? 0);
+  } catch (error) {
+    logger.error("Failed to count review runs", error as Error, {
+      operation: "get_review_run_count",
+      organization_id: organizationId,
+    });
+    throw new AppError(
+      ErrorCode.DependencyDatabaseConnection,
+      "Failed to count review runs"
+    );
+  }
+}
+
+export async function getReviewRunSuccessRate(
+  organizationId: string,
+  sinceDays: number
+): Promise<{ total: number; succeeded: number; rate: number }> {
+  const logger = createLogger({ component: "queue" });
+  try {
+    const result = await getPool().query<{ total: string; succeeded: string }>(
+      `select
+         count(*)::bigint as total,
+         count(*) filter (where status = 'succeeded')::bigint as succeeded
+       from public.review_runs
+       where organization_id = $1
+         and created_at >= now() - ($2::int * interval '1 day')`,
+      [organizationId, sinceDays]
+    );
+    const total = Number(result.rows[0]?.total ?? 0);
+    const succeeded = Number(result.rows[0]?.succeeded ?? 0);
+    const rate = total > 0 ? (succeeded / total) * 100 : 0;
+    return { total, succeeded, rate };
+  } catch (error) {
+    logger.error("Failed to compute review run success rate", error as Error, {
+      operation: "get_review_run_success_rate",
+      organization_id: organizationId,
+    });
+    throw new AppError(
+      ErrorCode.DependencyDatabaseConnection,
+      "Failed to compute review run success rate"
+    );
+  }
+}

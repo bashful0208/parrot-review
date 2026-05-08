@@ -286,3 +286,64 @@ export async function disableRepository(
     );
   }
 }
+
+export interface RepositoryHealthRow {
+  id: string;
+  name: string;
+  status: string;
+  openFindings: number;
+  lastReviewAt: Date | null;
+}
+
+export async function getRepositoryHealthItems(
+  organizationId: string
+): Promise<RepositoryHealthRow[]> {
+  const logger = createLogger({ component: "queue" });
+  try {
+    const result = await getPool().query<{
+      id: string;
+      name: string;
+      status: string;
+      open_findings: string;
+      last_review_at: Date | null;
+    }>(
+      `select
+         r.id, r.name, r.status,
+         coalesce(
+           (select count(*)::bigint
+              from public.review_issues ri
+             where ri.repository_id = r.id
+               and ri.organization_id = r.organization_id
+               and ri.status not in ('resolved', 'ignored')),
+           0
+         ) as open_findings,
+         (select rr.created_at
+            from public.review_runs rr
+           where rr.repository_id = r.id
+             and rr.organization_id = r.organization_id
+           order by rr.created_at desc
+           limit 1) as last_review_at
+       from public.repositories r
+       where r.organization_id = $1
+         and r.status = 'active'
+       order by open_findings desc, r.name asc`,
+      [organizationId]
+    );
+    return result.rows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      status: row.status,
+      openFindings: Number(row.open_findings),
+      lastReviewAt: row.last_review_at,
+    }));
+  } catch (error) {
+    logger.error("Failed to fetch repository health items", error as Error, {
+      operation: "get_repository_health_items",
+      organization_id: organizationId,
+    });
+    throw new AppError(
+      ErrorCode.DependencyDatabaseConnection,
+      "Failed to fetch repository health items"
+    );
+  }
+}

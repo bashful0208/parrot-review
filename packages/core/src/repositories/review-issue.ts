@@ -187,3 +187,28 @@ export async function listReviewIssuesByRun(
     );
   }
 }
+
+export async function getOpenFindingsCount(
+  organizationId: string
+): Promise<number> {
+  const logger = createLogger({ component: "queue" });
+  try {
+    const result = await getPool().query<{ count: string }>(
+      `select count(*)::bigint as count
+         from public.review_issues
+        where organization_id = $1
+          and status not in ('resolved', 'ignored')`,
+      [organizationId]
+    );
+    return Number(result.rows[0]?.count ?? 0);
+  } catch (error) {
+    logger.error("Failed to count open findings", error as Error, {
+      operation: "get_open_findings_count",
+      organization_id: organizationId,
+    });
+    throw new AppError(
+      ErrorCode.DependencyDatabaseConnection,
+      "Failed to count open findings"
+    );
+  }
+}
