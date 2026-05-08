@@ -45,7 +45,7 @@ export default async function ProvidersPage() {
         navigation: DASHBOARD_NAVIGATION.map((item) => ({ ...item })),
       }}
       topbar={{
-        title: "AI 模型配置",
+        title: "AI Providers",
         summary: "",
         searchPlaceholder: "",
         rangeLabel: "",

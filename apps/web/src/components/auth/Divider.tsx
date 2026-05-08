@@ -2,7 +2,7 @@ export interface DividerProps {
   text?: string;
 }
 
-export default function Divider({ text = "或" }: DividerProps) {
+export default function Divider({ text = "or" }: DividerProps) {
   return (
     <div className="relative mb-7 flex items-center">
       <div className="h-px flex-grow bg-black/8 dark:bg-white/10" />

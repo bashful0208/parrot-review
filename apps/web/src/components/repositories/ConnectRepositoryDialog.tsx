@@ -528,7 +528,7 @@ export default function ConnectRepositoryDialog({
                       <p className="text-xs font-semibold text-zinc-600">Setup instructions</p>
                     </div>
                     <ol className="list-decimal pl-4 space-y-1 text-xs leading-relaxed text-zinc-500">
-                      <li>{setupHostLabel} repo → {provider === "gitee" ? "管理 → WebHooks" : "Settings → Webhooks → Add webhook"}</li>
+                      <li>{setupHostLabel} repo → {provider === "gitee" ? "Manage → WebHooks" : "Settings → Webhooks → Add webhook"}</li>
                       <li>Paste URL and Secret above; set Content type to <code className="rounded bg-white px-1 py-0.5 border border-slate-200 font-mono">application/json</code></li>
                       <li>Under events, select <strong className="text-zinc-700">{setupEventLabel}</strong> only</li>
                     </ol>

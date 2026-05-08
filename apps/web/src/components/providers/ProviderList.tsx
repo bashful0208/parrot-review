@@ -82,7 +82,7 @@ export default function ProviderList({ providers }: Props) {
       <Card className="rounded-2xl">
         <div className="flex items-center justify-between gap-4 border-b px-5 py-3.5">
           <h2 className="text-sm font-semibold tracking-[-0.02em]">
-            AI 模型配置
+            AI Providers
             <Badge variant="secondary" className="ml-2">
               {providers.length}
             </Badge>
@@ -108,10 +108,10 @@ export default function ProviderList({ providers }: Props) {
               </svg>
             </div>
             <h3 className="text-base font-semibold tracking-[-0.03em]">
-              尚未添加 AI 模型配置
+              No AI providers added yet
             </h3>
             <p className="mt-2 max-w-sm text-sm leading-6 text-muted-foreground">
-              添加 Anthropic、OpenAI 或其他 provider 的 API Key，让 AI 审查功能正常运行。
+              Add API keys for Anthropic, OpenAI, or other providers to enable AI-powered reviews.
             </p>
           </CardContent>
         ) : (
@@ -144,7 +144,7 @@ export default function ProviderList({ providers }: Props) {
                       : "shrink-0 bg-muted text-muted-foreground"
                   }
                 >
-                  {item.isActive ? "启用中" : "未启用"}
+                  {item.isActive ? "Enabled" : "Disabled"}
                 </Badge>
 
                 <div className="flex shrink-0 items-center gap-2">
@@ -154,7 +154,7 @@ export default function ProviderList({ providers }: Props) {
                       size="sm"
                       onClick={() => void handleActivate(item.id)}
                     >
-                      设为默认
+                      Set as default
                     </Button>
                   )}
                   <Button
@@ -164,7 +164,7 @@ export default function ProviderList({ providers }: Props) {
                     disabled={deletingId === item.id}
                     onClick={() => void handleDelete(item)}
                   >
-                    {deletingId === item.id ? "删除中…" : "删除"}
+                    {deletingId === item.id ? "Deleting…" : "Delete"}
                   </Button>
                 </div>
               </div>
@@ -179,13 +179,13 @@ export default function ProviderList({ providers }: Props) {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>删除启用中的配置？</AlertDialogTitle>
+            <AlertDialogTitle>Delete active provider?</AlertDialogTitle>
             <AlertDialogDescription>
-              "{confirmDeleteItem?.displayName}" 当前正在使用中。删除后 AI 审查功能将无法正常工作，直到设置新的默认配置。确定继续？
+              "{confirmDeleteItem?.displayName}" is currently active. Deleting it will break AI reviews until a new default is set. Continue?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setConfirmDeleteItem(null)}>取消</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => setConfirmDeleteItem(null)}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive hover:bg-destructive/90"
               onClick={() => {
@@ -194,7 +194,7 @@ export default function ProviderList({ providers }: Props) {
                 void doDelete(id);
               }}
             >
-              确认删除
+              Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -103,12 +103,12 @@ export default function AddProviderDialog({ onSuccess }: AddProviderDialogProps)
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button size="sm">添加配置</Button>
+        <Button size="sm">Add Configuration</Button>
       </DialogTrigger>
 
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>添加 AI 模型配置</DialogTitle>
+          <DialogTitle>Add AI Provider</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4 pt-2">
@@ -120,7 +120,7 @@ export default function AddProviderDialog({ onSuccess }: AddProviderDialogProps)
 
           {/* Provider */}
           <div className="space-y-1.5">
-            <Label htmlFor="provider">Provider 类型</Label>
+            <Label htmlFor="provider">Provider Type</Label>
             <Select value={provider} onValueChange={(v) => handleProviderChange(v as ProviderType)}>
               <SelectTrigger id="provider">
                 <SelectValue />
@@ -128,7 +128,7 @@ export default function AddProviderDialog({ onSuccess }: AddProviderDialogProps)
               <SelectContent>
                 <SelectItem value="anthropic">Anthropic</SelectItem>
                 <SelectItem value="openai">OpenAI</SelectItem>
-                <SelectItem value="alibaba">Alibaba (通义)</SelectItem>
+                <SelectItem value="alibaba">Alibaba (Tongyi)</SelectItem>
                 <SelectItem value="custom">Custom</SelectItem>
               </SelectContent>
             </Select>
@@ -139,7 +139,7 @@ export default function AddProviderDialog({ onSuccess }: AddProviderDialogProps)
             <Label htmlFor="displayName">Display Name</Label>
             <Input
               id="displayName"
-              placeholder="我的 Claude 配置"
+              placeholder="My Claude config"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               required
@@ -186,10 +186,10 @@ export default function AddProviderDialog({ onSuccess }: AddProviderDialogProps)
 
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
-              取消
+              Cancel
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? "添加中…" : "添加"}
+              {loading ? "Adding…" : "Add"}
             </Button>
           </div>
         </form>
