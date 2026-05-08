@@ -41,13 +41,13 @@ export function AdminSidebar({
           <img
             src="/logo.png"
             alt="parrot-review logo"
-            className="h-8 w-8 shrink-0 rounded-xl object-cover"
+            className="h-9 w-9 shrink-0 rounded-xl object-cover"
           />
           <div className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
-            <p className="truncate text-sm font-semibold tracking-tight">
+            <p className="truncate text-[15px] font-semibold tracking-tight">
               parrot-review
             </p>
-            <p className="truncate text-[11px] text-sidebar-foreground/50">
+            <p className="truncate text-xs text-sidebar-foreground/50">
               {workspaceName}
             </p>
           </div>
@@ -63,13 +63,13 @@ export function AdminSidebar({
           <SidebarMenuItem>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <SidebarMenuButton className="h-12">
-                  <Avatar className="h-7 w-7 shrink-0 rounded-full">
+                <SidebarMenuButton className="h-12 text-[15px]">
+                  <Avatar className="h-8 w-8 shrink-0 rounded-full">
                     <AvatarImage
                       src={`https://avatar.vercel.sh/${encodeURIComponent(viewerName)}.png`}
                       alt={viewerName}
                     />
-                    <AvatarFallback className="text-xs">
+                    <AvatarFallback className="text-sm">
                       {viewerName.slice(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>

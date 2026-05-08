@@ -42,7 +42,7 @@ export function NavGroup({ title, items }: NavGroupProps) {
 
   return (
     <SidebarGroup>
-      <SidebarGroupLabel>{title}</SidebarGroupLabel>
+      <SidebarGroupLabel className="text-sm">{title}</SidebarGroupLabel>
       <SidebarMenu>
         {items.map((item) => {
           const key = `${item.title}-${item.url}`;
@@ -81,7 +81,7 @@ export function NavGroup({ title, items }: NavGroupProps) {
 }
 
 function NavBadge({ children }: { children: ReactNode }) {
-  return <Badge className="rounded-full px-1 py-0 text-xs">{children}</Badge>;
+  return <Badge className="rounded-full px-1.5 py-0 text-xs">{children}</Badge>;
 }
 
 function checkIsActive(pathname: string, url: string): boolean {
@@ -103,6 +103,8 @@ function SidebarMenuLink({
         asChild
         isActive={checkIsActive(pathname, item.url)}
         tooltip={item.title}
+        size="lg"
+        className="text-[15px] [&_svg]:size-5"
       >
         <Link href={item.url} onClick={() => setOpenMobile(false)}>
           {item.icon && <item.icon />}
@@ -131,7 +133,7 @@ function SidebarMenuCollapsible({
     >
       <SidebarMenuItem>
         <CollapsibleTrigger asChild>
-          <SidebarMenuButton tooltip={item.title}>
+          <SidebarMenuButton tooltip={item.title} size="lg" className="text-[15px] [&_svg]:size-5">
             {item.icon && <item.icon />}
             <span>{item.title}</span>
             {item.badge && <NavBadge>{item.badge}</NavBadge>}
@@ -145,6 +147,8 @@ function SidebarMenuCollapsible({
                 <SidebarMenuSubButton
                   asChild
                   isActive={checkIsActive(pathname, subItem.url)}
+                  size="md"
+                  className="text-sm [&_svg]:size-4"
                 >
                   <Link
                     href={subItem.url}
@@ -180,6 +184,8 @@ function SidebarMenuCollapsedDropdown({
             isActive={item.items.some((sub) =>
               checkIsActive(pathname, sub.url)
             )}
+            size="lg"
+            className="text-[15px] [&_svg]:size-5"
           >
             {item.icon && <item.icon />}
             <span>{item.title}</span>
