@@ -2,7 +2,6 @@ import Link from "next/link";
 import { FileText, AlertTriangle } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import type { ReviewRunListItem } from "@/lib/review-runs/list-view-model";
 
 const STATUS_VARIANT: Record<string, "outline" | "default" | "secondary" | "destructive"> = {
@@ -23,9 +22,12 @@ function EmptyState() {
         Automated review runs appear here after a connected repository receives
         a pull request or a manual review is triggered.
       </p>
-      <Button asChild className="mt-4">
-        <Link href="/repositories">Connect a repository</Link>
-      </Button>
+      <Link
+        href="/repositories"
+        className="mt-4 inline-flex h-9 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+      >
+        Connect a repository
+      </Link>
     </div>
   );
 }

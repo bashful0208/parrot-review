@@ -3,6 +3,9 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
+const linkClasses =
+  "inline-flex h-8 items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-input bg-background px-3 text-xs font-medium shadow-sm hover:bg-accent hover:text-accent-foreground";
+
 export default function ReviewRunPagination({
   pagination,
 }: {
@@ -22,12 +25,10 @@ export default function ReviewRunPagination({
       </span>
       <div className="flex items-center gap-2">
         {pagination.prevHref ? (
-          <Button variant="outline" size="sm" asChild>
-            <Link href={pagination.prevHref}>
-              <ChevronLeft className="h-4 w-4" />
-              Previous
-            </Link>
-          </Button>
+          <Link href={pagination.prevHref} className={linkClasses}>
+            <ChevronLeft className="h-4 w-4" />
+            Previous
+          </Link>
         ) : (
           <Button variant="outline" size="sm" disabled>
             <ChevronLeft className="h-4 w-4" />
@@ -35,12 +36,10 @@ export default function ReviewRunPagination({
           </Button>
         )}
         {pagination.nextHref ? (
-          <Button variant="outline" size="sm" asChild>
-            <Link href={pagination.nextHref}>
-              Next
-              <ChevronRight className="h-4 w-4" />
-            </Link>
-          </Button>
+          <Link href={pagination.nextHref} className={linkClasses}>
+            Next
+            <ChevronRight className="h-4 w-4" />
+          </Link>
         ) : (
           <Button variant="outline" size="sm" disabled>
             Next

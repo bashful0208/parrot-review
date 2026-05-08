@@ -3,6 +3,9 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import type { WebhookPaginationModel } from "@/lib/webhooks/view-model";
 
+const linkClasses =
+  "inline-flex h-8 items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-input bg-background px-3 text-xs font-medium shadow-sm hover:bg-accent hover:text-accent-foreground";
+
 export default function WebhookPagination({
   pagination,
 }: {
@@ -15,18 +18,18 @@ export default function WebhookPagination({
       </span>
       <div className="flex items-center gap-2">
         {pagination.prevHref ? (
-          <Button variant="outline" size="sm" asChild>
-            <Link href={pagination.prevHref}>← Previous</Link>
-          </Button>
+          <Link href={pagination.prevHref} className={linkClasses}>
+            ← Previous
+          </Link>
         ) : (
           <Button variant="outline" size="sm" disabled>
             ← Previous
           </Button>
         )}
         {pagination.nextHref ? (
-          <Button variant="outline" size="sm" asChild>
-            <Link href={pagination.nextHref}>Next →</Link>
-          </Button>
+          <Link href={pagination.nextHref} className={linkClasses}>
+            Next →
+          </Link>
         ) : (
           <Button variant="outline" size="sm" disabled>
             Next →
