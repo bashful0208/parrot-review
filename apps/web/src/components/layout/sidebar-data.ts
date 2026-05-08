@@ -43,7 +43,7 @@ const ICON_MAP: Record<DashboardNavItem["icon"], LucideIcon> = {
 export function mapNavigationToGroups(navItems: DashboardNavItem[]): NavGroup[] {
   return [
     {
-      title: "Main",
+      title: "",
       items: navItems.map((item) => ({
         title: item.label,
         url: item.href,

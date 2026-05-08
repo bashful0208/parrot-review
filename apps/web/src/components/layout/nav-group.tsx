@@ -42,7 +42,7 @@ export function NavGroup({ title, items }: NavGroupProps) {
 
   return (
     <SidebarGroup>
-      <SidebarGroupLabel className="text-sm">{title}</SidebarGroupLabel>
+      {title ? <SidebarGroupLabel className="text-sm">{title}</SidebarGroupLabel> : null}
       <SidebarMenu>
         {items.map((item) => {
           const key = `${item.title}-${item.url}`;

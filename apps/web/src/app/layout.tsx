@@ -1,12 +1,15 @@
 import type { Metadata } from "next";
 import Script from "next/script";
 import "./globals.css";
-import { Geist } from "next/font/google";
+import localFont from "next/font/local";
 import { cn } from "@/lib/utils";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
-const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
+const geist = localFont({
+  src: "../fonts/Geist-Variable.woff2",
+  variable: "--font-sans",
+});
 
 export const metadata: Metadata = {
   title: "Reviewer",
