@@ -151,8 +151,11 @@ export default function RepositoryList({
                 </div>
                 <div className="min-w-0 flex-1">
                   <h3 className="text-sm font-semibold tracking-[-0.02em] leading-snug line-clamp-1">
-                    {repo.fullName}
+                    {repo.name}
                   </h3>
+                  <p className="mt-0.5 text-xs text-muted-foreground line-clamp-1">
+                    {repo.fullName}
+                  </p>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {repo.createdAtLabel}
                   </p>
