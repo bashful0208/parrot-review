@@ -14,12 +14,6 @@ export interface DashboardKpi {
   change?: string;
 }
 
-export interface DashboardQuickAction {
-  label: string;
-  description: string;
-  href: string;
-}
-
 export interface DashboardNavItem {
   label: string;
   href: string;
@@ -44,7 +38,6 @@ export interface DashboardTopbarModel {
   summary: string;
   searchPlaceholder: string;
   rangeLabel: string;
-  primaryAction?: DashboardQuickAction;
 }
 
 export interface DashboardRun {
@@ -65,6 +58,12 @@ export interface RepositoryHealthItem {
   status: RepositoryIntegrationStatus;
 }
 
+export interface DashboardUsageOverview {
+  totalCalls: number;
+  avgLatencyMs: number;
+  dailyPoints: { label: string; value: number }[];
+}
+
 export interface DashboardViewModel {
   shell: DashboardShellModel;
   topbar: DashboardTopbarModel;
@@ -72,4 +71,5 @@ export interface DashboardViewModel {
   kpis: DashboardKpi[];
   recentRuns: DashboardRun[];
   repositories: RepositoryHealthItem[];
+  usage: DashboardUsageOverview;
 }

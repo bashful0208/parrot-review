@@ -18,14 +18,6 @@ export function AdminHeader({ topbar }: { topbar: DashboardTopbarModel }) {
             <p className="text-sm text-muted-foreground">{topbar.summary}</p>
           )}
         </div>
-        {topbar.primaryAction && (
-          <a
-            href={topbar.primaryAction.href}
-            className="inline-flex h-10 items-center justify-center rounded-xl bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-          >
-            {topbar.primaryAction.label}
-          </a>
-        )}
       </div>
     </header>
   );

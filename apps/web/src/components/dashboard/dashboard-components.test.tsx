@@ -9,9 +9,23 @@ import RepositoryList from "../repositories/RepositoryList";
 import { buildDashboardViewModel } from "@/lib/dashboard/view-model";
 
 const model = buildDashboardViewModel({
-  id: "user_123",
-  email: "sasha@example.com",
-  name: "Sasha",
+  user: { id: "user_123", email: "sasha@example.com", name: "Sasha" },
+  orgName: "Acme Engineering",
+  repoCount: 12,
+  reviewRunCount: 48,
+  openFindingsCount: 19,
+  successRate: 96,
+  repoHealthRows: [
+    { id: "repo_1", name: "reviewer/web", status: "active", openFindings: 7, lastReviewAt: new Date() },
+    { id: "repo_2", name: "reviewer/core", status: "active", openFindings: 5, lastReviewAt: new Date() },
+    { id: "repo_3", name: "reviewer/worker", status: "active", openFindings: 7, lastReviewAt: null },
+  ],
+  usageSummary: {
+    totalCalls: 1000, successCalls: 950, failedCalls: 40, truncatedCalls: 10,
+    totalInputTokens: 500_000, totalOutputTokens: 200_000, totalCostUsd: 15.5,
+    avgLatencyMs: 320, p95LatencyMs: 800,
+  },
+  usageDaily: [],
 });
 
 test("dashboard hero renders organization context", () => {

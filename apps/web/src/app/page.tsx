@@ -28,7 +28,22 @@ export default async function Home() {
   const recentRunRows = orgId
     ? await listRecentReviewRuns(orgId, 5)
     : [];
-  const dashboard = buildDashboardViewModel(user, recentRunRows);
+  const dashboard = buildDashboardViewModel({
+    user,
+    orgName: "Reviewer",
+    repoCount: 0,
+    reviewRunCount: 0,
+    openFindingsCount: 0,
+    successRate: 0,
+    repoHealthRows: [],
+    usageSummary: {
+      totalCalls: 0, successCalls: 0, failedCalls: 0, truncatedCalls: 0,
+      totalInputTokens: 0, totalOutputTokens: 0, totalCostUsd: 0,
+      avgLatencyMs: 0, p95LatencyMs: 0,
+    },
+    usageDaily: [],
+    recentRunRows,
+  });
 
   return (
     <AdminShell

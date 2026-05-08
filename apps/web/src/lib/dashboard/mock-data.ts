@@ -1,15 +1,7 @@
 import type {
-  DashboardKpi,
   DashboardRun,
   RepositoryHealthItem,
 } from "./types";
-
-export const DASHBOARD_KPIS: DashboardKpi[] = [
-  { label: "Active Repositories", value: "12", change: "+2 this month" },
-  { label: "Reviews This Week", value: "48", change: "+18% vs last week" },
-  { label: "Open Findings", value: "19", change: "5 critical require review" },
-  { label: "Success Rate", value: "96%", change: "Stable over 30 days" },
-];
 
 export const DASHBOARD_RECENT_RUNS: DashboardRun[] = [
   {
@@ -38,30 +30,6 @@ export const DASHBOARD_RECENT_RUNS: DashboardRun[] = [
     status: "failed",
     startedAtLabel: "Failed 2h ago",
     severityLabel: "Needs retry",
-  },
-];
-
-export const DASHBOARD_REPOSITORIES: RepositoryHealthItem[] = [
-  {
-    id: "repo_1",
-    name: "reviewer/web",
-    openFindings: 7,
-    lastReviewLabel: "Last review 22m ago",
-    status: "connected",
-  },
-  {
-    id: "repo_2",
-    name: "reviewer/core",
-    openFindings: 5,
-    lastReviewLabel: "Last review 58m ago",
-    status: "connected",
-  },
-  {
-    id: "repo_3",
-    name: "reviewer/worker",
-    openFindings: 7,
-    lastReviewLabel: "Health check pending",
-    status: "attention",
   },
 ];
 
