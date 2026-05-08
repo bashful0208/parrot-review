@@ -1,10 +1,10 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import {
   CartesianGrid,
   Line,
   LineChart,
-  ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
@@ -18,6 +18,29 @@ export default function UsageDailyCallsChart({
 }: {
   points: UsageDailyPoint[];
 }) {
+  const [mounted, setMounted] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [chartSize, setChartSize] = useState({ w: 0, h: 0 });
+
+  useEffect(() => { setMounted(true); }, []);
+
+  useEffect(() => {
+    if (!mounted || !containerRef.current) return;
+    const el = containerRef.current;
+    const measure = () => {
+      const { width, height } = el.getBoundingClientRect();
+      if (width > 0 && height > 0) {
+        setChartSize((prev) =>
+          prev.w === width && prev.h === height ? prev : { w: width, h: height }
+        );
+      }
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [mounted]);
+
   if (points.length === 0) {
     return (
       <Card className="rounded-2xl">
@@ -34,9 +57,14 @@ export default function UsageDailyCallsChart({
         <CardTitle className="text-sm">Daily calls</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="h-64 w-full min-w-0 min-h-0">
-          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-            <LineChart data={points} margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
+        <div ref={containerRef} className="h-64 w-full">
+          {mounted && chartSize.w > 0 ? (
+            <LineChart
+              width={chartSize.w}
+              height={chartSize.h}
+              data={points}
+              margin={{ top: 8, right: 16, bottom: 8, left: 0 }}
+            >
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
               <XAxis
                 dataKey="shortDay"
@@ -72,7 +100,9 @@ export default function UsageDailyCallsChart({
                 activeDot={{ r: 4 }}
               />
             </LineChart>
-          </ResponsiveContainer>
+          ) : (
+            <div className="h-64 w-full" />
+          )}
         </div>
       </CardContent>
     </Card>
