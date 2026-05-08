@@ -1,12 +1,9 @@
 import type { AuthenticatedUser, ReviewRunListRow } from "@reviewer/core";
 
 import {
-  DASHBOARD_INSIGHTS,
   DASHBOARD_KPIS,
-  DASHBOARD_QUICK_ACTIONS,
   DASHBOARD_RECENT_RUNS,
   DASHBOARD_REPOSITORIES,
-  DASHBOARD_TREND,
 } from "./mock-data";
 import type {
   DashboardNavItem,
@@ -95,7 +92,6 @@ export function buildDashboardViewModel(
       summary: "",
       searchPlaceholder: "Search repositories, runs, or rules",
       rangeLabel: "Last 7 days",
-      primaryAction: { ...DASHBOARD_QUICK_ACTIONS[0]! },
     },
     hero: {
       organizationName: "Acme Engineering",
@@ -105,10 +101,7 @@ export function buildDashboardViewModel(
         "Track repository health, continue active reviews, and surface the findings that need attention first.",
     },
     kpis: cloneItems(DASHBOARD_KPIS),
-    quickActions: cloneItems(DASHBOARD_QUICK_ACTIONS),
     recentRuns: runs,
-    insights: cloneItems(DASHBOARD_INSIGHTS),
-    trend: cloneItems(DASHBOARD_TREND),
     repositories: cloneItems(DASHBOARD_REPOSITORIES),
   };
 }

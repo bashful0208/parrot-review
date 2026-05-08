@@ -3,9 +3,7 @@ import assert from "node:assert/strict";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import DashboardHero from "./DashboardHero";
-import DashboardQuickActions from "./DashboardQuickActions";
 import RecentReviewRuns from "./RecentReviewRuns";
-import RiskInsights from "./RiskInsights";
 import RepositoryHealthList from "./RepositoryHealthList";
 import RepositoryList from "../repositories/RepositoryList";
 import { buildDashboardViewModel } from "@/lib/dashboard/view-model";
@@ -23,29 +21,15 @@ test("dashboard hero renders organization context", () => {
   assert.match(markup, /Sasha/);
 });
 
-test("quick actions render the three approved entry points", () => {
-  const markup = renderToStaticMarkup(
-    <DashboardQuickActions actions={model.quickActions} />
-  );
-
-  assert.match(markup, /New Review/);
-  assert.match(markup, /Connect Repository/);
-  assert.match(markup, /View All Runs/);
-});
-
-test("activity and insight modules render review content", () => {
+test("activity modules render review content", () => {
   const runsMarkup = renderToStaticMarkup(
     <RecentReviewRuns runs={model.recentRuns} />
-  );
-  const insightsMarkup = renderToStaticMarkup(
-    <RiskInsights insights={model.insights} trend={model.trend} />
   );
   const repositoryMarkup = renderToStaticMarkup(
     <RepositoryHealthList repositories={model.repositories} />
   );
 
   assert.match(runsMarkup, /PR #184/);
-  assert.match(insightsMarkup, /Risk insights/);
   assert.match(repositoryMarkup, /reviewer\/web/);
 });
 

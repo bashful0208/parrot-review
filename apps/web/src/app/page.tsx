@@ -11,10 +11,8 @@ import {
 import AdminShell from "@/components/layout/admin-shell";
 import DashboardHero from "@/components/dashboard/DashboardHero";
 import DashboardKpiGrid from "@/components/dashboard/DashboardKpiGrid";
-import DashboardQuickActions from "@/components/dashboard/DashboardQuickActions";
 import RecentReviewRuns from "@/components/dashboard/RecentReviewRuns";
 import RepositoryHealthList from "@/components/dashboard/RepositoryHealthList";
-import RiskInsights from "@/components/dashboard/RiskInsights";
 import { buildDashboardViewModel } from "@/lib/dashboard/view-model";
 
 export default async function Home() {
@@ -41,12 +39,10 @@ export default async function Home() {
       <div className="space-y-4">
         <DashboardHero hero={dashboard.hero} />
         <DashboardKpiGrid kpis={dashboard.kpis} />
-        <DashboardQuickActions actions={dashboard.quickActions} />
         <div className="grid gap-4 xl:grid-cols-[1.25fr_0.75fr]">
           <RecentReviewRuns runs={dashboard.recentRuns} />
           <RepositoryHealthList repositories={dashboard.repositories} />
         </div>
-        <RiskInsights insights={dashboard.insights} trend={dashboard.trend} />
       </div>
     </AdminShell>
   );

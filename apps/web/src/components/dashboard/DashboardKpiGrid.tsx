@@ -15,12 +15,14 @@ export default function DashboardKpiGrid({ kpis }: { kpis: DashboardKpi[] }) {
               <p className="text-2xl font-semibold tracking-[-0.05em] text-foreground">
                 {kpi.value}
               </p>
-              <Badge
-                variant="outline"
-                className="border-emerald-200 bg-emerald-50 text-emerald-700"
-              >
-                {kpi.change}
-              </Badge>
+              {kpi.change && (
+                <Badge
+                  variant="outline"
+                  className="border-emerald-200 bg-emerald-50 text-emerald-700"
+                >
+                  {kpi.change}
+                </Badge>
+              )}
             </div>
           </CardContent>
         </Card>

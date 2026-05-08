@@ -1,5 +1,4 @@
 export type DashboardRunStatus = "running" | "succeeded" | "failed" | "queued";
-export type DashboardSeverity = "critical" | "high" | "medium" | "low";
 export type RepositoryIntegrationStatus = "connected" | "attention" | "pending";
 
 export interface DashboardHeroModel {
@@ -12,7 +11,7 @@ export interface DashboardHeroModel {
 export interface DashboardKpi {
   label: string;
   value: string;
-  change: string;
+  change?: string;
 }
 
 export interface DashboardQuickAction {
@@ -58,16 +57,6 @@ export interface DashboardRun {
   severityLabel: string;
 }
 
-export interface DashboardInsight {
-  severity: DashboardSeverity;
-  count: number;
-}
-
-export interface DashboardTrendPoint {
-  label: string;
-  value: number;
-}
-
 export interface RepositoryHealthItem {
   id: string;
   name: string;
@@ -81,9 +70,6 @@ export interface DashboardViewModel {
   topbar: DashboardTopbarModel;
   hero: DashboardHeroModel;
   kpis: DashboardKpi[];
-  quickActions: DashboardQuickAction[];
   recentRuns: DashboardRun[];
-  insights: DashboardInsight[];
-  trend: DashboardTrendPoint[];
   repositories: RepositoryHealthItem[];
 }
