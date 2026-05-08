@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { ChevronUp } from "lucide-react";
 import {
   Sidebar,
@@ -11,7 +10,6 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
-  useSidebar,
 } from "@/components/ui/sidebar";
 import {
   DropdownMenu,

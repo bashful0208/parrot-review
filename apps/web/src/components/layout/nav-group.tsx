@@ -31,7 +31,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import type {
   NavGroup as NavGroupProps,
-  NavItem,
   NavLinkItem,
   NavCollapsibleItem,
 } from "./sidebar-data";
