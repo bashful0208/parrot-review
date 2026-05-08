@@ -10,6 +10,7 @@ import {
   YAxis,
 } from "recharts";
 
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { UsageDailyPoint } from "@/lib/usage/view-model";
 
 export default function UsageDailyCostChart({
@@ -19,60 +20,64 @@ export default function UsageDailyCostChart({
 }) {
   if (points.length === 0) {
     return (
-      <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">
-        No usage in the selected range yet.
-      </div>
+      <Card className="rounded-2xl">
+        <CardContent className="p-8 text-center text-sm text-muted-foreground">
+          No usage in the selected range yet.
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4">
-      <div className="px-2 pb-3 pt-1 text-sm font-semibold text-slate-900">
-        Daily cost
-      </div>
-      <div className="h-64">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={points} margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-            <XAxis
-              dataKey="shortDay"
-              tick={{ fontSize: 12, fill: "#64748b" }}
-              tickMargin={6}
-            />
-            <YAxis
-              tickFormatter={(value) => {
-                const v = typeof value === "number" ? value : 0;
-                return v < 0.1 ? `$${v.toFixed(3)}` : `$${v.toFixed(2)}`;
-              }}
-              tick={{ fontSize: 12, fill: "#64748b" }}
-              width={56}
-            />
-            <Tooltip
-              formatter={(value) => {
-                const v = typeof value === "number" ? value : 0;
-                return [
-                  v < 0.1 ? `$${v.toFixed(4)}` : `$${v.toFixed(2)}`,
-                  "Cost",
-                ];
-              }}
-              labelClassName="text-xs text-slate-500"
-              contentStyle={{
-                borderRadius: 8,
-                borderColor: "#e5e7eb",
-                fontSize: 12,
-              }}
-            />
-            <Line
-              type="monotone"
-              dataKey="costUsd"
-              stroke="#0f172a"
-              strokeWidth={2}
-              dot={{ r: 3 }}
-              activeDot={{ r: 4 }}
-            />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
-    </div>
+    <Card className="rounded-2xl">
+      <CardHeader>
+        <CardTitle className="text-sm">Daily cost</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="h-64">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={points} margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+              <XAxis
+                dataKey="shortDay"
+                tick={{ fontSize: 12, fill: "#64748b" }}
+                tickMargin={6}
+              />
+              <YAxis
+                tickFormatter={(value) => {
+                  const v = typeof value === "number" ? value : 0;
+                  return v < 0.1 ? `$${v.toFixed(3)}` : `$${v.toFixed(2)}`;
+                }}
+                tick={{ fontSize: 12, fill: "#64748b" }}
+                width={56}
+              />
+              <Tooltip
+                formatter={(value) => {
+                  const v = typeof value === "number" ? value : 0;
+                  return [
+                    v < 0.1 ? `$${v.toFixed(4)}` : `$${v.toFixed(2)}`,
+                    "Cost",
+                  ];
+                }}
+                labelClassName="text-xs text-slate-500"
+                contentStyle={{
+                  borderRadius: 8,
+                  borderColor: "#e5e7eb",
+                  fontSize: 12,
+                }}
+              />
+              <Line
+                type="monotone"
+                dataKey="costUsd"
+                stroke="#0f172a"
+                strokeWidth={2}
+                dot={{ r: 3 }}
+                activeDot={{ r: 4 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

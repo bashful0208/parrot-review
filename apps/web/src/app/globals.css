@@ -5,12 +5,6 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --surface: rgba(255, 255, 255, 0.86);
-  --surface-strong: #ffffff;
-  --border-subtle: rgba(255, 255, 255, 0.72);
-  --admin-background: linear-gradient(180deg, #f4f7fb 0%, #eef3fb 100%);
-  --admin-sidebar: #09090b;
-  --font-geist-sans: "SF Pro Display", "SF Pro Text", "Segoe UI", Arial, Helvetica, sans-serif;
   --font-geist-mono:
     "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
   --background: oklch(1 0 0);
@@ -89,26 +83,14 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --surface: rgba(10, 18, 32, 0.82);
-    --surface-strong: #0f172a;
-    --border-subtle: rgba(255, 255, 255, 0.10);
-    --admin-background: linear-gradient(180deg, #0b1321 0%, #111a2b 100%);
-    --admin-sidebar: #09090b;
-  }
-}
-
-html {
-  background: var(--background);
-}
-
-body {
-  font-family: var(--font-geist-sans);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  --sidebar-width: clamp(14rem, 12rem + 4vw, 16rem);
+  --text-xs: clamp(0.75rem, 0.72rem + 0.16vw, 0.8125rem);
+  --text-sm: clamp(0.8125rem, 0.77rem + 0.23vw, 0.875rem);
+  --text-base: clamp(0.875rem, 0.81rem + 0.33vw, 1rem);
+  --text-lg: clamp(1rem, 0.92rem + 0.42vw, 1.125rem);
+  --text-xl: clamp(1.125rem, 1.01rem + 0.56vw, 1.375rem);
+  --text-2xl: clamp(1.25rem, 1.09rem + 0.78vw, 1.5rem);
+  --text-3xl: clamp(1.5rem, 1.28rem + 1.07vw, 2rem);
 }
 
 .dark {
@@ -135,13 +117,13 @@ body {
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar: oklch(0.18 0.02 260);
+  --sidebar-foreground: oklch(0.95 0 0);
   --sidebar-primary: oklch(0.488 0.243 264.376);
   --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-accent: oklch(0.25 0.02 260);
+  --sidebar-accent-foreground: oklch(0.95 0 0);
+  --sidebar-border: oklch(1 0 0 / 8%);
   --sidebar-ring: oklch(0.556 0 0);
 }
 

@@ -1,9 +1,14 @@
 import type { RepositoryHealthItem } from "@/lib/dashboard/types";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
-const repositoryStatusClasses: Record<RepositoryHealthItem["status"], string> = {
-  connected: "border-emerald-200 bg-emerald-50 text-emerald-800",
-  attention: "border-amber-200 bg-amber-50 text-amber-800",
-  pending: "border-zinc-200 bg-zinc-100 text-zinc-700",
+const repositoryStatusVariant: Record<
+  RepositoryHealthItem["status"],
+  "outline" | "default" | "secondary" | "destructive"
+> = {
+  connected: "default",
+  attention: "destructive",
+  pending: "secondary",
 };
 
 export default function RepositoryHealthList({
@@ -13,63 +18,63 @@ export default function RepositoryHealthList({
 }) {
   if (repositories.length === 0) {
     return (
-      <section className="rounded-[20px] border border-slate-200/80 bg-white/92 p-4 shadow-[0_10px_30px_rgba(15,23,42,0.06)]">
-        <h2 className="text-base font-semibold tracking-[-0.03em] text-zinc-950">
-          Repository health
-        </h2>
-        <p className="mt-4 text-sm leading-6 text-zinc-600">
-          No repositories are connected yet. Connect a repository to start organization-level review tracking.
-        </p>
-        <a
-          href="/settings/repositories"
-          className="mt-5 inline-flex min-h-11 items-center rounded-full bg-zinc-950 px-4 py-2 text-sm font-medium text-white"
-        >
-          Connect Repository
-        </a>
-      </section>
+      <Card className="rounded-2xl">
+        <CardContent className="p-4">
+          <h2 className="text-base font-semibold tracking-[-0.03em]">
+            Repository health
+          </h2>
+          <p className="mt-4 text-sm leading-6 text-muted-foreground">
+            No repositories are connected yet. Connect a repository to start organization-level review tracking.
+          </p>
+          <a
+            href="/settings/repositories"
+            className="mt-5 inline-flex h-10 items-center justify-center rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          >
+            Connect Repository
+          </a>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <section className="rounded-[20px] border border-slate-200/80 bg-white/92 p-4 shadow-[0_10px_30px_rgba(15,23,42,0.06)]">
-      <div className="mb-3 flex items-start justify-between gap-4">
-        <div>
-          <h2 className="text-base font-semibold tracking-[-0.03em] text-zinc-950">
-            Repository health
-          </h2>
-          <p className="mt-1 text-sm text-zinc-500">
-            Focus the organization on repositories that need intervention first.
-          </p>
+    <Card className="rounded-2xl">
+      <CardHeader className="pb-0">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <CardTitle className="text-base tracking-[-0.03em]">
+              Repository health
+            </CardTitle>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Focus the organization on repositories that need intervention first.
+            </p>
+          </div>
+          <Badge variant="outline">Prioritized</Badge>
         </div>
-        <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-slate-600">
-          Prioritized
-        </span>
-      </div>
-      <div className="space-y-2">
-        {repositories.map((repository) => (
+      </CardHeader>
+      <CardContent className="space-y-2 p-4">
+        {repositories.map((repo) => (
           <article
-            key={repository.id}
-            className="flex flex-col gap-2 rounded-[16px] border border-slate-200/70 bg-slate-50/70 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+            key={repo.id}
+            className="flex flex-col gap-2 rounded-xl border bg-muted/30 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
           >
             <div className="min-w-0">
-              <h3 className="text-sm font-semibold tracking-[-0.02em] text-zinc-950">
-                {repository.name}
+              <h3 className="text-sm font-semibold tracking-[-0.02em]">
+                {repo.name}
               </h3>
-              <p className="mt-1 text-sm text-zinc-600">{repository.lastReviewLabel}</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {repo.lastReviewLabel}
+              </p>
             </div>
             <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-              <span className="rounded-full bg-zinc-950 px-3 py-1 text-xs font-medium text-white">
-                {repository.openFindings} open findings
-              </span>
-              <span
-                className={`rounded-full border px-3 py-1 text-xs font-medium capitalize ${repositoryStatusClasses[repository.status]}`}
-              >
-                {repository.status}
-              </span>
+              <Badge>{repo.openFindings} open findings</Badge>
+              <Badge variant={repositoryStatusVariant[repo.status]} className="capitalize">
+                {repo.status}
+              </Badge>
             </div>
           </article>
         ))}
-      </div>
-    </section>
+      </CardContent>
+    </Card>
   );
 }

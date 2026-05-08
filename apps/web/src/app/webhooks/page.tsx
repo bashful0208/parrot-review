@@ -9,7 +9,7 @@ import {
   listWebhookEvents,
 } from "@reviewer/core";
 
-import AdminShell from "@/components/dashboard/AdminShell";
+import AdminShell from "@/components/layout/admin-shell";
 import WebhookEventsTable from "@/components/webhooks/WebhookEventsTable";
 import WebhookFilters from "@/components/webhooks/WebhookFilters";
 import WebhookKpiGrid from "@/components/webhooks/WebhookKpiGrid";

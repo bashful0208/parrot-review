@@ -12,7 +12,7 @@ import {
   listReviewIssuesByRun,
 } from "@reviewer/core";
 
-import AdminShell from "@/components/dashboard/AdminShell";
+import AdminShell from "@/components/layout/admin-shell";
 import ReviewRunDetail from "@/components/review-runs/ReviewRunDetail";
 import { buildReviewRunDetailViewModel } from "@/lib/review-runs/detail-view-model";
 

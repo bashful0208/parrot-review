@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
+
 export default function ReviewRunPagination({
   pagination,
 }: {
@@ -14,36 +16,36 @@ export default function ReviewRunPagination({
   };
 }) {
   return (
-    <div className="flex items-center justify-between border-t border-zinc-200 pt-4">
-      <span className="text-sm text-zinc-500">{pagination.rangeLabel}</span>
+    <div className="flex items-center justify-between border-t pt-4">
+      <span className="text-sm text-muted-foreground">
+        {pagination.rangeLabel}
+      </span>
       <div className="flex items-center gap-2">
         {pagination.prevHref ? (
-          <Link
-            href={pagination.prevHref}
-            className="inline-flex items-center gap-1 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
-          >
-            <ChevronLeft className="h-4 w-4" />
-            Previous
-          </Link>
+          <Button variant="outline" size="sm" asChild>
+            <Link href={pagination.prevHref}>
+              <ChevronLeft className="h-4 w-4" />
+              Previous
+            </Link>
+          </Button>
         ) : (
-          <span className="inline-flex items-center gap-1 rounded-lg border border-zinc-100 bg-zinc-50 px-3 py-1.5 text-sm text-zinc-300 cursor-not-allowed">
+          <Button variant="outline" size="sm" disabled>
             <ChevronLeft className="h-4 w-4" />
             Previous
-          </span>
+          </Button>
         )}
         {pagination.nextHref ? (
-          <Link
-            href={pagination.nextHref}
-            className="inline-flex items-center gap-1 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
-          >
-            Next
-            <ChevronRight className="h-4 w-4" />
-          </Link>
+          <Button variant="outline" size="sm" asChild>
+            <Link href={pagination.nextHref}>
+              Next
+              <ChevronRight className="h-4 w-4" />
+            </Link>
+          </Button>
         ) : (
-          <span className="inline-flex items-center gap-1 rounded-lg border border-zinc-100 bg-zinc-50 px-3 py-1.5 text-sm text-zinc-300 cursor-not-allowed">
+          <Button variant="outline" size="sm" disabled>
             Next
             <ChevronRight className="h-4 w-4" />
-          </span>
+          </Button>
         )}
       </div>
     </div>

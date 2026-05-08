@@ -10,7 +10,7 @@ import {
   getUsageSummary,
 } from "@reviewer/core";
 
-import AdminShell from "@/components/dashboard/AdminShell";
+import AdminShell from "@/components/layout/admin-shell";
 import UsageDailyCostChart from "@/components/usage/UsageDailyCostChart";
 import UsageFailuresTable from "@/components/usage/UsageFailuresTable";
 import UsageKpiGrid from "@/components/usage/UsageKpiGrid";

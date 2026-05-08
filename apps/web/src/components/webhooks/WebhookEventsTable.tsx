@@ -1,6 +1,15 @@
 import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import type { WebhookListRow } from "@/lib/webhooks/view-model";
 
 const PROVIDER_TONE: Record<string, string> = {
@@ -16,7 +25,7 @@ const STATUS_TONE: Record<string, string> = {
 };
 
 function statusTone(s: string): string {
-  return STATUS_TONE[s] ?? "bg-slate-100 text-slate-800 hover:bg-slate-100";
+  return STATUS_TONE[s] ?? "bg-accent text-accent-foreground";
 }
 
 function providerTone(p: string): string {
@@ -30,84 +39,85 @@ export default function WebhookEventsTable({
 }) {
   if (rows.length === 0) {
     return (
-      <section className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">
+      <Card className="rounded-2xl p-8 text-center text-sm text-muted-foreground">
         No webhook events in this range yet.
-      </section>
+      </Card>
     );
   }
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_4px_12px_rgba(15,23,42,0.04)]">
+    <Card className="overflow-hidden rounded-2xl">
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-xs uppercase tracking-[0.08em] text-slate-500">
-            <tr>
-              <th className="px-5 py-2.5 text-left font-medium">When</th>
-              <th className="px-5 py-2.5 text-left font-medium">Provider</th>
-              <th className="px-5 py-2.5 text-left font-medium">Event</th>
-              <th className="px-5 py-2.5 text-left font-medium">Sig</th>
-              <th className="px-5 py-2.5 text-left font-medium">Status</th>
-              <th className="px-5 py-2.5 text-left font-medium">Repo</th>
-              <th className="px-5 py-2.5 text-left font-medium">Delivery</th>
-              <th className="px-5 py-2.5 text-right font-medium">Size</th>
-              <th className="px-5 py-2.5"></th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100 text-slate-700">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>When</TableHead>
+              <TableHead>Provider</TableHead>
+              <TableHead>Event</TableHead>
+              <TableHead>Sig</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Repo</TableHead>
+              <TableHead>Delivery</TableHead>
+              <TableHead className="text-right">Size</TableHead>
+              <TableHead />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {rows.map((r) => (
-              <tr key={r.id}>
-                <td className="px-5 py-2.5 text-slate-600" title={r.occurredAtFull}>
+              <TableRow key={r.id}>
+                <TableCell
+                  className="text-muted-foreground"
+                  title={r.occurredAtFull}
+                >
                   {r.occurredAtLabel}
-                </td>
-                <td className="px-5 py-2.5">
-                  <Badge className={providerTone(r.provider)} variant="secondary">
+                </TableCell>
+                <TableCell>
+                  <Badge className={providerTone(r.provider)}>
                     {r.provider}
                   </Badge>
-                </td>
-                <td className="px-5 py-2.5 font-medium text-slate-900">
-                  {r.eventType}
-                </td>
-                <td className="px-5 py-2.5">
+                </TableCell>
+                <TableCell className="font-medium">{r.eventType}</TableCell>
+                <TableCell>
                   {r.signatureValid ? (
                     <span className="text-emerald-600" aria-label="signature valid">
                       ✓
                     </span>
                   ) : (
-                    <span className="text-rose-600" aria-label="signature invalid">
+                    <span className="text-destructive" aria-label="signature invalid">
                       ✗
                     </span>
                   )}
-                </td>
-                <td className="px-5 py-2.5">
+                </TableCell>
+                <TableCell>
                   <Badge className={statusTone(r.status)} variant="secondary">
                     {r.status}
                   </Badge>
-                </td>
-                <td className="px-5 py-2.5 text-slate-600">
+                </TableCell>
+                <TableCell className="text-muted-foreground">
                   {r.repositoryFullName ?? "—"}
-                </td>
-                <td
-                  className="px-5 py-2.5 font-mono text-xs text-slate-500"
+                </TableCell>
+                <TableCell
+                  className="font-mono text-xs text-muted-foreground"
                   title={r.deliveryIdFull ?? ""}
                 >
                   {r.deliveryIdShort}
-                </td>
-                <td className="px-5 py-2.5 text-right tabular-nums text-slate-600">
+                </TableCell>
+                <TableCell className="text-right tabular-nums text-muted-foreground">
                   {r.payloadSizeLabel}
-                </td>
-                <td className="px-5 py-2.5">
+                </TableCell>
+                <TableCell>
                   <Link
                     href={r.detailHref}
-                    className="text-xs font-medium text-slate-700 hover:text-slate-900"
+                    className="text-xs font-medium text-muted-foreground hover:text-foreground"
                   >
                     Detail →
                   </Link>
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
-    </section>
+    </Card>
   );
 }

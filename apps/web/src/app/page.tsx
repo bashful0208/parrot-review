@@ -8,7 +8,7 @@ import {
   listRecentReviewRuns,
 } from "@reviewer/core";
 
-import AdminShell from "@/components/dashboard/AdminShell";
+import AdminShell from "@/components/layout/admin-shell";
 import DashboardHero from "@/components/dashboard/DashboardHero";
 import DashboardKpiGrid from "@/components/dashboard/DashboardKpiGrid";
 import DashboardQuickActions from "@/components/dashboard/DashboardQuickActions";

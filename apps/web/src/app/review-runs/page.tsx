@@ -8,7 +8,7 @@ import {
   listReviewRuns,
 } from "@reviewer/core";
 
-import AdminShell from "@/components/dashboard/AdminShell";
+import AdminShell from "@/components/layout/admin-shell";
 import ReviewRunFilters from "@/components/review-runs/ReviewRunFilters";
 import ReviewRunList from "@/components/review-runs/ReviewRunList";
 import ReviewRunPagination from "@/components/review-runs/ReviewRunPagination";
