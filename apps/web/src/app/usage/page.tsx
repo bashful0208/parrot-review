@@ -11,7 +11,7 @@ import {
 } from "@reviewer/core";
 
 import AdminShell from "@/components/layout/admin-shell";
-import UsageDailyCostChart from "@/components/usage/UsageDailyCostChart";
+import UsageDailyCallsChart from "@/components/usage/UsageDailyCallsChart";
 import UsageFailuresTable from "@/components/usage/UsageFailuresTable";
 import UsageKpiGrid from "@/components/usage/UsageKpiGrid";
 import UsageRangeTabs from "@/components/usage/UsageRangeTabs";
@@ -75,7 +75,7 @@ export default async function UsagePage({
         </div>
 
         <UsageKpiGrid kpis={vm.kpis} />
-        <UsageDailyCostChart points={vm.daily} />
+        <UsageDailyCallsChart points={vm.daily} />
         <UsageFailuresTable rows={vm.failures} />
       </div>
     </AdminShell>

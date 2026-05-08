@@ -100,13 +100,6 @@ function buildKpis(summary: UsageSummary): UsageKpi[] {
           : "no truncation",
     },
     {
-      label: "Total cost",
-      value: formatUsd(summary.totalCostUsd),
-      hint: `${formatCompactNumber(
-        summary.totalInputTokens
-      )} in / ${formatCompactNumber(summary.totalOutputTokens)} out`,
-    },
-    {
       label: "Avg / p95 latency",
       value: `${formatLatencyMs(summary.avgLatencyMs)} / ${formatLatencyMs(
         summary.p95LatencyMs

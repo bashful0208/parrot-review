@@ -13,7 +13,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { UsageDailyPoint } from "@/lib/usage/view-model";
 
-export default function UsageDailyCostChart({
+export default function UsageDailyCallsChart({
   points,
 }: {
   points: UsageDailyPoint[];
@@ -31,11 +31,11 @@ export default function UsageDailyCostChart({
   return (
     <Card className="rounded-2xl">
       <CardHeader>
-        <CardTitle className="text-sm">Daily cost</CardTitle>
+        <CardTitle className="text-sm">Daily calls</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="h-64">
-          <ResponsiveContainer width="100%" height="100%">
+        <div className="h-64 w-full">
+          <ResponsiveContainer width="100%" height="100%" minWidth={0}>
             <LineChart data={points} margin={{ top: 8, right: 16, bottom: 8, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
               <XAxis
@@ -46,18 +46,15 @@ export default function UsageDailyCostChart({
               <YAxis
                 tickFormatter={(value) => {
                   const v = typeof value === "number" ? value : 0;
-                  return v < 0.1 ? `$${v.toFixed(3)}` : `$${v.toFixed(2)}`;
+                  return v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v);
                 }}
                 tick={{ fontSize: 12, fill: "#64748b" }}
-                width={56}
+                width={48}
               />
               <Tooltip
                 formatter={(value) => {
                   const v = typeof value === "number" ? value : 0;
-                  return [
-                    v < 0.1 ? `$${v.toFixed(4)}` : `$${v.toFixed(2)}`,
-                    "Cost",
-                  ];
+                  return [v.toLocaleString(), "Calls"];
                 }}
                 labelClassName="text-xs text-slate-500"
                 contentStyle={{
@@ -68,7 +65,7 @@ export default function UsageDailyCostChart({
               />
               <Line
                 type="monotone"
-                dataKey="costUsd"
+                dataKey="calls"
                 stroke="#0f172a"
                 strokeWidth={2}
                 dot={{ r: 3 }}

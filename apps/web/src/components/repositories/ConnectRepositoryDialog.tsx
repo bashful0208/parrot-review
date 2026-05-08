@@ -7,6 +7,7 @@ import { Check, CheckCircle2, Copy, GitBranch, Loader2, Search, Webhook, X } fro
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
   DialogContent,
@@ -31,6 +32,22 @@ interface WebhookInfo {
   webhookSecret: string;
   repositoryId: string;
 }
+
+const DIALOG_DIMENSIONS = {
+  width: "min(52rem, calc(100vw - 2rem))",
+  maxWidth: "calc(100vw - 2rem)",
+  height: "min(620px, 85vh)",
+  maxHeight: "85vh",
+} as const;
+
+const PROVIDER_SVG_PATHS = {
+  github:
+    "M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12",
+  gitlab:
+    "M23.955 13.587l-1.342-4.135-2.664-8.189a.455.455 0 00-.867 0L16.418 9.45H7.582L4.918 1.263a.455.455 0 00-.867 0L1.386 9.45.044 13.587a.924.924 0 00.331 1.03L12 23.054l11.625-8.436a.92.92 0 00.33-1.031",
+  gitee:
+    "M11.984 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.016 0zm6.09 5.333c.328 0 .593.266.592.593v1.482a.594.594 0 0 1-.593.592H9.777c-.982 0-1.778.796-1.778 1.778v5.63c0 .327.266.592.593.592h5.63c.982 0 1.778-.796 1.778-1.778v-.296a.593.593 0 0 0-.592-.593h-4.15a.592.592 0 0 1-.592-.592v-1.482a.593.593 0 0 1 .593-.592h6.815c.327 0 .593.265.593.592v3.408a4 4 0 0 1-4 4H5.926a.593.593 0 0 1-.593-.593V9.778a4.444 4.444 0 0 1 4.445-4.444h8.296z",
+} as const;
 
 const STEPS = [
   { n: 1 as const, label: "Credentials",   desc: "Choose provider & authenticate" },
@@ -122,6 +139,7 @@ interface ConnectRepositoryDialogProps {
   triggerVariant?: "default" | "outline" | "ghost";
   triggerSize?: "default" | "sm" | "lg";
   triggerClassName?: string;
+  children?: React.ReactNode;
 }
 
 export default function ConnectRepositoryDialog({
@@ -129,6 +147,7 @@ export default function ConnectRepositoryDialog({
   triggerVariant = "default",
   triggerSize = "default",
   triggerClassName,
+  children,
 }: ConnectRepositoryDialogProps) {
   let router: ReturnType<typeof useRouter>;
   try {
@@ -237,18 +256,13 @@ export default function ConnectRepositoryDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button variant={triggerVariant} size={triggerSize} className={triggerClassName}>
-          {triggerLabel}
+          {children ?? triggerLabel}
         </Button>
       </DialogTrigger>
 
       <DialogContent
         className="gap-0 p-0 overflow-hidden"
-        style={{
-          width: "min(52rem, calc(100vw - 2rem))",
-          maxWidth: "calc(100vw - 2rem)",
-          height: "min(620px, 85vh)",
-          maxHeight: "85vh",
-        }}
+        style={DIALOG_DIMENSIONS}
       >
         <div className="flex w-full h-full">
 
@@ -286,7 +300,7 @@ export default function ConnectRepositoryDialog({
                           )}
                         >
                           <svg viewBox="0 0 24 24" className={cn("h-6 w-6", provider === "github" ? "fill-zinc-900" : "fill-zinc-500")} xmlns="http://www.w3.org/2000/svg">
-                            <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12" />
+                            <path d={PROVIDER_SVG_PATHS.github} />
                           </svg>
                           <span className={cn("text-xs font-semibold", provider === "github" ? "text-zinc-900" : "text-zinc-600")}>GitHub</span>
                           {provider === "github" && (
@@ -299,7 +313,7 @@ export default function ConnectRepositoryDialog({
                         {/* GitLab — coming soon */}
                         <div className="relative flex flex-col items-center gap-2 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 px-3 py-3.5 cursor-not-allowed opacity-60">
                           <svg viewBox="0 0 24 24" className="h-6 w-6 fill-slate-400" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M23.955 13.587l-1.342-4.135-2.664-8.189a.455.455 0 00-.867 0L16.418 9.45H7.582L4.918 1.263a.455.455 0 00-.867 0L1.386 9.45.044 13.587a.924.924 0 00.331 1.03L12 23.054l11.625-8.436a.92.92 0 00.33-1.031" />
+                            <path d={PROVIDER_SVG_PATHS.gitlab} />
                           </svg>
                           <span className="text-xs font-semibold text-slate-400">GitLab</span>
                           <span className="absolute -top-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-slate-200 px-2 py-0.5 text-[10px] font-medium text-slate-500">
@@ -319,7 +333,7 @@ export default function ConnectRepositoryDialog({
                           )}
                         >
                           <svg viewBox="0 0 24 24" className={cn("h-6 w-6", provider === "gitee" ? "fill-[#c71d23]" : "fill-zinc-500")} xmlns="http://www.w3.org/2000/svg">
-                            <path d="M11.984 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.016 0zm6.09 5.333c.328 0 .593.266.592.593v1.482a.594.594 0 0 1-.593.592H9.777c-.982 0-1.778.796-1.778 1.778v5.63c0 .327.266.592.593.592h5.63c.982 0 1.778-.796 1.778-1.778v-.296a.593.593 0 0 0-.592-.593h-4.15a.592.592 0 0 1-.592-.592v-1.482a.593.593 0 0 1 .593-.592h6.815c.327 0 .593.265.593.592v3.408a4 4 0 0 1-4 4H5.926a.593.593 0 0 1-.593-.593V9.778a4.444 4.444 0 0 1 4.445-4.444h8.296z" />
+                            <path d={PROVIDER_SVG_PATHS.gitee} />
                           </svg>
                           <span className={cn("text-xs font-semibold", provider === "gitee" ? "text-zinc-900" : "text-zinc-600")}>Gitee</span>
                           {provider === "gitee" && (

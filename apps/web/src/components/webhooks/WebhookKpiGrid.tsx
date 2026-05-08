@@ -6,13 +6,13 @@ export default function WebhookKpiGrid({ kpis }: { kpis: WebhookKpi[] }) {
     <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
       {kpis.map((k) => (
         <Card key={k.label} className="rounded-2xl">
-          <CardContent className="p-4">
+          <CardContent className="px-3 py-2.5">
             <div className="text-xs font-medium uppercase tracking-[0.08em] text-muted-foreground">
               {k.label}
             </div>
             <div
               className={[
-                "mt-2 text-2xl font-semibold tracking-tight",
+                "mt-0.5 text-2xl font-semibold tracking-tight",
                 k.tone === "warn" ? "text-destructive" : "text-foreground",
               ].join(" ")}
             >

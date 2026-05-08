@@ -75,7 +75,7 @@ export default async function WebhooksPage({
 
   return (
     <AdminShell shell={vm.shell} topbar={vm.topbar} viewerName={vm.viewerName}>
-      <div className="space-y-5">
+      <div className="space-y-4">
         <WebhookFilters
           rangeOptions={vm.filters.rangeOptions}
           providerOptions={vm.filters.providerOptions}
