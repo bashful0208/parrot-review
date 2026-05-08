@@ -1,12 +1,11 @@
 import type { DashboardRun } from "@/lib/dashboard/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 
-const statusVariant: Record<DashboardRun["status"], "outline" | "default" | "secondary" | "destructive"> = {
-  queued: "secondary",
-  running: "default",
-  succeeded: "outline",
-  failed: "destructive",
+const statusBadgeColor: Record<DashboardRun["status"], string> = {
+  queued: "bg-muted/50 text-muted-foreground",
+  running: "bg-blue-500/10 text-blue-600",
+  succeeded: "bg-emerald-500/10 text-emerald-600",
+  failed: "bg-red-500/10 text-red-600",
 };
 
 export default function RecentReviewRuns({ runs }: { runs: DashboardRun[] }) {
@@ -23,7 +22,7 @@ export default function RecentReviewRuns({ runs }: { runs: DashboardRun[] }) {
                 No review activity yet. Start your first review to populate this workspace.
               </p>
             </div>
-            <Badge variant="outline">Live queue</Badge>
+            <span className="shrink-0 text-xs font-medium text-muted-foreground">Live queue</span>
           </div>
           <a
             href="/api/reviews/enqueue"
@@ -48,7 +47,7 @@ export default function RecentReviewRuns({ runs }: { runs: DashboardRun[] }) {
               Continue active work and spot runs that need attention.
             </p>
           </div>
-          <Badge variant="outline">Live queue</Badge>
+          <span className="shrink-0 text-xs font-medium text-muted-foreground">Live queue</span>
         </div>
       </CardHeader>
       <CardContent className="space-y-2 p-4">
@@ -70,10 +69,10 @@ export default function RecentReviewRuns({ runs }: { runs: DashboardRun[] }) {
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-                <Badge variant={statusVariant[run.status]} className="capitalize">
+                <span className={`inline-flex shrink-0 items-center rounded-sm px-1.5 text-xs font-medium capitalize ${statusBadgeColor[run.status]}`}>
                   {run.status}
-                </Badge>
-                <Badge>{run.severityLabel}</Badge>
+                </span>
+                <span className="inline-flex shrink-0 items-center rounded-sm bg-muted/50 px-1.5 text-xs text-muted-foreground">{run.severityLabel}</span>
               </div>
             </div>
           </article>

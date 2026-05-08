@@ -41,8 +41,8 @@ export default function DashboardUsageOverview({
       </CardHeader>
       <CardContent>
         <div className="grid gap-4 lg:grid-cols-[1fr_auto]">
-          <div className="h-48 w-full min-w-0">
-            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+          <div className="h-48 w-full min-w-0 min-h-0">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
               <LineChart
                 data={usage.dailyPoints}
                 margin={{ top: 8, right: 16, bottom: 8, left: 0 }}

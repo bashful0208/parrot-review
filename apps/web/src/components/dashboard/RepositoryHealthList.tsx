@@ -1,14 +1,10 @@
 import type { RepositoryHealthItem } from "@/lib/dashboard/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 
-const repositoryStatusVariant: Record<
-  RepositoryHealthItem["status"],
-  "outline" | "default" | "secondary" | "destructive"
-> = {
-  connected: "default",
-  attention: "destructive",
-  pending: "secondary",
+const repositoryStatusBadgeColor: Record<RepositoryHealthItem["status"], string> = {
+  connected: "bg-emerald-500/10 text-emerald-600",
+  attention: "bg-red-500/10 text-red-600",
+  pending: "bg-muted/50 text-muted-foreground",
 };
 
 export default function RepositoryHealthList({
@@ -49,7 +45,7 @@ export default function RepositoryHealthList({
               Focus the organization on repositories that need intervention first.
             </p>
           </div>
-          <Badge variant="outline">Prioritized</Badge>
+          <span className="shrink-0 text-xs font-medium text-muted-foreground">Prioritized</span>
         </div>
       </CardHeader>
       <CardContent className="space-y-2 p-4">
@@ -67,10 +63,10 @@ export default function RepositoryHealthList({
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-              <Badge>{repo.openFindings} open findings</Badge>
-              <Badge variant={repositoryStatusVariant[repo.status]} className="capitalize">
-                {repo.status}
-              </Badge>
+              <span className="inline-flex shrink-0 items-center rounded-sm bg-muted/50 px-1.5 text-xs text-muted-foreground">{repo.openFindings} open findings</span>
+              <span className={`inline-flex shrink-0 items-center rounded-sm px-1.5 text-xs font-medium capitalize ${repositoryStatusBadgeColor[repo.status]}`}>
+                  {repo.status}
+                </span>
             </div>
           </article>
         ))}
