@@ -68,12 +68,11 @@ export function scanErrorHandlingPatterns(
     for (const match of addLines.matchAll(EMPTY_CATCH_RE)) {
       results.push({
         filePath: diff.filePath,
-        startLine: estimateLineInFile(diff.patch, match.index ?? 0, true),
+        startLine: estimateLineInFile(diff.patch, match.index ?? 0),
         endLine:
           estimateLineInFile(
             diff.patch,
             (match.index ?? 0) + match[0].length,
-            true
           ) + 1,
         pattern: "empty_catch",
         context: match[0].trim(),
@@ -89,7 +88,7 @@ export function scanErrorHandlingPatterns(
 
         results.push({
           filePath: diff.filePath,
-          startLine: estimateLineInFile(diff.patch, match.index ?? 0, true),
+          startLine: estimateLineInFile(diff.patch, match.index ?? 0),
           endLine:
             estimateLineInFile(
               diff.patch,
@@ -107,7 +106,7 @@ export function scanErrorHandlingPatterns(
       if (isInsideCatchBlock(addLines, match.index ?? 0)) {
         results.push({
           filePath: diff.filePath,
-          startLine: estimateLineInFile(diff.patch, match.index ?? 0, true),
+          startLine: estimateLineInFile(diff.patch, match.index ?? 0),
           endLine:
             estimateLineInFile(
               diff.patch,
@@ -125,7 +124,7 @@ export function scanErrorHandlingPatterns(
       if (isInsideCatchBlock(addLines, match.index ?? 0)) {
         results.push({
           filePath: diff.filePath,
-          startLine: estimateLineInFile(diff.patch, match.index ?? 0, true),
+          startLine: estimateLineInFile(diff.patch, match.index ?? 0),
           endLine:
             estimateLineInFile(
               diff.patch,
@@ -143,7 +142,7 @@ export function scanErrorHandlingPatterns(
       for (const match of addLines.matchAll(re)) {
         results.push({
           filePath: diff.filePath,
-          startLine: estimateLineInFile(diff.patch, match.index ?? 0, true),
+          startLine: estimateLineInFile(diff.patch, match.index ?? 0),
           endLine:
             estimateLineInFile(
               diff.patch,
@@ -210,8 +209,7 @@ function extractAddedLines(patch: string): string {
  */
 function estimateLineInFile(
   patch: string,
-  addedLinesOffset: number,
-  _isAdded: boolean
+  addedLinesOffset: number
 ): number {
   // Walk through the patch and find the hunk header to get the starting line
   const hunkMatch = patch.match(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/m);

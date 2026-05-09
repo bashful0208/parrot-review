@@ -57,8 +57,7 @@ const STATUS_OPTIONS: Array<{ value: string; label: string }> = [
 ];
 
 function buildStatusFilter(
-  current: string | null,
-  page: number
+  current: string | null
 ): { current: string | null; options: StatusFilterOption[] } {
   return {
     current,
@@ -165,7 +164,7 @@ export function buildReviewRunsListViewModel(args: {
       perPage: args.perPage,
       totalCount: args.totalCount,
     }),
-    statusFilter: buildStatusFilter(args.statusFilter, args.page),
+    statusFilter: buildStatusFilter(args.statusFilter),
     hasData: args.totalCount > 0,
   };
 }

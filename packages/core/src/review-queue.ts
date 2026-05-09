@@ -1,11 +1,7 @@
 import { Queue, Worker, type Job } from "bullmq";
 import { Redis } from "ioredis";
 
-import {
-  DEFAULT_QUEUE_NAME,
-  DEFAULT_REDIS_URL,
-  queueEnvSchema,
-} from "./config/schema.ts";
+import { queueEnvSchema } from "./config/schema.ts";
 import type { QueueEnvInput } from "./config/schema.ts";
 import { createLogger } from "./logging.ts";
 import type { Logger } from "./logging.ts";

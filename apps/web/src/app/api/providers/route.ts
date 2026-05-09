@@ -14,7 +14,7 @@ export const runtime = "nodejs";
 
 const logger = createLogger({ component: "api" });
 
-export async function GET(_req: NextRequest): Promise<NextResponse> {
+export async function GET(): Promise<NextResponse> {
   const cookieStore = await cookies();
   const sessionToken = cookieStore.get(AUTH_SESSION_COOKIE)?.value;
   const user = sessionToken ? await getSessionUser(sessionToken) : null;
