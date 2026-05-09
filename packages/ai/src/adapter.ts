@@ -107,8 +107,8 @@ function buildSummarySchema(lang: OutputLanguage) {
       highlights_zh: { type: "array" as const, items: { type: "string" as const } },
       mermaid_flow: { type: "string" as const },
     },
-    required: [lf.summary === "summaryMd_en" ? "summaryMd_en" : "summaryMd_zh",
-               lf.summary === "summaryMd_en" ? "highlights_en" : "highlights_zh",
+    required: [lf.summary === "summary_en" ? "summaryMd_en" : "summaryMd_zh",
+               lf.summary === "summary_en" ? "highlights_en" : "highlights_zh",
                "mermaid_flow"] as string[],
   };
 }
