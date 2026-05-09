@@ -7,6 +7,7 @@ import {
   BarChart3,
   Webhook,
   Cloud,
+  Cog,
   type LucideIcon,
 } from "lucide-react";
 
@@ -42,6 +43,7 @@ const ICON_MAP: Record<DashboardNavItem["icon"], LucideIcon> = {
 };
 
 const SETTINGS_SUB_ITEMS: NavLinkItem[] = [
+  { title: "General", url: "/settings", icon: Cog },
   { title: "Providers", url: "/settings/providers", icon: Cloud },
 ];
 
