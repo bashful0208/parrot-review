@@ -26,6 +26,7 @@ export interface InsertReviewCommentInput {
   reviewIssueId: string | null;
   provider: string;
   bodyMd: string;
+  outputLanguage: string;
   filePath: string | null;
   lineNumber: number | null;
   isInline: boolean;
@@ -40,7 +41,7 @@ export async function insertReviewComment(
       `insert into public.review_comments
          (organization_id, pull_request_id, review_run_id, review_issue_id,
           provider, body_md, output_language, status, is_inline, file_path, line_number)
-       values ($1, $2, $3, $4, $5, $6, 'en-US', 'draft', $7, $8, $9)
+       values ($1, $2, $3, $4, $5, $6, $7::public.output_language, 'draft', $8, $9, $10)
        returning id`,
       [
         input.organizationId,
@@ -49,6 +50,7 @@ export async function insertReviewComment(
         input.reviewIssueId,
         input.provider,
         input.bodyMd,
+        input.outputLanguage,
         input.isInline,
         input.filePath,
         input.lineNumber,

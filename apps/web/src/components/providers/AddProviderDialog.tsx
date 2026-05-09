@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Plus, Loader2, AlertCircle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -80,7 +82,13 @@ export default function AddProviderDialog({ onSuccess }: AddProviderDialogProps)
       const res = await fetch("/api/providers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ provider, displayName, apiKey, model, baseUrl: baseUrl || undefined }),
+        body: JSON.stringify({
+          provider,
+          displayName,
+          apiKey,
+          model,
+          baseUrl: baseUrl || undefined,
+        }),
       });
 
       if (res.ok) {
@@ -103,25 +111,34 @@ export default function AddProviderDialog({ onSuccess }: AddProviderDialogProps)
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button size="sm">Add Configuration</Button>
+        <Button size="sm">
+          <Plus className="mr-1.5 size-4" />
+          Add Configuration
+        </Button>
       </DialogTrigger>
 
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Add AI Provider</DialogTitle>
+          <DialogDescription>
+            Configure an API key and model for an AI provider.
+          </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4 pt-2">
           {error && (
-            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-              {error}
+            <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+              <AlertCircle className="mt-0.5 size-4 shrink-0" />
+              <span>{error}</span>
             </div>
           )}
 
-          {/* Provider */}
           <div className="space-y-1.5">
             <Label htmlFor="provider">Provider Type</Label>
-            <Select value={provider} onValueChange={(v) => handleProviderChange(v as ProviderType)}>
+            <Select
+              value={provider}
+              onValueChange={(v) => handleProviderChange(v as ProviderType)}
+            >
               <SelectTrigger id="provider">
                 <SelectValue />
               </SelectTrigger>
@@ -134,7 +151,6 @@ export default function AddProviderDialog({ onSuccess }: AddProviderDialogProps)
             </Select>
           </div>
 
-          {/* Display Name */}
           <div className="space-y-1.5">
             <Label htmlFor="displayName">Display Name</Label>
             <Input
@@ -146,7 +162,6 @@ export default function AddProviderDialog({ onSuccess }: AddProviderDialogProps)
             />
           </div>
 
-          {/* API Key */}
           <div className="space-y-1.5">
             <Label htmlFor="apiKey">API Key</Label>
             <Input
@@ -159,7 +174,6 @@ export default function AddProviderDialog({ onSuccess }: AddProviderDialogProps)
             />
           </div>
 
-          {/* Model */}
           <div className="space-y-1.5">
             <Label htmlFor="model">Model</Label>
             <Input
@@ -171,13 +185,16 @@ export default function AddProviderDialog({ onSuccess }: AddProviderDialogProps)
             />
           </div>
 
-          {/* Base URL (alibaba / custom only) */}
           {showBaseUrl && (
             <div className="space-y-1.5">
               <Label htmlFor="baseUrl">Base URL</Label>
               <Input
                 id="baseUrl"
-                placeholder={provider === "alibaba" ? ALIBABA_BASE_URL : "https://api.example.com/v1"}
+                placeholder={
+                  provider === "alibaba"
+                    ? ALIBABA_BASE_URL
+                    : "https://api.example.com/v1"
+                }
                 value={baseUrl}
                 onChange={(e) => setBaseUrl(e.target.value)}
               />
@@ -185,11 +202,16 @@ export default function AddProviderDialog({ onSuccess }: AddProviderDialogProps)
           )}
 
           <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => handleOpenChange(false)}
+            >
               Cancel
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? "Adding…" : "Add"}
+              {loading && <Loader2 className="mr-1.5 size-4 animate-spin" />}
+              {loading ? "Adding…" : "Add Provider"}
             </Button>
           </div>
         </form>

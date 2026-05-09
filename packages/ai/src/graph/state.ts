@@ -10,6 +10,8 @@ export interface PerFindingState {
   status: "pending" | "approved" | "exhausted";
 }
 
+import type { OutputLanguage } from "../types.js";
+
 /** ReviewContext 减去 diffs / guidelines / projectContext（这些通过 ctx-cache 取）。 */
 export interface ReviewContextRef {
   fullName: string;
@@ -20,6 +22,7 @@ export interface ReviewContextRef {
   pullRequestId: string;
   reviewRunId: string;
   providerConfigId: string;
+  outputLanguage: OutputLanguage;
 }
 
 /** 各 channel 的合并策略；导出便于直接单测，不依赖 LangGraph 内部 spec 结构。 */
@@ -34,6 +37,10 @@ export const ReviewGraphState = Annotation.Root({
   reviewRunId: Annotation<string>({
     reducer: overwriteReducer,
     default: () => "",
+  }),
+  outputLanguage: Annotation<OutputLanguage>({
+    reducer: overwriteReducer,
+    default: () => "zh-CN",
   }),
   context: Annotation<ReviewContextRef>({
     reducer: overwriteReducer,

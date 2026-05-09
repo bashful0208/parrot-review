@@ -2,10 +2,26 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import {
+  Cloud,
+  Cpu,
+  Globe,
+  Sparkles,
+  Trash2,
+  CheckCircle2,
+  Circle,
+  Key,
+  CpuIcon,
+} from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,6 +33,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import AddProviderDialog from "./AddProviderDialog";
+import { cn } from "@/lib/utils";
 
 type ProviderType = "anthropic" | "openai" | "alibaba" | "custom";
 
@@ -35,18 +52,34 @@ interface Props {
   providers: ProviderItem[];
 }
 
-const PROVIDER_BADGE_CLASS: Record<ProviderType, string> = {
-  anthropic: "border-violet-200 bg-violet-50 text-violet-700",
-  openai: "border-emerald-200 bg-emerald-50 text-emerald-700",
-  alibaba: "border-orange-200 bg-orange-50 text-orange-700",
-  custom: "border-zinc-200 bg-zinc-100 text-zinc-600",
-};
-
-const PROVIDER_LABEL: Record<ProviderType, string> = {
-  anthropic: "Anthropic",
-  openai: "OpenAI",
-  alibaba: "Alibaba",
-  custom: "Custom",
+const PROVIDER_META: Record<
+  ProviderType,
+  { label: string; icon: typeof Cloud; badgeClass: string; iconClass: string }
+> = {
+  anthropic: {
+    label: "Anthropic",
+    icon: Sparkles,
+    badgeClass: "border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-800 dark:bg-violet-950 dark:text-violet-400",
+    iconClass: "text-violet-600 dark:text-violet-400",
+  },
+  openai: {
+    label: "OpenAI",
+    icon: Cpu,
+    badgeClass: "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-400",
+    iconClass: "text-emerald-600 dark:text-emerald-400",
+  },
+  alibaba: {
+    label: "Alibaba",
+    icon: Cloud,
+    badgeClass: "border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-800 dark:bg-orange-950 dark:text-orange-400",
+    iconClass: "text-orange-600 dark:text-orange-400",
+  },
+  custom: {
+    label: "Custom",
+    icon: Globe,
+    badgeClass: "border-zinc-200 bg-zinc-100 text-zinc-600 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-400",
+    iconClass: "text-zinc-500 dark:text-zinc-400",
+  },
 };
 
 export default function ProviderList({ providers }: Props) {
@@ -79,113 +112,140 @@ export default function ProviderList({ providers }: Props) {
 
   return (
     <>
-      <Card className="rounded-2xl">
-        <div className="flex items-center justify-between gap-4 border-b px-5 py-3.5">
-          <h2 className="text-sm font-semibold tracking-[-0.02em]">
-            AI Providers
-            <Badge variant="secondary" className="ml-2">
+      <Card>
+        <CardHeader className="flex-row items-center justify-between space-y-0">
+          <div className="flex items-center gap-2">
+            <CardTitle className="text-base">Configured Providers</CardTitle>
+            <Badge variant="secondary" className="font-mono text-xs">
               {providers.length}
             </Badge>
-          </h2>
+          </div>
           <AddProviderDialog onSuccess={() => router.refresh()} />
-        </div>
+        </CardHeader>
 
         {providers.length === 0 ? (
-          <CardContent className="flex flex-col items-center py-12 text-center">
-            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-muted">
-              <svg
-                className="h-5 w-5 text-muted-foreground"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth="1.8"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15m-6.75-2.386v3.636m0 0a2.25 2.25 0 003 2.122 2.25 2.25 0 003-2.122"
-                />
-              </svg>
+          <CardContent className="flex flex-col items-center py-16 text-center">
+            <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-muted">
+              <CpuIcon className="size-6 text-muted-foreground" />
             </div>
-            <h3 className="text-base font-semibold tracking-[-0.03em]">
-              No AI providers added yet
-            </h3>
-            <p className="mt-2 max-w-sm text-sm leading-6 text-muted-foreground">
-              Add API keys for Anthropic, OpenAI, or other providers to enable AI-powered reviews.
+            <h3 className="text-base font-semibold">No AI providers configured</h3>
+            <p className="mt-1.5 max-w-sm text-sm leading-relaxed text-muted-foreground">
+              Add API keys for Anthropic, OpenAI, Alibaba, or a custom provider to enable AI-powered code reviews.
             </p>
+            <div className="mt-6">
+              <AddProviderDialog onSuccess={() => router.refresh()} />
+            </div>
           </CardContent>
         ) : (
-          <div className="divide-y">
-            {providers.map((item) => (
-              <div key={item.id} className="flex items-center gap-4 px-5 py-4">
-                <Badge
-                  variant="outline"
-                  className={`shrink-0 text-xs ${PROVIDER_BADGE_CLASS[item.provider]}`}
-                >
-                  {PROVIDER_LABEL[item.provider]}
-                </Badge>
-
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{item.displayName}</p>
-                  <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                    {item.model}
-                  </p>
-                </div>
-
-                <p className="shrink-0 font-mono text-xs text-muted-foreground">
-                  {item.maskedKeySuffix ? `****${item.maskedKeySuffix}` : "—"}
-                </p>
-
-                <Badge
-                  variant="outline"
-                  className={
-                    item.isActive
-                      ? "shrink-0 border-emerald-200 bg-emerald-50 text-emerald-700"
-                      : "shrink-0 bg-muted text-muted-foreground"
-                  }
-                >
-                  {item.isActive ? "Enabled" : "Disabled"}
-                </Badge>
-
-                <div className="flex shrink-0 items-center gap-2">
-                  {!item.isActive && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => void handleActivate(item.id)}
-                    >
-                      Set as default
-                    </Button>
+          <CardContent className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {providers.map((item) => {
+              const meta = PROVIDER_META[item.provider];
+              const Icon = meta.icon;
+              return (
+                <Card
+                  key={item.id}
+                  className={cn(
+                    "group relative overflow-hidden transition-all duration-200",
+                    "hover:shadow-md hover:-translate-y-0.5",
+                    item.isActive && "ring-1 ring-primary/30 shadow-sm"
                   )}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-destructive hover:bg-destructive/10"
-                    disabled={deletingId === item.id}
-                    onClick={() => void handleDelete(item)}
-                  >
-                    {deletingId === item.id ? "Deleting…" : "Delete"}
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
+                >
+                  <CardContent className="p-3">
+                    {/* Header row: brand badge + status */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={cn(
+                            "flex size-6 items-center justify-center rounded-md",
+                            meta.iconClass,
+                            "bg-current/10"
+                          )}
+                        >
+                          <Icon className="size-3.5" />
+                        </span>
+                        <span
+                          className={cn(
+                            "text-[10px] font-semibold uppercase tracking-wider",
+                            meta.iconClass
+                          )}
+                        >
+                          {meta.label}
+                        </span>
+                      </div>
+                      {item.isActive ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400">
+                          <CheckCircle2 className="size-2.5" />
+                          Active
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                          <Circle className="size-2.5" />
+                          Inactive
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Details */}
+                    <div className="mt-2.5 space-y-1">
+                      <p className="text-xs font-semibold leading-tight">{item.displayName}</p>
+                      <p className="text-[11px] text-muted-foreground leading-tight">
+                        {item.model}
+                      </p>
+                      <p className="inline-flex items-center gap-1 rounded bg-muted/60 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+                        <Key className="size-2.5" />
+                        {item.maskedKeySuffix ? `••••${item.maskedKeySuffix}` : "No key"}
+                      </p>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="mt-3 flex items-center gap-1.5">
+                      {!item.isActive && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-[11px]"
+                          onClick={() => void handleActivate(item.id)}
+                        >
+                          Set as default
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-[11px] text-destructive hover:bg-destructive/10"
+                        disabled={deletingId === item.id}
+                        onClick={() => void handleDelete(item)}
+                      >
+                        <Trash2 className="mr-1 size-3" />
+                        {deletingId === item.id ? "Deleting…" : "Delete"}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </CardContent>
         )}
       </Card>
 
       <AlertDialog
         open={confirmDeleteItem !== null}
-        onOpenChange={(open) => { if (!open) setConfirmDeleteItem(null); }}
+        onOpenChange={(open) => {
+          if (!open) setConfirmDeleteItem(null);
+        }}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete active provider?</AlertDialogTitle>
             <AlertDialogDescription>
-              "{confirmDeleteItem?.displayName}" is currently active. Deleting it will break AI reviews until a new default is set. Continue?
+              &ldquo;{confirmDeleteItem?.displayName}&rdquo; is currently active. Deleting
+              it will break AI reviews until a new default is set. Continue?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setConfirmDeleteItem(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => setConfirmDeleteItem(null)}>
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive hover:bg-destructive/90"
               onClick={() => {

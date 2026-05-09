@@ -16,6 +16,7 @@ const baseCtx: ReviewContext = {
   pullRequestId: "p",
   reviewRunId: "rr",
   providerConfigId: "pc",
+  outputLanguage: "en-US",
 };
 
 describe("buildUserMessage with focus", () => {

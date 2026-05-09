@@ -27,6 +27,7 @@ const stateWith = (
   perFinding: Record<string, PerFindingState>
 ): ReviewGraphStateType => ({
   reviewRunId: "rr",
+  outputLanguage: "en-US",
   context: {
     fullName: "o/r",
     prNumber: 1,
@@ -36,6 +37,7 @@ const stateWith = (
     pullRequestId: "p",
     reviewRunId: "rr",
     providerConfigId: "pc",
+    outputLanguage: "en-US",
   },
   draftFindings: [],
   reviewerErrors: [],

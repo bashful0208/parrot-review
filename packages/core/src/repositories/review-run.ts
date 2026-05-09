@@ -28,6 +28,7 @@ export interface CreateReviewRunInput {
   baseSha: string;
   headSha: string;
   queueJobId: string | null;
+  outputLanguage: string;
 }
 
 export async function createReviewRun(
@@ -47,8 +48,8 @@ export async function createReviewRun(
          (select coalesce(max(run_number), 0) + 1
             from public.review_runs
            where pull_request_id = $3),
-         $4, $5, 'standard', 'en-US',
-         'queued', $6, $7, $8, '{}'
+         $4, $5, 'standard', $6::public.output_language,
+         'queued', $7, $8, $9, '{}'
        )
        returning id, run_number`,
       [
@@ -57,6 +58,7 @@ export async function createReviewRun(
         input.pullRequestId,
         input.triggerType,
         input.triggerEventId,
+        input.outputLanguage,
         input.baseSha,
         input.headSha,
         input.queueJobId,

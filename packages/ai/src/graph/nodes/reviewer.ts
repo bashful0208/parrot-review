@@ -47,6 +47,7 @@ export function makeReviewerNode(
         guidelines: effectiveGuidelines,
         projectContext: ctx.projectContext,
         focus,
+        outputLanguage: state.outputLanguage,
       });
 
       // Post-filter by confidence threshold

@@ -17,6 +17,7 @@ const summary: ReviewSummary = {
 
 const baseState = (id = "rr"): ReviewGraphStateType => ({
   reviewRunId: id,
+  outputLanguage: "en-US",
   context: {
     fullName: "o/r",
     prNumber: 1,
@@ -26,6 +27,7 @@ const baseState = (id = "rr"): ReviewGraphStateType => ({
     pullRequestId: "p",
     reviewRunId: id,
     providerConfigId: "pc",
+    outputLanguage: "en-US",
   },
   draftFindings: [],
   reviewerErrors: [],
