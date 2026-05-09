@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 
 import { AUTH_SESSION_COOKIE, getOrgIdForUser, getSessionUser, listRepositoriesByOrganization } from "@reviewer/core";
 
-import AdminShell from "@/components/dashboard/AdminShell";
+import AdminShell from "@/components/layout/admin-shell";
 import RepositoryList from "@/components/repositories/RepositoryList";
 import { buildRepositoriesViewModel } from "@/lib/repositories/view-model";
 

@@ -29,3 +29,13 @@ export async function getOrgIdForUser(userId: string): Promise<string | null> {
   );
   return result.rows[0]?.id ?? null;
 }
+
+export async function getOrganizationName(
+  orgId: string
+): Promise<string | null> {
+  const result = await getPool().query<{ name: string }>(
+    `select name from public.organizations where id = $1 limit 1`,
+    [orgId]
+  );
+  return result.rows[0]?.name ?? null;
+}

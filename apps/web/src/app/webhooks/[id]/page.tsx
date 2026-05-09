@@ -8,7 +8,7 @@ import {
   getWebhookEventDetail,
 } from "@reviewer/core";
 
-import AdminShell from "@/components/dashboard/AdminShell";
+import AdminShell from "@/components/layout/admin-shell";
 import WebhookDetail from "@/components/webhooks/WebhookDetail";
 import { buildWebhookDetailViewModel } from "@/lib/webhooks/view-model";
 

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -78,22 +79,22 @@ export default function ProviderList({ providers }: Props) {
 
   return (
     <>
-      <section className="rounded-[20px] border border-slate-200/80 bg-white/92 shadow-[0_10px_30px_rgba(15,23,42,0.06)]">
-        <div className="flex items-center justify-between gap-4 border-b border-slate-100 px-5 py-3.5">
-          <h2 className="text-sm font-semibold tracking-[-0.02em] text-zinc-950">
-            AI 模型配置
-            <span className="ml-2 rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-500">
+      <Card className="rounded-2xl">
+        <div className="flex items-center justify-between gap-4 border-b px-5 py-3.5">
+          <h2 className="text-sm font-semibold tracking-[-0.02em]">
+            AI Providers
+            <Badge variant="secondary" className="ml-2">
               {providers.length}
-            </span>
+            </Badge>
           </h2>
           <AddProviderDialog onSuccess={() => router.refresh()} />
         </div>
 
         {providers.length === 0 ? (
-          <div className="flex flex-col items-center py-12 text-center">
-            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-zinc-100">
+          <CardContent className="flex flex-col items-center py-12 text-center">
+            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-muted">
               <svg
-                className="h-5 w-5 text-zinc-500"
+                className="h-5 w-5 text-muted-foreground"
                 fill="none"
                 viewBox="0 0 24 24"
                 strokeWidth="1.8"
@@ -106,21 +107,17 @@ export default function ProviderList({ providers }: Props) {
                 />
               </svg>
             </div>
-            <h3 className="text-base font-semibold tracking-[-0.03em] text-zinc-950">
-              尚未添加 AI 模型配置
+            <h3 className="text-base font-semibold tracking-[-0.03em]">
+              No AI providers added yet
             </h3>
-            <p className="mt-2 max-w-sm text-sm leading-6 text-zinc-500">
-              添加 Anthropic、OpenAI 或其他 provider 的 API Key，让 AI 审查功能正常运行。
+            <p className="mt-2 max-w-sm text-sm leading-6 text-muted-foreground">
+              Add API keys for Anthropic, OpenAI, or other providers to enable AI-powered reviews.
             </p>
-          </div>
+          </CardContent>
         ) : (
-          <div className="divide-y divide-slate-100">
+          <div className="divide-y">
             {providers.map((item) => (
-              <div
-                key={item.id}
-                className="flex items-center gap-4 px-5 py-4"
-              >
-                {/* Provider badge */}
+              <div key={item.id} className="flex items-center gap-4 px-5 py-4">
                 <Badge
                   variant="outline"
                   className={`shrink-0 text-xs ${PROVIDER_BADGE_CLASS[item.provider]}`}
@@ -128,30 +125,28 @@ export default function ProviderList({ providers }: Props) {
                   {PROVIDER_LABEL[item.provider]}
                 </Badge>
 
-                {/* Name + model */}
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-zinc-900">{item.displayName}</p>
-                  <p className="mt-0.5 truncate text-xs text-zinc-400">{item.model}</p>
+                  <p className="truncate text-sm font-medium">{item.displayName}</p>
+                  <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                    {item.model}
+                  </p>
                 </div>
 
-                {/* Masked key */}
-                <p className="shrink-0 font-mono text-xs text-zinc-400">
+                <p className="shrink-0 font-mono text-xs text-muted-foreground">
                   {item.maskedKeySuffix ? `****${item.maskedKeySuffix}` : "—"}
                 </p>
 
-                {/* Active badge */}
                 <Badge
                   variant="outline"
                   className={
                     item.isActive
-                      ? "shrink-0 border-emerald-200 bg-emerald-50 text-xs text-emerald-700"
-                      : "shrink-0 border-zinc-200 bg-zinc-100 text-xs text-zinc-500"
+                      ? "shrink-0 border-emerald-200 bg-emerald-50 text-emerald-700"
+                      : "shrink-0 bg-muted text-muted-foreground"
                   }
                 >
-                  {item.isActive ? "启用中" : "未启用"}
+                  {item.isActive ? "Enabled" : "Disabled"}
                 </Badge>
 
-                {/* Actions */}
                 <div className="flex shrink-0 items-center gap-2">
                   {!item.isActive && (
                     <Button
@@ -159,48 +154,47 @@ export default function ProviderList({ providers }: Props) {
                       size="sm"
                       onClick={() => void handleActivate(item.id)}
                     >
-                      设为默认
+                      Set as default
                     </Button>
                   )}
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="text-red-500 hover:bg-red-50 hover:text-red-600"
+                    className="text-destructive hover:bg-destructive/10"
                     disabled={deletingId === item.id}
                     onClick={() => void handleDelete(item)}
                   >
-                    {deletingId === item.id ? "删除中…" : "删除"}
+                    {deletingId === item.id ? "Deleting…" : "Delete"}
                   </Button>
                 </div>
               </div>
             ))}
           </div>
         )}
-      </section>
+      </Card>
 
-      {/* Confirm delete active provider */}
       <AlertDialog
         open={confirmDeleteItem !== null}
         onOpenChange={(open) => { if (!open) setConfirmDeleteItem(null); }}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>删除启用中的配置？</AlertDialogTitle>
+            <AlertDialogTitle>Delete active provider?</AlertDialogTitle>
             <AlertDialogDescription>
-              "{confirmDeleteItem?.displayName}" 当前正在使用中。删除后 AI 审查功能将无法正常工作，直到设置新的默认配置。确定继续？
+              "{confirmDeleteItem?.displayName}" is currently active. Deleting it will break AI reviews until a new default is set. Continue?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setConfirmDeleteItem(null)}>取消</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => setConfirmDeleteItem(null)}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-red-600 hover:bg-red-700"
+              className="bg-destructive hover:bg-destructive/90"
               onClick={() => {
                 const id = confirmDeleteItem!.id;
                 setConfirmDeleteItem(null);
                 void doDelete(id);
               }}
             >
-              确认删除
+              Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

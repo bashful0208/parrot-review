@@ -1,4 +1,13 @@
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import type { UsageFailureRow } from "@/lib/usage/view-model";
 
 const ERROR_TONES: Record<string, string> = {
@@ -15,7 +24,7 @@ const ERROR_TONES: Record<string, string> = {
 };
 
 function badgeTone(code: string): string {
-  return ERROR_TONES[code] ?? "bg-slate-100 text-slate-800 hover:bg-slate-100";
+  return ERROR_TONES[code] ?? "bg-accent text-accent-foreground";
 }
 
 export default function UsageFailuresTable({
@@ -25,51 +34,57 @@ export default function UsageFailuresTable({
 }) {
   if (rows.length === 0) {
     return (
-      <section className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-500">
-        No failed AI calls in this range — clean slate.
-      </section>
+      <Card className="rounded-2xl">
+        <CardContent className="p-6 text-sm text-muted-foreground">
+          No failed AI calls in this range — clean slate.
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_4px_12px_rgba(15,23,42,0.04)]">
-      <header className="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
-        <h2 className="text-sm font-semibold text-slate-900">Recent failures</h2>
-        <span className="text-xs text-slate-500">{rows.length} shown</span>
-      </header>
+    <Card className="overflow-hidden rounded-2xl">
+      <div className="flex items-center justify-between border-b px-5 py-3.5">
+        <h2 className="text-sm font-semibold">Recent failures</h2>
+        <span className="text-xs text-muted-foreground">{rows.length} shown</span>
+      </div>
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-xs uppercase tracking-[0.08em] text-slate-500">
-            <tr>
-              <th className="px-5 py-2.5 text-left font-medium">When</th>
-              <th className="px-5 py-2.5 text-left font-medium">Task</th>
-              <th className="px-5 py-2.5 text-left font-medium">Provider / model</th>
-              <th className="px-5 py-2.5 text-left font-medium">Error</th>
-              <th className="px-5 py-2.5 text-right font-medium">Latency</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100 text-slate-700">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>When</TableHead>
+              <TableHead>Task</TableHead>
+              <TableHead>Provider / model</TableHead>
+              <TableHead>Error</TableHead>
+              <TableHead className="text-right">Latency</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {rows.map((r) => (
-              <tr key={r.id}>
-                <td className="px-5 py-2.5 text-slate-600">{r.occurredAtLabel}</td>
-                <td className="px-5 py-2.5">{r.taskTypeLabel}</td>
-                <td className="px-5 py-2.5">
-                  <div className="font-medium text-slate-900">{r.providerLabel}</div>
-                  <div className="text-xs text-slate-500">{r.modelLabel}</div>
-                </td>
-                <td className="px-5 py-2.5">
+              <TableRow key={r.id}>
+                <TableCell className="text-muted-foreground">
+                  {r.occurredAtLabel}
+                </TableCell>
+                <TableCell>{r.taskTypeLabel}</TableCell>
+                <TableCell>
+                  <div className="font-medium">{r.providerLabel}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {r.modelLabel}
+                  </div>
+                </TableCell>
+                <TableCell>
                   <Badge className={badgeTone(r.errorCodeLabel)} variant="secondary">
                     {r.errorCodeLabel}
                   </Badge>
-                </td>
-                <td className="px-5 py-2.5 text-right tabular-nums text-slate-600">
+                </TableCell>
+                <TableCell className="text-right tabular-nums text-muted-foreground">
                   {r.latencyLabel}
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
-    </section>
+    </Card>
   );
 }

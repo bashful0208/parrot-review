@@ -8,7 +8,7 @@ import {
   listAiProviderConfigs,
 } from "@reviewer/core";
 
-import AdminShell from "@/components/dashboard/AdminShell";
+import AdminShell from "@/components/layout/admin-shell";
 import ProviderList from "@/components/providers/ProviderList";
 import { DASHBOARD_NAVIGATION } from "@/lib/dashboard/view-model";
 import { getViewerName } from "@/lib/utils/viewer-name";
@@ -45,7 +45,7 @@ export default async function ProvidersPage() {
         navigation: DASHBOARD_NAVIGATION.map((item) => ({ ...item })),
       }}
       topbar={{
-        title: "AI 模型配置",
+        title: "AI Providers",
         summary: "",
         searchPlaceholder: "",
         rangeLabel: "",

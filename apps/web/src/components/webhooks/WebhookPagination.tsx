@@ -1,37 +1,10 @@
 import Link from "next/link";
 
+import { Button } from "@/components/ui/button";
 import type { WebhookPaginationModel } from "@/lib/webhooks/view-model";
 
-function ButtonLink({
-  href,
-  disabled,
-  children,
-}: {
-  href: string | null;
-  disabled: boolean;
-  children: React.ReactNode;
-}) {
-  const className =
-    "rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium transition-colors";
-  if (disabled || !href) {
-    return (
-      <span
-        aria-disabled="true"
-        className={`${className} cursor-not-allowed text-slate-300`}
-      >
-        {children}
-      </span>
-    );
-  }
-  return (
-    <Link
-      href={href}
-      className={`${className} text-slate-700 hover:bg-slate-50`}
-    >
-      {children}
-    </Link>
-  );
-}
+const linkClasses =
+  "inline-flex h-8 items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-input bg-background px-3 text-xs font-medium shadow-sm hover:bg-accent hover:text-accent-foreground";
 
 export default function WebhookPagination({
   pagination,
@@ -40,14 +13,28 @@ export default function WebhookPagination({
 }) {
   return (
     <div className="flex items-center justify-between gap-4 px-1">
-      <span className="text-xs text-slate-500">{pagination.rangeLabel}</span>
+      <span className="text-xs text-muted-foreground">
+        {pagination.rangeLabel}
+      </span>
       <div className="flex items-center gap-2">
-        <ButtonLink href={pagination.prevHref} disabled={pagination.prevHref === null}>
-          ← Previous
-        </ButtonLink>
-        <ButtonLink href={pagination.nextHref} disabled={pagination.nextHref === null}>
-          Next →
-        </ButtonLink>
+        {pagination.prevHref ? (
+          <Link href={pagination.prevHref} className={linkClasses}>
+            ← Previous
+          </Link>
+        ) : (
+          <Button variant="outline" size="sm" disabled>
+            ← Previous
+          </Button>
+        )}
+        {pagination.nextHref ? (
+          <Link href={pagination.nextHref} className={linkClasses}>
+            Next →
+          </Link>
+        ) : (
+          <Button variant="outline" size="sm" disabled>
+            Next →
+          </Button>
+        )}
       </div>
     </div>
   );

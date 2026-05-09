@@ -8,7 +8,7 @@ import {
   getSessionUser,
 } from "@reviewer/core";
 
-import AdminShell from "@/components/dashboard/AdminShell";
+import AdminShell from "@/components/layout/admin-shell";
 import RepositoryDetail from "@/components/repositories/RepositoryDetail";
 import { buildRepositoryDetailPageViewModel } from "@/lib/repositories/detail-view-model";
 

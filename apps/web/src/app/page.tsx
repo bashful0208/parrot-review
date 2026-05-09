@@ -3,19 +3,38 @@ import { redirect } from "next/navigation";
 
 import {
   AUTH_SESSION_COOKIE,
+  getDailyUsageStats,
+  getOpenFindingsCount,
   getOrgIdForUser,
+  getOrganizationName,
+  getRepositoryHealthItems,
+  getReviewRunCount,
+  getReviewRunSuccessRate,
   getSessionUser,
+  getUsageSummary,
   listRecentReviewRuns,
+  listRepositoriesByOrganization,
 } from "@reviewer/core";
 
-import AdminShell from "@/components/dashboard/AdminShell";
+import AdminShell from "@/components/layout/admin-shell";
 import DashboardHero from "@/components/dashboard/DashboardHero";
-import DashboardKpiGrid from "@/components/dashboard/DashboardKpiGrid";
-import DashboardQuickActions from "@/components/dashboard/DashboardQuickActions";
-import RecentReviewRuns from "@/components/dashboard/RecentReviewRuns";
-import RepositoryHealthList from "@/components/dashboard/RepositoryHealthList";
-import RiskInsights from "@/components/dashboard/RiskInsights";
+import DashboardUsageOverview from "@/components/dashboard/DashboardUsageOverview";
+import OverviewContent from "@/components/dashboard/OverviewContent";
 import { buildDashboardViewModel } from "@/lib/dashboard/view-model";
+
+function emptyUsageSummary() {
+  return {
+    totalCalls: 0,
+    successCalls: 0,
+    failedCalls: 0,
+    truncatedCalls: 0,
+    totalInputTokens: 0,
+    totalOutputTokens: 0,
+    totalCostUsd: 0,
+    avgLatencyMs: 0,
+    p95LatencyMs: 0,
+  };
+}
 
 export default async function Home() {
   const cookieStore = await cookies();
@@ -27,10 +46,69 @@ export default async function Home() {
   }
 
   const orgId = await getOrgIdForUser(user.id);
-  const recentRunRows = orgId
-    ? await listRecentReviewRuns(orgId, 5)
-    : [];
-  const dashboard = buildDashboardViewModel(user, recentRunRows);
+
+  if (!orgId) {
+    const dashboard = buildDashboardViewModel({
+      user,
+      orgName: "Reviewer",
+      repoCount: 0,
+      reviewRunCount: 0,
+      openFindingsCount: 0,
+      successRate: 0,
+      repoHealthRows: [],
+      usageSummary: emptyUsageSummary(),
+      usageDaily: [],
+      recentRunRows: [],
+    });
+    return (
+      <AdminShell
+        shell={dashboard.shell}
+        topbar={dashboard.topbar}
+        viewerName={dashboard.hero.viewerName}
+      >
+        <div className="space-y-4">
+          <DashboardHero hero={dashboard.hero} />
+          <OverviewContent dashboard={dashboard} />
+          <DashboardUsageOverview usage={dashboard.usage} />
+        </div>
+      </AdminShell>
+    );
+  }
+
+  const [
+    orgName,
+    repos,
+    repoHealthRows,
+    reviewRunCount,
+    successRateResult,
+    openFindingsCount,
+    recentRunRows,
+    usageSummary,
+    usageDaily,
+  ] = await Promise.all([
+    getOrganizationName(orgId).then((n) => n ?? "Reviewer"),
+    listRepositoriesByOrganization(orgId),
+    getRepositoryHealthItems(orgId),
+    getReviewRunCount(orgId, 7),
+    getReviewRunSuccessRate(orgId, 7),
+    getOpenFindingsCount(orgId),
+    listRecentReviewRuns(orgId, 5),
+    getUsageSummary(orgId, 7),
+    getDailyUsageStats(orgId, 7),
+  ]);
+
+  const dashboard = buildDashboardViewModel({
+    user,
+    orgName,
+    repoCount: repos.length,
+    reviewRunCount,
+    openFindingsCount,
+    successRate: successRateResult.rate,
+    repoHealthRows,
+    recentRunRows,
+    usageSummary,
+    usageDaily,
+  });
 
   return (
     <AdminShell
@@ -40,13 +118,8 @@ export default async function Home() {
     >
       <div className="space-y-4">
         <DashboardHero hero={dashboard.hero} />
-        <DashboardKpiGrid kpis={dashboard.kpis} />
-        <DashboardQuickActions actions={dashboard.quickActions} />
-        <div className="grid gap-4 xl:grid-cols-[1.25fr_0.75fr]">
-          <RecentReviewRuns runs={dashboard.recentRuns} />
-          <RepositoryHealthList repositories={dashboard.repositories} />
-        </div>
-        <RiskInsights insights={dashboard.insights} trend={dashboard.trend} />
+        <OverviewContent dashboard={dashboard} />
+        <DashboardUsageOverview usage={dashboard.usage} />
       </div>
     </AdminShell>
   );

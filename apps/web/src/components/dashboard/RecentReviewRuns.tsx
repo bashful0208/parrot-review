@@ -1,84 +1,83 @@
 import type { DashboardRun } from "@/lib/dashboard/types";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-const statusClasses: Record<DashboardRun["status"], string> = {
-  queued: "border-zinc-200 bg-zinc-100 text-zinc-700",
-  running: "border-sky-200 bg-sky-50 text-sky-800",
-  succeeded: "border-emerald-200 bg-emerald-50 text-emerald-800",
-  failed: "border-rose-200 bg-rose-50 text-rose-800",
+const statusBadgeColor: Record<DashboardRun["status"], string> = {
+  queued: "bg-muted/50 text-muted-foreground",
+  running: "bg-blue-500/10 text-blue-600",
+  succeeded: "bg-emerald-500/10 text-emerald-600",
+  failed: "bg-red-500/10 text-red-600",
 };
 
 export default function RecentReviewRuns({ runs }: { runs: DashboardRun[] }) {
   if (runs.length === 0) {
     return (
-      <section className="rounded-[20px] border border-slate-200/80 bg-white/92 p-4 shadow-[0_10px_30px_rgba(15,23,42,0.06)]">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-base font-semibold tracking-[-0.03em] text-zinc-950">
-              Recent review runs
-            </h2>
-            <p className="mt-2 text-sm leading-6 text-zinc-600">
-              No review activity yet. Start your first review to populate this workspace.
-            </p>
+      <Card className="rounded-2xl">
+        <CardContent className="p-4">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-base font-semibold tracking-[-0.03em]">
+                Recent review runs
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                No review activity yet. Start your first review to populate this workspace.
+              </p>
+            </div>
+            <span className="shrink-0 text-xs font-medium text-muted-foreground">Live queue</span>
           </div>
-          <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-slate-600">
-            Live queue
-          </span>
-        </div>
-        <a
-          href="/api/reviews/enqueue"
-          className="mt-5 inline-flex min-h-11 items-center rounded-full bg-zinc-950 px-4 py-2 text-sm font-medium text-white"
-        >
-          Start your first review
-        </a>
-      </section>
+          <a
+            href="/api/reviews/enqueue"
+            className="mt-5 inline-flex h-10 items-center justify-center rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          >
+            Start your first review
+          </a>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <section className="rounded-[20px] border border-slate-200/80 bg-white/92 p-4 shadow-[0_10px_30px_rgba(15,23,42,0.06)]">
-      <div className="mb-3 flex items-start justify-between gap-4">
-        <div>
-          <h2 className="text-base font-semibold tracking-[-0.03em] text-zinc-950">
-            Recent review runs
-          </h2>
-          <p className="mt-1 text-sm text-zinc-500">
-            Continue active work and spot runs that need attention.
-          </p>
+    <Card className="rounded-2xl">
+      <CardHeader className="pb-0">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <CardTitle className="text-base tracking-[-0.03em]">
+              Recent review runs
+            </CardTitle>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Continue active work and spot runs that need attention.
+            </p>
+          </div>
+          <span className="shrink-0 text-xs font-medium text-muted-foreground">Live queue</span>
         </div>
-        <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium uppercase tracking-[0.18em] text-slate-600">
-          Live queue
-        </span>
-      </div>
-      <div className="space-y-2">
+      </CardHeader>
+      <CardContent className="space-y-2 p-4">
         {runs.map((run) => (
           <article
             key={run.id}
-            className="rounded-[16px] border border-slate-200/70 bg-slate-50/70 px-4 py-3"
+            className="rounded-xl border bg-muted/30 px-4 py-3"
           >
             <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
               <div className="min-w-0 space-y-0.5">
-                <p className="text-xs font-medium uppercase tracking-[0.18em] text-zinc-500">
+                <p className="text-xs font-medium text-muted-foreground">
                   {run.repositoryName} · {run.pullRequestLabel}
                 </p>
-                <h3 className="text-sm font-semibold tracking-[-0.02em] text-zinc-950">
+                <h3 className="text-sm font-semibold tracking-[-0.02em]">
                   {run.title}
                 </h3>
-                <p className="text-sm text-zinc-600">{run.startedAtLabel}</p>
+                <p className="text-sm text-muted-foreground">
+                  {run.startedAtLabel}
+                </p>
               </div>
               <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-                <span
-                  className={`rounded-full border px-3 py-1 text-xs font-medium capitalize ${statusClasses[run.status]}`}
-                >
+                <span className={`inline-flex shrink-0 items-center rounded-sm px-1.5 text-xs font-medium capitalize ${statusBadgeColor[run.status]}`}>
                   {run.status}
                 </span>
-                <span className="rounded-full bg-zinc-950 px-3 py-1 text-xs font-medium text-white">
-                  {run.severityLabel}
-                </span>
+                <span className="inline-flex shrink-0 items-center rounded-sm bg-muted/50 px-1.5 text-xs text-muted-foreground">{run.severityLabel}</span>
               </div>
             </div>
           </article>
         ))}
-      </div>
-    </section>
+      </CardContent>
+    </Card>
   );
 }

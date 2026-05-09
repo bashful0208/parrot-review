@@ -9,7 +9,7 @@ import {
   listWebhookEvents,
 } from "@reviewer/core";
 
-import AdminShell from "@/components/dashboard/AdminShell";
+import AdminShell from "@/components/layout/admin-shell";
 import WebhookEventsTable from "@/components/webhooks/WebhookEventsTable";
 import WebhookFilters from "@/components/webhooks/WebhookFilters";
 import WebhookKpiGrid from "@/components/webhooks/WebhookKpiGrid";
@@ -75,7 +75,7 @@ export default async function WebhooksPage({
 
   return (
     <AdminShell shell={vm.shell} topbar={vm.topbar} viewerName={vm.viewerName}>
-      <div className="space-y-5">
+      <div className="space-y-4">
         <WebhookFilters
           rangeOptions={vm.filters.rangeOptions}
           providerOptions={vm.filters.providerOptions}
