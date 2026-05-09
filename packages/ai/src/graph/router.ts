@@ -25,6 +25,7 @@ export function fanOutFindings(
         finding: ps.finding,
         reviewRunId: state.reviewRunId,
         contextRef: state.context,
+        outputLanguage: state.outputLanguage,
       } satisfies PerFindingTask)
   );
 }

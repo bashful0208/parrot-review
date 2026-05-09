@@ -40,6 +40,7 @@ const sampleSummary: ReviewSummary = {
 
 const baseInitial = (rrId: string) => ({
   reviewRunId: rrId,
+  outputLanguage: "en-US" as const,
   context: {
     fullName: "owner/repo",
     prNumber: 1,
@@ -49,6 +50,7 @@ const baseInitial = (rrId: string) => ({
     pullRequestId: "p",
     reviewRunId: rrId,
     providerConfigId: "pc",
+    outputLanguage: "en-US" as const,
   },
 });
 

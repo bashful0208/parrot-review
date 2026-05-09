@@ -25,6 +25,7 @@ const f = (over: Partial<ReviewFinding> = {}): ReviewFinding => ({
 
 const stateWith = (perFinding: ReviewGraphStateType["perFinding"]): ReviewGraphStateType => ({
   reviewRunId: "rr",
+  outputLanguage: "en-US",
   context: {} as never,
   draftFindings: [],
   reviewerErrors: [],

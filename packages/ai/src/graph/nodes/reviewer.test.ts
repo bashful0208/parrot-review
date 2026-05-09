@@ -29,6 +29,7 @@ function fakeFinding(over: Partial<ReviewFinding> = {}): ReviewFinding {
 
 const baseState = (reviewRunId = "rr"): ReviewGraphStateType => ({
   reviewRunId,
+  outputLanguage: "en-US",
   context: {
     fullName: "o/r",
     prNumber: 1,
@@ -38,6 +39,7 @@ const baseState = (reviewRunId = "rr"): ReviewGraphStateType => ({
     pullRequestId: "p",
     reviewRunId,
     providerConfigId: "pc",
+    outputLanguage: "en-US",
   },
   draftFindings: [],
   reviewerErrors: [],

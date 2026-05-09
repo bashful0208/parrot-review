@@ -18,6 +18,7 @@ const ctx: ReviewContext = {
   pullRequestId: "p",
   reviewRunId: "rr",
   providerConfigId: "pc",
+  outputLanguage: "en-US",
 };
 
 const sample: ReviewFinding = {

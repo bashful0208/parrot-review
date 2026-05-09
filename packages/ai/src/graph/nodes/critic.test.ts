@@ -16,6 +16,7 @@ const ctxRef: ReviewContextRef = {
   pullRequestId: "p",
   reviewRunId: "rr",
   providerConfigId: "pc",
+  outputLanguage: "en-US",
 };
 
 const sample: ReviewFinding = {
@@ -40,6 +41,7 @@ const baseTask = (over: Partial<PerFindingTask> = {}): PerFindingTask => ({
   finding: sample,
   reviewRunId: "rr-c",
   contextRef: ctxRef,
+  outputLanguage: "en-US",
   ...over,
 });
 

@@ -1,5 +1,5 @@
 import type { AiAdapter } from "../../adapter.js";
-import type { ReviewFinding, CritiqueResult } from "../../types.js";
+import type { OutputLanguage, ReviewFinding, CritiqueResult } from "../../types.js";
 import { getCtx } from "../ctx-cache.js";
 import type { ReviewContextRef, ReviewGraphStateType } from "../state.js";
 
@@ -11,6 +11,7 @@ export interface PerFindingTask {
   finding: ReviewFinding;
   reviewRunId: string;
   contextRef: ReviewContextRef;
+  outputLanguage: OutputLanguage;
 }
 
 /**
@@ -48,6 +49,7 @@ export function makeCriticNode(adapter: AiAdapter) {
       diffs: ctx.diffs,
       guidelines: ctx.guidelines,
       projectContext: ctx.projectContext,
+      outputLanguage: task.outputLanguage,
     };
 
     let finding = task.finding;

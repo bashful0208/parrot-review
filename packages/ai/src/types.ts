@@ -3,6 +3,8 @@ import type { FileDiff } from "@reviewer/git";
 /** Reviewer 节点的 prompt scope；不传则保持原有综合扫描行为。 */
 export type ReviewFocus = "quality" | "security" | "error_handling";
 
+export type OutputLanguage = "zh-CN" | "en-US" | "es-ES";
+
 export interface ReviewContext {
   fullName: string;            // 仓库 full_name，如 "owner/repo"
   prNumber: number;
@@ -20,6 +22,8 @@ export interface ReviewContext {
   focus?: ReviewFocus;
   /** summarizer 跑在 critic 之后时，注入过滤后的最终 findings 让 summary 反映真实问题清单。 */
   finalFindings?: ReviewFinding[];
+  /** 审查输出语言。 */
+  outputLanguage: OutputLanguage;
 }
 
 export interface ReviewFinding {

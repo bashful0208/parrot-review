@@ -14,19 +14,21 @@ import {
   getActiveAiProviderConfig,
   insertUsageEvent,
   markWebhookEventStatus,
+  getOrgOutputLanguage,
 } from "@reviewer/core";
 import type { Logger } from "@reviewer/core";
 import type { WebhookJobPayload } from "@reviewer/core";
 import {
   loadReviewerGuidelines,
   loadTargetRepoContext,
-  renderBilingualFinding,
-  renderBilingualSummary,
+  renderFinding,
+  renderSummary,
   buildReviewGraph,
   setCtx,
   clearCtx,
   createAdapter,
   type UsageRecorder,
+  type OutputLanguage,
 } from "@reviewer/ai";
 import {
   GiteeProvider,
@@ -94,7 +96,11 @@ export async function handleReviewJob(
       openedAt: pr.openedAt,
     });
 
-    // 步骤 5: 创建 review_run（queued）
+    // 步骤 5: 解析输出语言
+    const outputLanguage: OutputLanguage =
+      (await getOrgOutputLanguage(organizationId)) as OutputLanguage;
+
+    // 步骤 6: 创建 review_run（queued）
     const { id, runNumber } = await createReviewRun({
       organizationId,
       repositoryId,
@@ -104,26 +110,31 @@ export async function handleReviewJob(
       baseSha,
       headSha,
       queueJobId: String(job.id ?? ""),
+      outputLanguage,
     });
     runId = id;
 
-    // 步骤 6-11: 在 try/catch 中执行，失败时更新 run 状态
+    // 步骤 7-12: 在 try/catch 中执行，失败时更新 run 状态
     try {
-      // 步骤 6: 更新 review_run 为 running
+      // 步骤 7: 更新 review_run 为 running
       await updateReviewRun(runId, { status: "running", startedAt: new Date() });
 
-      // 步骤 6a: 首次跑评论一次表示 review 已开始
+      // 步骤 7a: 首次跑评论一次表示 review 已开始
       if (runNumber === 1) {
-        const startCommentMd = [
-          "> [!NOTE]",
-          "> 👁️ **Big Brother is watching you!**",
-          "> ",
-          "> Your code is under review. Resistance is futile. This may take a few minutes — please stand by.",
-          "> ",
-          "> 👁️ **老大哥正在看着你！**",
-          "> ",
-          "> 你的代码正在被审视，反抗是徒劳的。请稍候几分钟。",
-        ].join("\n");
+        const startCommentMd =
+          outputLanguage === "zh-CN"
+            ? [
+                "> [!NOTE]",
+                "> 👁️ **老大哥正在看着你！**",
+                "> ",
+                "> 你的代码正在被审视，反抗是徒劳的。请稍候几分钟。",
+              ].join("\n")
+            : [
+                "> [!NOTE]",
+                "> 👁️ **Big Brother is watching you!**",
+                "> ",
+                "> Your code is under review. Resistance is futile. This may take a few minutes — please stand by.",
+              ].join("\n");
 
         try {
           const { id: commentId } = await insertReviewComment({
@@ -133,6 +144,7 @@ export async function handleReviewJob(
             reviewIssueId: null,
             provider: repo.provider,
             bodyMd: startCommentMd,
+            outputLanguage,
             filePath: null,
             lineNumber: null,
             isInline: false,
@@ -224,6 +236,7 @@ export async function handleReviewJob(
         };
         const initial = {
           reviewRunId: runId!,
+          outputLanguage,
           context: {
             fullName: repo.full_name,
             prNumber,
@@ -233,6 +246,7 @@ export async function handleReviewJob(
             pullRequestId,
             reviewRunId: runId!,
             providerConfigId: activeConfig.id,
+            outputLanguage,
           },
         };
 
@@ -244,7 +258,7 @@ export async function handleReviewJob(
 
         finalFindings = result.finalFindings ?? [];
         if (result.summary) {
-          summaryMd = renderBilingualSummary(result.summary);
+          summaryMd = renderSummary(result.summary, outputLanguage);
         }
 
         if (result.reviewerErrors && result.reviewerErrors.length > 0) {
@@ -278,25 +292,24 @@ export async function handleReviewJob(
       }
 
       // 步骤 9: 计算 fingerprint 并写入 review_issues
-      // DB 字段保持单语；fingerprint 用 EN title 稳定（不随翻译漂移），
-      // title 同样存 EN，summary / suggestion 存双语 markdown 以便前端展示
+      // fingerprint 用 EN title 稳定（不随语言漂移）
       const issueInputs = finalFindings.map((f) => ({
         organizationId,
         repositoryId,
         pullRequestId,
         reviewRunId: runId!,
         fingerprint: createHash("sha256")
-          .update(`${repositoryId}:${f.filePath}:${f.startLine}:${f.title_en}`)
+          .update(`${repositoryId}:${f.filePath}:${f.startLine}:${f.title_en || f.title_zh}`)
           .digest("hex"),
         issueType: f.issueType,
-        title: f.title_en,
-        summary: `${f.summary_en}\n\n${f.summary_zh}`,
+        title: outputLanguage === "zh-CN" ? (f.title_zh || f.title_en) : f.title_en,
+        summary: outputLanguage === "zh-CN" ? (f.summary_zh || f.summary_en) : f.summary_en,
         severity: f.severity,
         confidenceScore: f.confidenceScore,
         filePath: f.filePath,
         startLine: f.startLine,
         endLine: f.endLine,
-        suggestionMd: `${f.suggestion_en}\n\n${f.suggestion_zh}`,
+        suggestionMd: outputLanguage === "zh-CN" ? (f.suggestion_zh || f.suggestion_en) : f.suggestion_en,
       }));
       const insertedIssues = await insertReviewIssues(issueInputs);
 
@@ -310,6 +323,7 @@ export async function handleReviewJob(
             reviewIssueId: null,
             provider: repo.provider,
             bodyMd: summaryMd,
+            outputLanguage,
             filePath: null,
             lineNumber: null,
             isInline: false,
@@ -343,7 +357,7 @@ export async function handleReviewJob(
         const issue = insertedIssues[i]!;
         const finding = finalFindings[i]!;
 
-        const bodyMd = renderBilingualFinding(finding);
+        const bodyMd = renderFinding(finding, outputLanguage);
 
         // a. 插入 review_comment 并发评论（整体失败则 warn 跳过，不中断循环）
         try {
@@ -354,6 +368,7 @@ export async function handleReviewJob(
             reviewIssueId: issue.id,
             provider: repo.provider,
             bodyMd,
+            outputLanguage,
             filePath: finding.filePath,
             lineNumber: finding.endLine,
             isInline: true,

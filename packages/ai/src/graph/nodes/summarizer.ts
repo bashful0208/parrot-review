@@ -20,6 +20,7 @@ export function makeSummarizerNode(adapter: AiAdapter) {
         guidelines: ctx.guidelines,
         projectContext: ctx.projectContext,
         finalFindings: state.finalFindings,
+        outputLanguage: state.outputLanguage,
       });
       return { summary };
     } catch (err) {

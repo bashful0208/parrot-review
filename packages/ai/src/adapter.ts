@@ -3,6 +3,7 @@ import OpenAI from "openai";
 
 import type {
   CritiqueResult,
+  OutputLanguage,
   ReviewContext,
   ReviewFinding,
   ReviewResult,
@@ -89,108 +90,102 @@ export interface AiAdapter {
 
 const MAX_DIFF_CHARS = 80_000;
 
-const SUMMARY_SCHEMA = {
-  type: "object" as const,
-  properties: {
-    summaryMd_en: { type: "string" as const },
-    summaryMd_zh: { type: "string" as const },
-    highlights_en: {
-      type: "array" as const,
-      items: { type: "string" as const },
-    },
-    highlights_zh: {
-      type: "array" as const,
-      items: { type: "string" as const },
-    },
-    mermaid_flow: { type: "string" as const },
-  },
-  required: [
-    "summaryMd_en",
-    "summaryMd_zh",
-    "highlights_en",
-    "highlights_zh",
-    "mermaid_flow",
-  ] as string[],
-};
+function langFields(lang: OutputLanguage) {
+  return lang === "zh-CN"
+    ? { title: "title_zh", summary: "summary_zh", suggestion: "suggestion_zh" }
+    : { title: "title_en", summary: "summary_en", suggestion: "suggestion_en" };
+}
 
-const FINDINGS_SCHEMA = {
-  type: "object" as const,
-  properties: {
-    findings: {
-      type: "array" as const,
-          maxItems: 5,
-      items: {
-        type: "object" as const,
-        properties: {
-          filePath: { type: "string" as const },
-          startLine: { type: "integer" as const },
-          endLine: { type: "integer" as const },
-          side: { type: "string" as const, enum: ["LEFT", "RIGHT"] },
-          issueType: { type: "string" as const, enum: ["quality", "security", "error_handling"] },
-          severity: {
-            type: "string" as const,
-            enum: ["low", "medium", "high", "critical"],
+function buildSummarySchema(lang: OutputLanguage) {
+  const lf = langFields(lang);
+  return {
+    type: "object" as const,
+    properties: {
+      summaryMd_en: { type: "string" as const },
+      summaryMd_zh: { type: "string" as const },
+      highlights_en: { type: "array" as const, items: { type: "string" as const } },
+      highlights_zh: { type: "array" as const, items: { type: "string" as const } },
+      mermaid_flow: { type: "string" as const },
+    },
+    required: [lf.summary === "summaryMd_en" ? "summaryMd_en" : "summaryMd_zh",
+               lf.summary === "summaryMd_en" ? "highlights_en" : "highlights_zh",
+               "mermaid_flow"] as string[],
+  };
+}
+
+function buildFindingsItemRequired(lang: OutputLanguage): string[] {
+  const lf = langFields(lang);
+  return [
+    "filePath", "startLine", "endLine", "side", "issueType", "severity",
+    lf.title, lf.summary, lf.suggestion,
+    "aiPrompt", "confidenceScore",
+  ];
+}
+
+function buildFindingsSchema(lang: OutputLanguage) {
+  return {
+    type: "object" as const,
+    properties: {
+      findings: {
+        type: "array" as const,
+        maxItems: 5,
+        items: {
+          type: "object" as const,
+          properties: {
+            filePath: { type: "string" as const },
+            startLine: { type: "integer" as const },
+            endLine: { type: "integer" as const },
+            side: { type: "string" as const, enum: ["LEFT", "RIGHT"] },
+            issueType: { type: "string" as const, enum: ["quality", "security", "error_handling"] },
+            severity: { type: "string" as const, enum: ["low", "medium", "high", "critical"] },
+            title_en: { type: "string" as const },
+            title_zh: { type: "string" as const },
+            summary_en: { type: "string" as const },
+            summary_zh: { type: "string" as const },
+            suggestion_en: { type: "string" as const },
+            suggestion_zh: { type: "string" as const },
+            aiPrompt: { type: "string" as const },
+            confidenceScore: { type: "number" as const, minimum: 0, maximum: 1 },
           },
-          title_en: { type: "string" as const },
-          title_zh: { type: "string" as const },
-          summary_en: { type: "string" as const },
-          summary_zh: { type: "string" as const },
-          suggestion_en: { type: "string" as const },
-          suggestion_zh: { type: "string" as const },
-          aiPrompt: { type: "string" as const },
-          confidenceScore: { type: "number" as const, minimum: 0, maximum: 1 },
+          required: buildFindingsItemRequired(lang),
         },
-        required: [
-          "filePath",
-          "startLine",
-          "endLine",
-          "side",
-          "issueType",
-          "severity",
-          "title_en",
-          "title_zh",
-          "summary_en",
-          "summary_zh",
-          "suggestion_en",
-          "suggestion_zh",
-          "aiPrompt",
-          "confidenceScore",
-        ] as string[],
+      },
+      hasMore: { type: "boolean" as const },
+    },
+    required: ["findings", "hasMore"] as string[],
+  };
+}
+
+function buildVerifySchema(findingItemRequired: string[]) {
+  return {
+    type: "object" as const,
+    properties: {
+      valid: { type: "boolean" as const },
+      reason: { type: "string" as const },
+      confidenceScore: { type: "number" as const, minimum: 0, maximum: 1 },
+      patchedFinding: {
+        type: "object" as const,
+        properties: buildFindingsSchema("en-US").properties.findings.items.properties,
+        required: findingItemRequired,
       },
     },
-    hasMore: { type: "boolean" as const },
-  },
-  required: ["findings", "hasMore"] as string[],
-};
+    required: ["valid", "reason", "confidenceScore"] as string[],
+  };
+}
 
-const FINDING_ITEM_SCHEMA = FINDINGS_SCHEMA.properties.findings.items;
-
-const VERIFY_SCHEMA = {
-  type: "object" as const,
-  properties: {
-    valid: { type: "boolean" as const },
-    reason: { type: "string" as const },
-    confidenceScore: { type: "number" as const, minimum: 0, maximum: 1 },
-    patchedFinding: {
-      type: "object" as const,
-      properties: FINDING_ITEM_SCHEMA.properties,
-      required: FINDING_ITEM_SCHEMA.required,
+function buildRegenerateSchema(findingItemRequired: string[]) {
+  return {
+    type: "object" as const,
+    properties: {
+      finding: {
+        type: "object" as const,
+        properties: buildFindingsSchema("en-US").properties.findings.items.properties,
+        required: findingItemRequired,
+      },
     },
-  },
-  required: ["valid", "reason", "confidenceScore"] as string[],
-};
-
-const REGENERATE_SCHEMA = {
-  type: "object" as const,
-  properties: {
-    finding: {
-      type: "object" as const,
-      properties: FINDING_ITEM_SCHEMA.properties,
-      required: FINDING_ITEM_SCHEMA.required,
-    },
-  },
-  required: ["finding"] as string[],
-};
+    required: ["finding"] as string[],
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Shared helpers
@@ -212,39 +207,45 @@ function buildDiffText(context: ReviewContext): string {
   return parts.join("\n\n");
 }
 
-const REQUIRED_FINDING_FIELDS = [
-  "filePath",
-  "startLine",
-  "endLine",
-  "title_en",
-  "title_zh",
-  "summary_en",
-  "summary_zh",
-  "suggestion_en",
-  "suggestion_zh",
-  "aiPrompt",
-] as const;
+function requiredFindingFields(lang: OutputLanguage): string[] {
+  const lf = langFields(lang);
+  return ["filePath", "startLine", "endLine", lf.title, lf.summary, lf.suggestion, "aiPrompt"];
+}
 
-function validateAndNormalizeFindings(input: unknown): ReviewFinding[] {
+function fillEmptyLangFields(item: Record<string, unknown>, lang: OutputLanguage): void {
+  if (lang === "zh-CN") {
+    if (!item.title_en) (item as Record<string, unknown>).title_en = "";
+    if (!item.summary_en) (item as Record<string, unknown>).summary_en = "";
+    if (!item.suggestion_en) (item as Record<string, unknown>).suggestion_en = "";
+  } else {
+    if (!item.title_zh) (item as Record<string, unknown>).title_zh = "";
+    if (!item.summary_zh) (item as Record<string, unknown>).summary_zh = "";
+    if (!item.suggestion_zh) (item as Record<string, unknown>).suggestion_zh = "";
+  }
+}
+
+function validateAndNormalizeFindings(input: unknown, lang: OutputLanguage): ReviewFinding[] {
   const raw = input as Record<string, unknown>;
   if (!Array.isArray(raw.findings)) {
     throw new Error("Tool input: 'findings' must be an array");
   }
+  const required = requiredFindingFields(lang);
   return (raw.findings as unknown[])
     .filter((item): item is Record<string, unknown> => {
       if (typeof item !== "object" || item === null) return false;
       const obj = item as Record<string, unknown>;
-      return REQUIRED_FINDING_FIELDS.every(
-        (k) => obj[k] !== undefined && obj[k] !== null
-      );
+      return required.every((k) => obj[k] !== undefined && obj[k] !== null);
     })
-    .map((item) => ({
-      ...(item as unknown as ReviewFinding),
-      confidenceScore: Math.min(
-        1,
-        Math.max(0, (item.confidenceScore as number) ?? 0)
-      ),
-    }));
+    .map((item) => {
+      fillEmptyLangFields(item, lang);
+      return {
+        ...(item as unknown as ReviewFinding),
+        confidenceScore: Math.min(
+          1,
+          Math.max(0, (item.confidenceScore as number) ?? 0)
+        ),
+      };
+    });
 }
 
 function buildUserMessage(context: ReviewContext, diffText: string): string {
@@ -272,17 +273,24 @@ function buildUserMessage(context: ReviewContext, diffText: string): string {
     ? `<project_context>\n${context.projectContext}\n</project_context>\n\n`
     : "";
 
+  const lang = context.outputLanguage;
+  const langInstruction = lang === "zh-CN"
+    ? `请为每个发现输出以下中文字段（不要输出英文标题/摘要/建议）：
+
+- \`title_zh\`: 简短标题（≤ 80 字符）。
+- \`summary_zh\`: 1–3 句话说明问题和影响，引用符号/文件路径时保持原文。
+- \`suggestion_zh\`: 具体的修复建议，代码标识符保持原样。`
+    : `For every finding produce these English fields:
+
+- \`title_en\`: a short title (≤ 80 chars).
+- \`summary_en\`: 1–3 sentences explaining the issue and its impact. Reference symbols / file paths verbatim.
+- \`suggestion_en\`: a concrete fix suggestion. Keep code identifiers in their original form.`;
+
   return `You are reviewing pull request #${context.prNumber} in repository ${context.fullName} (head SHA: ${context.headSha}).
 
 ${focusBlock}${guidelinesBlock}${projectBlock}Please analyze the following diff and call the \`report_findings\` tool with all real issues you find. Only report findings with genuine impact — avoid noise and style nitpicks unless they indicate a real problem.
 
-For every finding produce both English and Simplified Chinese fields:
-
-- \`title_en\` / \`title_zh\`: a short title (≤ 80 chars). The Chinese version is independently idiomatic, not a literal translation.
-- \`summary_en\` / \`summary_zh\`: 1–3 sentences explaining the issue and its impact. Reference symbols / file paths verbatim.
-- \`suggestion_en\` / \`suggestion_zh\`: a concrete fix suggestion. Keep code identifiers in their original form.
-
-Both languages are required for every finding. Do not leave either side empty.
+${langInstruction}
 
 Additionally, every finding MUST include \`aiPrompt\`: a detailed, copy-pasteable English instruction targeted at an AI coding agent (Cursor / Claude Code / similar) that, on its own, gives the agent enough context to apply the fix end-to-end. Structure it with blank lines between logical sections — do NOT use markdown headings or bullet lists. It must include:
 
@@ -332,7 +340,7 @@ function buildSummaryUserMessage(context: ReviewContext, diffText: string): stri
 ${context.finalFindings
   .map(
     (f, i) =>
-      `${i + 1}. [${f.severity}/${f.issueType}] ${f.filePath}:${f.startLine}–${f.endLine} — ${f.title_en}`
+      `${i + 1}. [${f.severity}/${f.issueType}] ${f.filePath}:${f.startLine}–${f.endLine} — ${f.title_en || f.title_zh}`
   )
   .join("\n")}
 </verified_findings>
@@ -341,6 +349,19 @@ These are the final, auditor-verified findings. Reference them when describing r
 
 `
       : "";
+
+  const lang = context.outputLanguage;
+  const langInstruction = lang === "zh-CN"
+    ? `调用 \`report_summary\` 工具，提供：
+
+- \`summaryMd_zh\`: 简洁的中文 Markdown 概述（3-8 句），说明本 PR 改了什么、为什么改。引用文件/模块名。不要编造 diff 中没有的功能。
+- \`highlights_zh\`: 2-6 条中文要点，列出最重要的变更、风险或需要重点关注的地方。
+- \`mermaid_flow\`: 仅当 diff 引入或修改了可辨识的执行流、调用链或状态转换时，输出 mermaid 块（例如 \`\`\`mermaid sequenceDiagram ...\`\`\`），否则输出空字符串。`
+    : `Call the \`report_summary\` tool with:
+
+- \`summaryMd_en\`: a concise English Markdown overview (3–8 sentences) of what this PR changes and why. Reference file/module names where useful. Do not invent functionality not in the diff.
+- \`highlights_en\`: 2–6 short bullet strings naming the most important changes, risks, or things to double-check.
+- \`mermaid_flow\`: if and only if the diff introduces or modifies a discernible execution flow, call chain, or state transition, output a mermaid block (e.g. \`\`\`mermaid sequenceDiagram ...\`\`\`). Otherwise output an empty string.`;
 
   return `You are summarizing pull request #${context.prNumber} in repository ${context.fullName} (head SHA: ${context.headSha}).
 
@@ -356,31 +377,32 @@ ${findingsBlock}<diff>
 ${diffText}
 </diff>
 
-Call the \`report_summary\` tool with:
-
-- \`summaryMd_en\`: a concise English Markdown overview (3–8 sentences) of what this PR changes and why. Reference file/module names where useful. Do not invent functionality not in the diff.
-- \`summaryMd_zh\`: 等价的中文 Markdown 概述（3-8 句），独立成文，不是逐字翻译英文版本；保留专有名词和文件路径。
-- \`highlights_en\`: 2–6 short bullet strings naming the most important changes, risks, or things to double-check.
-- \`highlights_zh\`: 2-6 条对应中文要点，独立成文。
-- \`mermaid_flow\`: if and only if the diff introduces or modifies a discernible execution flow, call chain, or state transition, output a mermaid block (e.g. \`\`\`mermaid sequenceDiagram ...\`\`\`). Otherwise output an empty string.`;
+${langInstruction}`;
 }
 
-const SYSTEM_PROMPT =
-  "You are a senior code reviewer. Your job is to identify real, impactful issues in code changes — bugs, security vulnerabilities, logic errors, and serious quality problems. Avoid reporting trivial style issues. Be precise about file paths and line numbers. " +
-  "You produce every finding bilingually: English and Simplified Chinese versions of the title, summary, and suggestion that are independently idiomatic — not literal translations. Code identifiers, symbols, and file paths stay in their original form on both sides.";
+function buildSystemPrompt(lang: OutputLanguage): string {
+  const langNote = lang === "zh-CN"
+    ? "你必须使用简体中文输出标题、摘要和建议。代码标识符、符号和文件路径保持原文。"
+    : "You produce findings in English. Code identifiers, symbols, and file paths stay in their original form.";
+  return "You are a senior code reviewer. Your job is to identify real, impactful issues in code changes — bugs, security vulnerabilities, logic errors, and serious quality problems. Avoid reporting trivial style issues. Be precise about file paths and line numbers. " + langNote;
+}
 
-const SUMMARY_SYSTEM_PROMPT =
-  "You are a senior code reviewer summarizing a pull request for a teammate. " +
-  "Be accurate, specific, and concise. Describe what changed and why; flag noteworthy risks. " +
-  "Do not fabricate behavior that is not in the diff. " +
-  "You produce both English and Simplified Chinese outputs that are independently idiomatic — not literal translations. " +
-  "When the diff introduces or alters a clear execution flow, call chain, or state transition, output a mermaid diagram in the mermaid_flow field; otherwise leave it empty.";
+function buildSummarySystemPrompt(lang: OutputLanguage): string {
+  const langNote = lang === "zh-CN"
+    ? "你必须使用简体中文输出摘要和要点。"
+    : "You produce English outputs.";
+  return "You are a senior code reviewer summarizing a pull request for a teammate. " +
+    "Be accurate, specific, and concise. Describe what changed and why; flag noteworthy risks. " +
+    "Do not fabricate behavior that is not in the diff. " +
+    langNote + " " +
+    "When the diff introduces or alters a clear execution flow, call chain, or state transition, output a mermaid diagram in the mermaid_flow field; otherwise leave it empty.";
+}
 
 const VERIFY_SYSTEM_PROMPT =
   "You are a code review auditor. Your only job is to verify whether a draft finding is correct and useful. Be skeptical: reject hallucinated bugs, mismatched line ranges, and findings whose suggestion does not actually fix the problem. When the finding is mostly right but flawed, return valid=false with patchedFinding fixed.";
 
 const REGENERATE_SYSTEM_PROMPT =
-  "You are a code reviewer fixing a draft finding that an auditor rejected. Read the auditor's reason carefully, then rewrite the finding so the issue is real, the line range matches the diff, and bilingual fields are complete. Return the corrected finding via the report_finding tool.";
+  "You are a code reviewer fixing a draft finding that an auditor rejected. Read the auditor's reason carefully, then rewrite the finding so the issue is real, the line range matches the diff, and language fields are complete. Return the corrected finding via the report_finding tool.";
 
 function buildVerifyUserMessage(
   finding: ReviewFinding,
@@ -389,6 +411,10 @@ function buildVerifyUserMessage(
   const targetDiff =
     context.diffs.find((d) => d.filePath === finding.filePath)?.patch ??
     "(diff not found)";
+  const lang = context.outputLanguage;
+  const langFieldNames = lang === "zh-CN"
+    ? "title_zh / summary_zh / suggestion_zh"
+    : "title_en / summary_en / suggestion_en";
   return `You are auditing a code review finding for pull request #${context.prNumber} in ${context.fullName}.
 
 Decide whether the finding below is a real, well-formed issue worth posting to the developer.
@@ -398,7 +424,7 @@ A finding should be REJECTED (valid=false) if:
 - the file path / line range does not match the actual change,
 - the severity / issueType is grossly mismatched,
 - the suggestion would not fix the problem or would make it worse,
-- the bilingual fields are missing or one side is empty.
+- the ${langFieldNames} fields are missing or empty.
 
 If the finding is mostly correct but has fixable defects, set valid=false AND populate patchedFinding with a corrected full ReviewFinding object.
 
@@ -444,7 +470,7 @@ ${targetDiff}
 \`\`\`
 </diff_for_${finding.filePath}>
 
-Rewrite the finding to address the auditor's reason. Keep the bilingual structure; do not regress existing-good fields. Call the \`report_finding\` tool with the corrected finding.`;
+Rewrite the finding to address the auditor's reason. Keep the language fields; do not regress existing-good fields. Call the \`report_finding\` tool with the corrected finding.`;
 }
 
 function validateAndNormalizeCritique(input: unknown): CritiqueResult {
@@ -471,7 +497,7 @@ function validateAndNormalizeCritique(input: unknown): CritiqueResult {
   };
 }
 
-function validateAndNormalizeRegenerated(input: unknown): ReviewFinding {
+function validateAndNormalizeRegenerated(input: unknown, lang: OutputLanguage): ReviewFinding {
   if (typeof input !== "object" || input === null) {
     throw new Error("Tool input: report_finding expected an object");
   }
@@ -480,11 +506,13 @@ function validateAndNormalizeRegenerated(input: unknown): ReviewFinding {
   if (!finding || typeof finding !== "object") {
     throw new Error("Tool input: 'finding' must be an object");
   }
-  for (const k of REQUIRED_FINDING_FIELDS) {
+  const required = requiredFindingFields(lang);
+  for (const k of required) {
     if (finding[k] === undefined || finding[k] === null) {
       throw new Error(`Tool input: regenerated finding missing field '${k}'`);
     }
   }
+  fillEmptyLangFields(finding, lang);
   return {
     ...(finding as unknown as ReviewFinding),
     confidenceScore: Math.min(
@@ -571,28 +599,31 @@ function extractJsonFromText(text: string | null | undefined): unknown {
   return undefined;
 }
 
-function validateAndNormalizeSummary(input: unknown): ReviewSummary {
+function validateAndNormalizeSummary(input: unknown, lang: OutputLanguage): ReviewSummary {
   if (typeof input !== "object" || input === null) {
     throw new Error("Tool input: report_summary expected an object");
   }
   const obj = input as Record<string, unknown>;
-  const en = obj.summaryMd_en;
-  const zh = obj.summaryMd_zh;
+  const en = obj.summaryMd_en as string | undefined;
+  const zh = obj.summaryMd_zh as string | undefined;
   const hiEn = obj.highlights_en;
   const hiZh = obj.highlights_zh;
   const mermaid = obj.mermaid_flow;
 
-  if (typeof en !== "string" || en.trim() === "") {
-    throw new Error("Tool input: 'summaryMd_en' must be a non-empty string");
-  }
-  if (typeof zh !== "string" || zh.trim() === "") {
-    throw new Error("Tool input: 'summaryMd_zh' must be a non-empty string");
-  }
-  if (!Array.isArray(hiEn)) {
-    throw new Error("Tool input: 'highlights_en' must be an array");
-  }
-  if (!Array.isArray(hiZh)) {
-    throw new Error("Tool input: 'highlights_zh' must be an array");
+  if (lang === "zh-CN") {
+    if (typeof zh !== "string" || zh.trim() === "") {
+      throw new Error("Tool input: 'summaryMd_zh' must be a non-empty string");
+    }
+    if (!Array.isArray(hiZh)) {
+      throw new Error("Tool input: 'highlights_zh' must be an array");
+    }
+  } else {
+    if (typeof en !== "string" || en.trim() === "") {
+      throw new Error("Tool input: 'summaryMd_en' must be a non-empty string");
+    }
+    if (!Array.isArray(hiEn)) {
+      throw new Error("Tool input: 'highlights_en' must be an array");
+    }
   }
   if (typeof mermaid !== "string") {
     throw new Error(
@@ -601,15 +632,15 @@ function validateAndNormalizeSummary(input: unknown): ReviewSummary {
   }
 
   return {
-    summaryMd_en: en,
-    summaryMd_zh: zh,
-    highlights_en: hiEn.filter(
-      (h): h is string => typeof h === "string" && h.trim() !== ""
-    ),
-    highlights_zh: hiZh.filter(
-      (h): h is string => typeof h === "string" && h.trim() !== ""
-    ),
-    mermaid_flow: mermaid,
+    summaryMd_en: typeof en === "string" ? en : "",
+    summaryMd_zh: typeof zh === "string" ? zh : "",
+    highlights_en: Array.isArray(hiEn)
+      ? hiEn.filter((h): h is string => typeof h === "string" && h.trim() !== "")
+      : [],
+    highlights_zh: Array.isArray(hiZh)
+      ? hiZh.filter((h): h is string => typeof h === "string" && h.trim() !== "")
+      : [],
+    mermaid_flow: mermaid as string,
   };
 }
 
@@ -617,30 +648,39 @@ function validateAndNormalizeSummary(input: unknown): ReviewSummary {
 // AnthropicAdapter
 // ---------------------------------------------------------------------------
 
-const ANTHROPIC_TOOL: Anthropic.Tool = {
-  name: "report_findings",
-  description: "Report code review findings for the given pull request diff.",
-  input_schema: FINDINGS_SCHEMA as Anthropic.Tool["input_schema"],
-};
+function makeAnthropicFindingsTool(lang: OutputLanguage): Anthropic.Tool {
+  return {
+    name: "report_findings",
+    description: "Report code review findings for the given pull request diff.",
+    input_schema: buildFindingsSchema(lang) as Anthropic.Tool["input_schema"],
+  };
+}
 
-const ANTHROPIC_SUMMARY_TOOL: Anthropic.Tool = {
-  name: "report_summary",
-  description:
-    "Report a concise overall summary and key highlights for the given pull request diff.",
-  input_schema: SUMMARY_SCHEMA as Anthropic.Tool["input_schema"],
-};
+function makeAnthropicSummaryTool(lang: OutputLanguage): Anthropic.Tool {
+  return {
+    name: "report_summary",
+    description: "Report a concise overall summary and key highlights for the given pull request diff.",
+    input_schema: buildSummarySchema(lang) as Anthropic.Tool["input_schema"],
+  };
+}
 
-const ANTHROPIC_VERIFY_TOOL: Anthropic.Tool = {
-  name: "verify_finding",
-  description: "Audit a draft code review finding and return verdict.",
-  input_schema: VERIFY_SCHEMA as Anthropic.Tool["input_schema"],
-};
+function makeAnthropicVerifyTool(lang: OutputLanguage): Anthropic.Tool {
+  const itemRequired = buildFindingsItemRequired(lang);
+  return {
+    name: "verify_finding",
+    description: "Audit a draft code review finding and return verdict.",
+    input_schema: buildVerifySchema(itemRequired) as Anthropic.Tool["input_schema"],
+  };
+}
 
-const ANTHROPIC_REGENERATE_TOOL: Anthropic.Tool = {
-  name: "report_finding",
-  description: "Return a corrected single finding after auditor rejection.",
-  input_schema: REGENERATE_SCHEMA as Anthropic.Tool["input_schema"],
-};
+function makeAnthropicRegenerateTool(lang: OutputLanguage): Anthropic.Tool {
+  const itemRequired = buildFindingsItemRequired(lang);
+  return {
+    name: "report_finding",
+    description: "Return a corrected single finding after auditor rejection.",
+    input_schema: buildRegenerateSchema(itemRequired) as Anthropic.Tool["input_schema"],
+  };
+}
 
 export class AnthropicAdapter implements AiAdapter {
   private readonly client: Anthropic;
@@ -663,6 +703,9 @@ export class AnthropicAdapter implements AiAdapter {
     if (!diffText) {
       return { findings: [] };
     }
+    const lang = context.outputLanguage;
+    const findingsTool = makeAnthropicFindingsTool(lang);
+    const systemPrompt = buildSystemPrompt(lang);
 
     return withUsageInstrumentation(
       buildUsageCtx(context, this.provider, this.model, "review_findings"),
@@ -700,9 +743,9 @@ export class AnthropicAdapter implements AiAdapter {
               const response = await this.client.messages.create({
                 model: this.model,
                 max_tokens: 16384,
-                system: SYSTEM_PROMPT,
+                system: systemPrompt,
                 messages: [{ role: "user", content: retryMsg }],
-                tools: [ANTHROPIC_TOOL],
+                tools: [findingsTool],
                 tool_choice: { type: "tool", name: "report_findings" },
               });
 
@@ -751,7 +794,7 @@ export class AnthropicAdapter implements AiAdapter {
 
           const data = parsed as Record<string, unknown>;
           const hasMore = data.hasMore === true;
-          const newFindings = validateAndNormalizeFindings(parsed);
+          const newFindings = validateAndNormalizeFindings(parsed, lang);
           log("info", "Anthropic batch round parsed", {
             prNumber: context.prNumber,
             round,
@@ -790,16 +833,20 @@ export class AnthropicAdapter implements AiAdapter {
   ): Promise<ReviewSummaryResult> {
     const diffText = buildDiffText(context);
     if (!diffText) {
+      const isZh = context.outputLanguage === "zh-CN";
       return {
         summary: {
-          summaryMd_en: "_No textual diff to summarize._",
-          summaryMd_zh: "_本次 PR 没有可用于总结的代码 diff。_",
+          summaryMd_en: isZh ? "" : "_No textual diff to summarize._",
+          summaryMd_zh: isZh ? "_本次 PR 没有可用于总结的代码 diff。_" : "",
           highlights_en: [],
           highlights_zh: [],
           mermaid_flow: "",
         },
       };
     }
+    const lang = context.outputLanguage;
+    const summaryTool = makeAnthropicSummaryTool(lang);
+    const systemPrompt = buildSummarySystemPrompt(lang);
 
     return withUsageInstrumentation(
       buildUsageCtx(context, this.provider, this.model, "review_summary"),
@@ -807,11 +854,11 @@ export class AnthropicAdapter implements AiAdapter {
         const response = await this.client.messages.create({
           model: this.model,
           max_tokens: 16384,
-          system: SUMMARY_SYSTEM_PROMPT,
+          system: systemPrompt,
           messages: [
             { role: "user", content: buildSummaryUserMessage(context, diffText) },
           ],
-          tools: [ANTHROPIC_SUMMARY_TOOL],
+          tools: [summaryTool],
           tool_choice: { type: "tool", name: "report_summary" },
         });
 
@@ -831,7 +878,7 @@ export class AnthropicAdapter implements AiAdapter {
           );
         }
 
-        const summary = validateAndNormalizeSummary(toolUseBlock.input);
+        const summary = validateAndNormalizeSummary(toolUseBlock.input, lang);
         return {
           result: { summary },
           outcome: {
@@ -851,6 +898,8 @@ export class AnthropicAdapter implements AiAdapter {
     finding: ReviewFinding,
     context: ReviewContext
   ): Promise<CritiqueResult> {
+    const lang = context.outputLanguage;
+    const verifyTool = makeAnthropicVerifyTool(lang);
     return withUsageInstrumentation(
       {
         ...buildUsageCtx(context, this.provider, this.model, "verify_finding"),
@@ -865,7 +914,7 @@ export class AnthropicAdapter implements AiAdapter {
           messages: [
             { role: "user", content: buildVerifyUserMessage(finding, context) },
           ],
-          tools: [ANTHROPIC_VERIFY_TOOL],
+          tools: [verifyTool],
           tool_choice: { type: "tool", name: "verify_finding" },
         });
 
@@ -899,6 +948,8 @@ export class AnthropicAdapter implements AiAdapter {
     critique: CritiqueResult,
     context: ReviewContext
   ): Promise<ReviewFinding> {
+    const lang = context.outputLanguage;
+    const regenerateTool = makeAnthropicRegenerateTool(lang);
     return withUsageInstrumentation(
       {
         ...buildUsageCtx(context, this.provider, this.model, "regenerate_finding"),
@@ -916,7 +967,7 @@ export class AnthropicAdapter implements AiAdapter {
               content: buildRegenerateUserMessage(finding, critique, context),
             },
           ],
-          tools: [ANTHROPIC_REGENERATE_TOOL],
+          tools: [regenerateTool],
           tool_choice: { type: "tool", name: "report_finding" },
         });
 
@@ -929,7 +980,7 @@ export class AnthropicAdapter implements AiAdapter {
             "Anthropic API did not return expected tool_use block for report_finding"
           );
         }
-        const fixed = validateAndNormalizeRegenerated(toolUseBlock.input);
+        const fixed = validateAndNormalizeRegenerated(toolUseBlock.input, lang);
         return {
           result: fixed,
           outcome: {
@@ -950,42 +1001,51 @@ export class AnthropicAdapter implements AiAdapter {
 // OpenAICompatibleAdapter
 // ---------------------------------------------------------------------------
 
-const OPENAI_TOOL: OpenAI.Chat.Completions.ChatCompletionTool = {
-  type: "function",
-  function: {
-    name: "report_findings",
-    description: "Report code review findings for the given pull request diff.",
-    parameters: FINDINGS_SCHEMA,
-  },
-};
+function makeOpenAIFindingsTool(lang: OutputLanguage): OpenAI.Chat.Completions.ChatCompletionTool {
+  return {
+    type: "function",
+    function: {
+      name: "report_findings",
+      description: "Report code review findings for the given pull request diff.",
+      parameters: buildFindingsSchema(lang),
+    },
+  };
+}
 
-const OPENAI_SUMMARY_TOOL: OpenAI.Chat.Completions.ChatCompletionTool = {
-  type: "function",
-  function: {
-    name: "report_summary",
-    description:
-      "Report a concise overall summary and key highlights for the given pull request diff.",
-    parameters: SUMMARY_SCHEMA,
-  },
-};
+function makeOpenAISummaryTool(lang: OutputLanguage): OpenAI.Chat.Completions.ChatCompletionTool {
+  return {
+    type: "function",
+    function: {
+      name: "report_summary",
+      description: "Report a concise overall summary and key highlights for the given pull request diff.",
+      parameters: buildSummarySchema(lang),
+    },
+  };
+}
 
-const OPENAI_VERIFY_TOOL: OpenAI.Chat.Completions.ChatCompletionTool = {
-  type: "function",
-  function: {
-    name: "verify_finding",
-    description: "Audit a draft code review finding and return verdict.",
-    parameters: VERIFY_SCHEMA,
-  },
-};
+function makeOpenAIVerifyTool(lang: OutputLanguage): OpenAI.Chat.Completions.ChatCompletionTool {
+  const itemRequired = buildFindingsItemRequired(lang);
+  return {
+    type: "function",
+    function: {
+      name: "verify_finding",
+      description: "Audit a draft code review finding and return verdict.",
+      parameters: buildVerifySchema(itemRequired),
+    },
+  };
+}
 
-const OPENAI_REGENERATE_TOOL: OpenAI.Chat.Completions.ChatCompletionTool = {
-  type: "function",
-  function: {
-    name: "report_finding",
-    description: "Return a corrected single finding after auditor rejection.",
-    parameters: REGENERATE_SCHEMA,
-  },
-};
+function makeOpenAIRegenerateTool(lang: OutputLanguage): OpenAI.Chat.Completions.ChatCompletionTool {
+  const itemRequired = buildFindingsItemRequired(lang);
+  return {
+    type: "function",
+    function: {
+      name: "report_finding",
+      description: "Return a corrected single finding after auditor rejection.",
+      parameters: buildRegenerateSchema(itemRequired),
+    },
+  };
+}
 
 export class OpenAICompatibleAdapter implements AiAdapter {
   private readonly client: OpenAI;
@@ -1023,6 +1083,9 @@ export class OpenAICompatibleAdapter implements AiAdapter {
     if (!diffText) {
       return { findings: [] };
     }
+    const lang = context.outputLanguage;
+    const findingsTool = makeOpenAIFindingsTool(lang);
+    const systemPrompt = buildSystemPrompt(lang);
 
     return withUsageInstrumentation(
       buildUsageCtx(context, this.provider, this.model, "review_findings"),
@@ -1061,10 +1124,10 @@ export class OpenAICompatibleAdapter implements AiAdapter {
                 model: this.model,
                 max_tokens: 16384,
                 messages: [
-                  { role: "system", content: SYSTEM_PROMPT },
+                  { role: "system", content: systemPrompt },
                   { role: "user", content: retryMsg },
                 ],
-                tools: [OPENAI_TOOL],
+                tools: [findingsTool],
                 tool_choice: this.toolChoice(),
               });
 
@@ -1132,7 +1195,7 @@ export class OpenAICompatibleAdapter implements AiAdapter {
 
           const data = parsed as Record<string, unknown>;
           const hasMore = data.hasMore === true;
-          const newFindings = validateAndNormalizeFindings(parsed);
+          const newFindings = validateAndNormalizeFindings(parsed, lang);
           log("info", "OpenAI batch round parsed", {
             prNumber: context.prNumber,
             round,
@@ -1171,16 +1234,20 @@ export class OpenAICompatibleAdapter implements AiAdapter {
   ): Promise<ReviewSummaryResult> {
     const diffText = buildDiffText(context);
     if (!diffText) {
+      const isZh = context.outputLanguage === "zh-CN";
       return {
         summary: {
-          summaryMd_en: "_No textual diff to summarize._",
-          summaryMd_zh: "_本次 PR 没有可用于总结的代码 diff。_",
+          summaryMd_en: isZh ? "" : "_No textual diff to summarize._",
+          summaryMd_zh: isZh ? "_本次 PR 没有可用于总结的代码 diff。_" : "",
           highlights_en: [],
           highlights_zh: [],
           mermaid_flow: "",
         },
       };
     }
+    const lang = context.outputLanguage;
+    const summaryTool = makeOpenAISummaryTool(lang);
+    const systemPrompt = buildSummarySystemPrompt(lang);
 
     return withUsageInstrumentation(
       buildUsageCtx(context, this.provider, this.model, "review_summary"),
@@ -1189,13 +1256,13 @@ export class OpenAICompatibleAdapter implements AiAdapter {
           model: this.model,
           max_tokens: 16384,
           messages: [
-            { role: "system", content: SUMMARY_SYSTEM_PROMPT },
+            { role: "system", content: systemPrompt },
             {
               role: "user",
               content: buildSummaryUserMessage(context, diffText),
             },
           ],
-          tools: [OPENAI_SUMMARY_TOOL],
+          tools: [summaryTool],
           tool_choice: this.toolChoice(),
         });
 
@@ -1238,7 +1305,7 @@ export class OpenAICompatibleAdapter implements AiAdapter {
           });
         }
 
-        const summary = validateAndNormalizeSummary(parsed);
+        const summary = validateAndNormalizeSummary(parsed, lang);
         return {
           result: { summary },
           outcome: {
@@ -1258,6 +1325,8 @@ export class OpenAICompatibleAdapter implements AiAdapter {
     finding: ReviewFinding,
     context: ReviewContext
   ): Promise<CritiqueResult> {
+    const lang = context.outputLanguage;
+    const verifyTool = makeOpenAIVerifyTool(lang);
     return withUsageInstrumentation(
       {
         ...buildUsageCtx(context, this.provider, this.model, "verify_finding"),
@@ -1272,7 +1341,7 @@ export class OpenAICompatibleAdapter implements AiAdapter {
             { role: "system", content: VERIFY_SYSTEM_PROMPT },
             { role: "user", content: buildVerifyUserMessage(finding, context) },
           ],
-          tools: [OPENAI_VERIFY_TOOL],
+          tools: [verifyTool],
           tool_choice: this.toolChoice(),
         });
 
@@ -1326,6 +1395,8 @@ export class OpenAICompatibleAdapter implements AiAdapter {
     critique: CritiqueResult,
     context: ReviewContext
   ): Promise<ReviewFinding> {
+    const lang = context.outputLanguage;
+    const regenerateTool = makeOpenAIRegenerateTool(lang);
     return withUsageInstrumentation(
       {
         ...buildUsageCtx(context, this.provider, this.model, "regenerate_finding"),
@@ -1343,7 +1414,7 @@ export class OpenAICompatibleAdapter implements AiAdapter {
               content: buildRegenerateUserMessage(finding, critique, context),
             },
           ],
-          tools: [OPENAI_REGENERATE_TOOL],
+          tools: [regenerateTool],
           tool_choice: this.toolChoice(),
         });
 
@@ -1376,7 +1447,7 @@ export class OpenAICompatibleAdapter implements AiAdapter {
             );
           }
         }
-        const fixed = validateAndNormalizeRegenerated(parsed);
+        const fixed = validateAndNormalizeRegenerated(parsed, lang);
         return {
           result: fixed,
           outcome: {

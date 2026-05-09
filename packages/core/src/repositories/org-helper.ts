@@ -39,3 +39,21 @@ export async function getOrganizationName(
   );
   return result.rows[0]?.name ?? null;
 }
+
+export async function getOrgOutputLanguage(orgId: string): Promise<string> {
+  const result = await getPool().query<{ default_output_language: string }>(
+    `select default_output_language::text from public.organizations where id = $1`,
+    [orgId]
+  );
+  return result.rows[0]?.default_output_language ?? "zh-CN";
+}
+
+export async function updateOrgOutputLanguage(
+  orgId: string,
+  language: string
+): Promise<void> {
+  await getPool().query(
+    `update public.organizations set default_output_language = $2::public.output_language, updated_at = now() where id = $1`,
+    [orgId, language]
+  );
+}

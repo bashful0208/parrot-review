@@ -26,10 +26,12 @@ const ctxRef: ReviewContextRef = {
   pullRequestId: "p",
   reviewRunId: "rr",
   providerConfigId: "pc",
+  outputLanguage: "en-US",
 };
 
 const baseState = (draftFindings: ReviewFinding[]): ReviewGraphStateType => ({
   reviewRunId: "rr",
+  outputLanguage: "en-US",
   context: ctxRef,
   draftFindings,
   reviewerErrors: [],
