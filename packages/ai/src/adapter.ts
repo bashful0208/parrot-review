@@ -286,22 +286,47 @@ function buildUserMessage(context: ReviewContext, diffText: string): string {
 - \`summary_en\`: 1–3 sentences explaining the issue and its impact. Reference symbols / file paths verbatim.
 - \`suggestion_en\`: a concrete fix suggestion. Keep code identifiers in their original form.`;
 
-  return `You are reviewing pull request #${context.prNumber} in repository ${context.fullName} (head SHA: ${context.headSha}).
+  	const isZh = lang === "zh-CN";
 
-${focusBlock}${guidelinesBlock}${projectBlock}Please analyze the following diff and call the \`report_findings\` tool with all real issues you find. Only report findings with genuine impact — avoid noise and style nitpicks unless they indicate a real problem.
+	const aiPromptInstruction = isZh
+	    ? `每个发现必须包含 \`aiPrompt\`：一份详细、可直接复制粘贴的中文指令，面向 AI 编程助手（Cursor / Claude Code 等），使其无需额外上下文即可端到端完成修复。用空行分隔逻辑段落——不要使用 Markdown 标题或无序列表。必须包括：
 
-${langInstruction}
+- 精确的文件路径（直接使用 diff 中的路径，不加 \`@\` 前缀），并通过行号范围或关键符号缩小范围。
+- 准确描述当前代码的问题所在（失败模式或不变性违背），以便 AI 在修改前验证问题确实存在。
+- 具体的修复方案——新变量/数据结构的名称、精确的控制流变更、需要引入的导入或辅助函数，以及修复后代码的高层次形态。
+- AI 修复后可执行的显式验证步骤（需要检查的属性、需要添加或运行的测试）。
 
-Additionally, every finding MUST include \`aiPrompt\`: a detailed, copy-pasteable English instruction targeted at an AI coding agent (Cursor / Claude Code / similar) that, on its own, gives the agent enough context to apply the fix end-to-end. Structure it with blank lines between logical sections — do NOT use markdown headings or bullet lists. It must include:
+目标 80–250 中文字。优先具体而非泛泛而谈。不要粘贴大段代码块；用文字描述变更，通过标识符名称引用。`
+	    : `Additionally, every finding MUST include \`aiPrompt\`: a detailed, copy-pasteable English instruction targeted at an AI coding agent (Cursor / Claude Code / similar) that, on its own, gives the agent enough context to apply the fix end-to-end. Structure it with blank lines between logical sections — do NOT use markdown headings or bullet lists. It must include:
 
 - The exact file path (use the path verbatim from the diff, no \`@\` prefix), narrowed by line range or anchor symbol.
 - A precise description of what is wrong with the current code (the failure mode or invariant violation), so the agent can verify before changing anything.
 - A concrete description of the fix — names of new variables / data structures, the exact control-flow change, any imports or helpers to use, and what the post-fix code should look like at a high level.
 - An explicit verification step the agent can do after the fix (a property to check, a test to add or run).
 
-Aim for 80–250 English words. Prefer specifics over generality. Do not paste large code blocks; describe the change in prose, referring to identifiers by name.
+Aim for 80–250 English words. Prefer specifics over generality. Do not paste large code blocks; describe the change in prose, referring to identifiers by name.`;
 
-Report at most 5 findings in this batch. If there are more issues beyond those 5, set "hasMore": true so the system will prompt you for the next batch. If you have exhausted all real issues, set "hasMore": false.
+	const batchInstruction = isZh
+	    ? `本次最多报告 5 个发现。如果还有更多问题，请将 "hasMore" 设为 true，系统会在下一批继续提示你。如果已穷尽所有真实问题，请将 "hasMore" 设为 false。`
+	    : `Report at most 5 findings in this batch. If there are more issues beyond those 5, set "hasMore": true so the system will prompt you for the next batch. If you have exhausted all real issues, set "hasMore": false.`;
+
+	const introText = isZh
+	    ? `你正在审查仓库 ${context.fullName} 的 PR #${context.prNumber}（HEAD SHA: ${context.headSha}）。`
+	    : `You are reviewing pull request #${context.prNumber} in repository ${context.fullName} (head SHA: ${context.headSha}).`;
+
+	const analyzePrompt = isZh
+	    ? `请分析以下 diff 并调用 \`report_findings\` 工具报告所有真实问题。只报告有实际影响的问题——避免无意义的代码风格挑剔，除非它们确实表明了真实问题。`
+	    : `Please analyze the following diff and call the \`report_findings\` tool with all real issues you find. Only report findings with genuine impact — avoid noise and style nitpicks unless they indicate a real problem.`;
+
+	return `${introText}
+
+${focusBlock}${guidelinesBlock}${projectBlock}${analyzePrompt}
+
+${langInstruction}
+
+${aiPromptInstruction}
+
+${batchInstruction}
 
 <diff>
 ${diffText}
@@ -313,17 +338,31 @@ function buildContinuationMessage(
   diffText: string,
   previousFindings: ReviewFinding[]
 ): string {
+  const isZh = context.outputLanguage === "zh-CN";
   const summary = previousFindings
-    .map((f, i) => `${i + 1}. [${f.severity}/${f.issueType}] ${f.filePath}:${f.startLine} — ${f.title_en}`)
-    .join("\n");
+    .map((f, i) => {
+    const titleField = isZh ? "title_zh" : "title_en";
+    const title = (f as any)[titleField] || f.title_en;
+    return `${i + 1}. [${f.severity}/${f.issueType}] ${f.filePath}:${f.startLine} — ${title}`;
+  }).join("\n");
 
-  return `You have already reported the following ${previousFindings.length} issue(s):
+  const headerText = isZh
+    ? `你已经报告了以下 ${previousFindings.length} 个问题：`
+    : `You have already reported the following ${previousFindings.length} issue(s):`;
+
+  const instructionText = isZh
+    ? `继续审查以下相同的 diff。找出上述未列出的新问题。避免重复。
+
+本批最多再报告 5 个发现。如果还有更多问题，请将 "hasMore" 设为 true。如果已穷尽所有真实问题，请将 "hasMore" 设为 false 且 "findings" 设为 []。`
+    : `Continue reviewing the SAME diff below. Find additional issues NOT listed above. Avoid duplicates.
+
+Report up to 5 more findings in this batch. If you find more issues beyond these, set "hasMore": true. If you have exhausted all real issues, set "hasMore": false and "findings": [].`;
+
+  return `${headerText}
 
 ${summary}
 
-Continue reviewing the SAME diff below. Find additional issues NOT listed above. Avoid duplicates.
-
-Report up to 5 more findings in this batch. If you find more issues beyond these, set "hasMore": true. If you have exhausted all real issues, set "hasMore": false and "findings": [].
+${instructionText}
 
 <diff>
 ${diffText}
@@ -398,11 +437,17 @@ function buildSummarySystemPrompt(lang: OutputLanguage): string {
     "When the diff introduces or alters a clear execution flow, call chain, or state transition, output a mermaid diagram in the mermaid_flow field; otherwise leave it empty.";
 }
 
-const VERIFY_SYSTEM_PROMPT =
-  "You are a code review auditor. Your only job is to verify whether a draft finding is correct and useful. Be skeptical: reject hallucinated bugs, mismatched line ranges, and findings whose suggestion does not actually fix the problem. When the finding is mostly right but flawed, return valid=false with patchedFinding fixed.";
+function buildVerifySystemPrompt(lang: OutputLanguage): string {
+  return lang === "zh-CN"
+    ? "你是一名代码审查审计员。你的唯一职责是验证审查发现是否准确、有用。保持怀疑态度：拒绝幻觉 bug、行号不匹配、以及建议无法真正修复问题的发现。如果发现大体正确但存在缺陷，返回 valid=false 并附带修正后的 patchedFinding。"
+    : "You are a code review auditor. Your only job is to verify whether a draft finding is correct and useful. Be skeptical: reject hallucinated bugs, mismatched line ranges, and findings whose suggestion does not actually fix the problem. When the finding is mostly right but flawed, return valid=false with patchedFinding fixed.";
+}
 
-const REGENERATE_SYSTEM_PROMPT =
-  "You are a code reviewer fixing a draft finding that an auditor rejected. Read the auditor's reason carefully, then rewrite the finding so the issue is real, the line range matches the diff, and language fields are complete. Return the corrected finding via the report_finding tool.";
+function buildRegenerateSystemPrompt(lang: OutputLanguage): string {
+  return lang === "zh-CN"
+    ? "你是一名代码审查员，正在修复被审计员驳回的发现。仔细阅读审计员给出的原因，然后重写该发现，确保问题真实存在、行号范围与 diff 匹配、语言字段完整。通过 report_finding 工具返回修正后的发现。"
+    : "You are a code reviewer fixing a draft finding that an auditor rejected. Read the auditor's reason carefully, then rewrite the finding so the issue is real, the line range matches the diff, and language fields are complete. Return the corrected finding via the report_finding tool.";
+}
 
 function buildVerifyUserMessage(
   finding: ReviewFinding,
@@ -412,12 +457,28 @@ function buildVerifyUserMessage(
     context.diffs.find((d) => d.filePath === finding.filePath)?.patch ??
     "(diff not found)";
   const lang = context.outputLanguage;
-  const langFieldNames = lang === "zh-CN"
+  const isZh = lang === "zh-CN";
+  const langFieldNames = isZh
     ? "title_zh / summary_zh / suggestion_zh"
     : "title_en / summary_en / suggestion_en";
-  return `You are auditing a code review finding for pull request #${context.prNumber} in ${context.fullName}.
+  const headerText = isZh
+    ? `你正在审计仓库 ${context.fullName} 中 PR #${context.prNumber} 的一条代码审查发现。`
+    : `You are auditing a code review finding for pull request #${context.prNumber} in ${context.fullName}.`;
 
-Decide whether the finding below is a real, well-formed issue worth posting to the developer.
+  const instructionText = isZh
+    ? `判断以下发现是否是一个真实、格式良好、值得反馈给开发者的有效问题。
+
+发现应被驳回（valid=false）如果：
+- 描述的问题在 diff 中实际不存在，
+- 文件路径 / 行号范围与实际变更不匹配，
+- severity / issueType 严重不匹配，
+- 建议无法修复问题或会使问题更糟，
+- ${langFieldNames} 字段缺失或为空。
+
+如果发现大体正确但存在可修复的缺陷，设置 valid=false 并填充 patchedFinding 为修正后的完整 ReviewFinding 对象。
+
+如果发现可以接受，设置 valid=true 且 reason="ok"。`
+    : `Decide whether the finding below is a real, well-formed issue worth posting to the developer.
 
 A finding should be REJECTED (valid=false) if:
 - the issue described is not actually present in the diff,
@@ -428,7 +489,15 @@ A finding should be REJECTED (valid=false) if:
 
 If the finding is mostly correct but has fixable defects, set valid=false AND populate patchedFinding with a corrected full ReviewFinding object.
 
-If the finding is acceptable as-is, set valid=true and reason="ok".
+If the finding is acceptable as-is, set valid=true and reason="ok".`;
+
+  const callToolText = isZh
+    ? `调用 \`verify_finding\` 工具提交你的决策。`
+    : `Call the \`verify_finding\` tool with your decision.`;
+
+  return `${headerText}
+
+${instructionText}
 
 <finding>
 ${JSON.stringify(finding, null, 2)}
@@ -440,7 +509,7 @@ ${targetDiff}
 \`\`\`
 </diff_for_${finding.filePath}>
 
-Call the \`verify_finding\` tool with your decision.`;
+${callToolText}`;
 }
 
 function buildRegenerateUserMessage(
@@ -454,7 +523,17 @@ function buildRegenerateUserMessage(
   const auditorPatch = critique.patchedFinding
     ? `<auditor_proposed_patch>\n${JSON.stringify(critique.patchedFinding, null, 2)}\n</auditor_proposed_patch>\n\n`
     : "";
-  return `Auditor rejected the following draft finding for pull request #${context.prNumber} in ${context.fullName}:
+  const isZh = context.outputLanguage === "zh-CN";
+
+  const headerText = isZh
+    ? `审计员驳回了仓库 ${context.fullName} 中 PR #${context.prNumber} 的以下草稿发现：`
+    : `Auditor rejected the following draft finding for pull request #${context.prNumber} in ${context.fullName}:`;
+
+  const instructionText = isZh
+    ? `重写该发现以解决审计员指出的问题。保留已有语言字段；不要倒退已有的良好字段。通过 \`report_finding\` 工具返回修正后的发现。`
+    : `Rewrite the finding to address the auditor's reason. Keep the language fields; do not regress existing-good fields. Call the \`report_finding\` tool with the corrected finding.`;
+
+  return `${headerText}
 
 <auditor_reason>
 ${critique.reason}
@@ -470,7 +549,7 @@ ${targetDiff}
 \`\`\`
 </diff_for_${finding.filePath}>
 
-Rewrite the finding to address the auditor's reason. Keep the language fields; do not regress existing-good fields. Call the \`report_finding\` tool with the corrected finding.`;
+${instructionText}`;
 }
 
 function validateAndNormalizeCritique(input: unknown): CritiqueResult {
@@ -910,7 +989,7 @@ export class AnthropicAdapter implements AiAdapter {
         const response = await this.client.messages.create({
           model: this.model,
           max_tokens: 16384,
-          system: VERIFY_SYSTEM_PROMPT,
+          system: buildVerifySystemPrompt(lang),
           messages: [
             { role: "user", content: buildVerifyUserMessage(finding, context) },
           ],
@@ -960,7 +1039,7 @@ export class AnthropicAdapter implements AiAdapter {
         const response = await this.client.messages.create({
           model: this.model,
           max_tokens: 16384,
-          system: REGENERATE_SYSTEM_PROMPT,
+          system: buildRegenerateSystemPrompt(lang),
           messages: [
             {
               role: "user",
@@ -1338,7 +1417,7 @@ export class OpenAICompatibleAdapter implements AiAdapter {
           model: this.model,
           max_tokens: 16384,
           messages: [
-            { role: "system", content: VERIFY_SYSTEM_PROMPT },
+            { role: "system", content: buildVerifySystemPrompt(lang) },
             { role: "user", content: buildVerifyUserMessage(finding, context) },
           ],
           tools: [verifyTool],
@@ -1408,7 +1487,7 @@ export class OpenAICompatibleAdapter implements AiAdapter {
           model: this.model,
           max_tokens: 16384,
           messages: [
-            { role: "system", content: REGENERATE_SYSTEM_PROMPT },
+            { role: "system", content: buildRegenerateSystemPrompt(lang) },
             {
               role: "user",
               content: buildRegenerateUserMessage(finding, critique, context),

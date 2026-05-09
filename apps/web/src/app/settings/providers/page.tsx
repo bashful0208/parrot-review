@@ -52,7 +52,17 @@ export default async function ProvidersPage() {
       }}
       viewerName={getViewerName(user)}
     >
-      <ProviderList providers={providers} />
+      <div className="mx-auto max-w-3xl space-y-8 py-2">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-xl font-semibold tracking-tight">AI Providers</h1>
+            <p className="mt-1.5 text-sm text-muted-foreground">
+              Manage API keys and model configurations for AI-powered code reviews.
+            </p>
+          </div>
+        </div>
+        <ProviderList providers={providers} />
+      </div>
     </AdminShell>
   );
 }

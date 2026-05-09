@@ -12,7 +12,6 @@ import AdminShell from "@/components/layout/admin-shell";
 import LanguageForm from "./language-form";
 import { DASHBOARD_NAVIGATION } from "@/lib/dashboard/view-model";
 import { getViewerName } from "@/lib/utils/viewer-name";
-import { Separator } from "@/components/ui/separator";
 
 export default async function SettingsPage() {
   const cookieStore = await cookies();
@@ -42,14 +41,13 @@ export default async function SettingsPage() {
       }}
       viewerName={getViewerName(user)}
     >
-      <div className="space-y-6">
+      <div className="mx-auto max-w-2xl space-y-8 py-2">
         <div>
-          <h3 className="text-lg font-medium">Language</h3>
-          <p className="text-sm text-muted-foreground">
-            Configure the output language for review comments.
+          <h1 className="text-xl font-semibold tracking-tight">General Settings</h1>
+          <p className="mt-1.5 text-sm text-muted-foreground">
+            Manage your workspace preferences and default review behaviour.
           </p>
         </div>
-        <Separator />
         <LanguageForm currentLanguage={currentLanguage} />
       </div>
     </AdminShell>
