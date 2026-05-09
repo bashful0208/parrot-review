@@ -6,6 +6,8 @@ import {
   Settings,
   BarChart3,
   Webhook,
+  Cloud,
+  Cog,
   type LucideIcon,
 } from "lucide-react";
 
@@ -40,15 +42,29 @@ const ICON_MAP: Record<DashboardNavItem["icon"], LucideIcon> = {
   webhooks: Webhook,
 };
 
+const SETTINGS_SUB_ITEMS: NavLinkItem[] = [
+  { title: "General", url: "/settings", icon: Cog },
+  { title: "Providers", url: "/settings/providers", icon: Cloud },
+];
+
 export function mapNavigationToGroups(navItems: DashboardNavItem[]): NavGroup[] {
-  return [
-    {
-      title: "",
-      items: navItems.map((item) => ({
-        title: item.label,
-        url: item.href,
-        icon: ICON_MAP[item.icon],
-      })),
-    },
-  ];
+  const nonSettings = navItems.filter((item) => item.icon !== "settings");
+  const settingsItem = navItems.find((item) => item.icon === "settings");
+
+  const items: NavItem[] = nonSettings.map((item) => ({
+    title: item.label,
+    url: item.href,
+    icon: ICON_MAP[item.icon],
+  }));
+
+  if (settingsItem) {
+    items.push({
+      title: settingsItem.label,
+      url: settingsItem.href,
+      icon: ICON_MAP[settingsItem.icon],
+      items: SETTINGS_SUB_ITEMS,
+    });
+  }
+
+  return [{ title: "", items }];
 }

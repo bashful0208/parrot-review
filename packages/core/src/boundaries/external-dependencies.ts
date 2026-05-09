@@ -126,7 +126,7 @@ export async function withExternalApiErrorBoundary<T>(
     async () => {
       try {
         return await operation();
-      } catch (error: any) {
+      } catch (error: unknown) {
         if (error?.status === 429) {
           const appError = new AppError(
             ErrorCode.DependencyApiRateLimit,

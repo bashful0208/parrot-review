@@ -1,5 +1,4 @@
 import { AppError, ErrorCode } from '../errors.ts';
-import type { ErrorCategory } from '../errors.ts';
 import type { Logger } from '../logging.ts';
 
 export type ErrorSeverity = 'critical' | 'important' | 'general';

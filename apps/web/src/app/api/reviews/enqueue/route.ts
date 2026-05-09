@@ -2,7 +2,7 @@ import "@/lib/startup-env";
 
 import { NextResponse } from "next/server";
 
-import { enqueueReviewJob, createLogger, ensureErrorLogged, mapUserConfigError, AppError } from "@reviewer/core";
+import { enqueueReviewJob, createLogger, ensureErrorLogged, AppError } from "@reviewer/core";
 
 export const runtime = "nodejs";
 

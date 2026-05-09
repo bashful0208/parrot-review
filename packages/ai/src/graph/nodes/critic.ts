@@ -1,7 +1,7 @@
 import type { AiAdapter } from "../../adapter.js";
 import type { ReviewFinding, CritiqueResult } from "../../types.js";
 import { getCtx } from "../ctx-cache.js";
-import type { PerFindingState, ReviewContextRef, ReviewGraphStateType } from "../state.js";
+import type { ReviewContextRef, ReviewGraphStateType } from "../state.js";
 
 import { MAX_REFLECTION_ATTEMPTS } from "../router-constants.js";
 

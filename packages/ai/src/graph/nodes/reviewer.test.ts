@@ -159,7 +159,7 @@ describe("reviewer node", () => {
       regenerateFinding: async () => fakeFinding(),
     };
     const node = makeReviewerNode("error_handling", adapter, {
-      preScanContextFn: (_diffs) => "<pre_scan>found patterns</pre_scan>",
+      preScanContextFn: () => "<pre_scan>found patterns</pre_scan>",
     });
     await node(baseState("rr-prescan"));
     assert.ok(

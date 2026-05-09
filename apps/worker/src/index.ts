@@ -8,7 +8,6 @@ import {
   assertRedisReachable,
   buildWorkerConfig,
   createRedisConnection,
-  formatConfigError,
   validateWorkerEnv,
   createLogger,
   ensureErrorLogged,
