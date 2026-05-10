@@ -5,6 +5,9 @@ export interface GraphNodeViewModel {
   label: string;
   status: "pending" | "running" | "completed";
   type: "reviewer" | "aggregator" | "critic" | "collect" | "summarizer";
+  startedAt: string | null;
+  completedAt: string | null;
+  durationMs: number | null;
 }
 
 export interface GraphMetricsViewModel {
@@ -78,13 +81,13 @@ export function buildGraphStatusViewModel(
   diagnostic?: string
 ): GraphStatusViewModel {
   const nodes: GraphNodeViewModel[] = progress?.nodes ?? [
-    { id: "quality_reviewer", label: "Quality Reviewer", status: "pending", type: "reviewer" },
-    { id: "security_reviewer", label: "Security Reviewer", status: "pending", type: "reviewer" },
-    { id: "error_handler_reviewer", label: "Error Handler Reviewer", status: "pending", type: "reviewer" },
-    { id: "aggregator", label: "Aggregator", status: "pending", type: "aggregator" },
-    { id: "critic", label: "Critic", status: "pending", type: "critic" },
-    { id: "collect_findings", label: "Collect Findings", status: "pending", type: "collect" },
-    { id: "summarizer", label: "Summarizer", status: "pending", type: "summarizer" },
+    { id: "quality_reviewer", label: "Quality Reviewer", status: "pending", type: "reviewer", startedAt: null, completedAt: null, durationMs: null },
+    { id: "security_reviewer", label: "Security Reviewer", status: "pending", type: "reviewer", startedAt: null, completedAt: null, durationMs: null },
+    { id: "error_handler_reviewer", label: "Error Handler Reviewer", status: "pending", type: "reviewer", startedAt: null, completedAt: null, durationMs: null },
+    { id: "aggregator", label: "Aggregator", status: "pending", type: "aggregator", startedAt: null, completedAt: null, durationMs: null },
+    { id: "critic", label: "Critic", status: "pending", type: "critic", startedAt: null, completedAt: null, durationMs: null },
+    { id: "collect_findings", label: "Collect Findings", status: "pending", type: "collect", startedAt: null, completedAt: null, durationMs: null },
+    { id: "summarizer", label: "Summarizer", status: "pending", type: "summarizer", startedAt: null, completedAt: null, durationMs: null },
   ];
 
   const m = progress?.metrics;

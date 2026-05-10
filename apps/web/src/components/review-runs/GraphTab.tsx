@@ -9,6 +9,7 @@ import {
   XCircle,
   Clock,
   Loader2,
+  Timer,
 } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,6 +20,7 @@ import { cn } from "@/lib/utils";
 import {
   type GraphStatusViewModel,
   type GraphPhase,
+  type GraphNodeViewModel,
   getPhaseIndex,
   getPhaseTotal,
 } from "@/lib/review-runs/graph-view-model";
@@ -43,6 +45,70 @@ const PHASE_STEPS: { phase: GraphPhase; label: string }[] = [
   { phase: "summarizing", label: "Summarizing" },
   { phase: "complete", label: "Complete" },
 ];
+
+function formatTime(iso: string): string {
+  try {
+    return new Date(iso).toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    });
+  } catch {
+    return "--:--:--";
+  }
+}
+
+function formatDuration(ms: number | null): string {
+  if (ms == null || ms <= 0 || !isFinite(ms)) return "—";
+  const seconds = Math.floor(ms / 1000);
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  if (minutes < 60) return `${minutes}m ${secs}s`;
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  return `${hours}h ${mins}m ${secs}s`;
+}
+
+function ElapsedTime({ startedAt }: { startedAt: string }) {
+  const [elapsed, setElapsed] = useState(0);
+
+  useEffect(() => {
+    const tick = () => {
+      try {
+        setElapsed(Date.now() - new Date(startedAt).getTime());
+      } catch {
+        // ignore invalid dates
+      }
+    };
+    tick();
+    const timer = setInterval(tick, 1000);
+    return () => clearInterval(timer);
+  }, [startedAt]);
+
+  return <span className="tabular-nums">{formatDuration(elapsed)}</span>;
+}
+
+function NodeTiming({ node }: { node: GraphNodeViewModel }) {
+  if (node.status === "completed" && node.startedAt && node.completedAt) {
+    return (
+      <span className="tabular-nums">
+        {formatTime(node.startedAt)} → {formatTime(node.completedAt)} · {formatDuration(node.durationMs)}
+      </span>
+    );
+  }
+
+  if (node.status === "running" && node.startedAt) {
+    return (
+      <span className="tabular-nums">
+        Started {formatTime(node.startedAt)} · elapsed <ElapsedTime startedAt={node.startedAt} />
+      </span>
+    );
+  }
+
+  return <span className="text-muted-foreground/50">—</span>;
+}
 
 function useMermaid(mermaidDef: string) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -176,7 +242,7 @@ export default function GraphTab({
                         active && "text-foreground font-medium"
                       )}
                     >
-                      {si < phaseIdx ? (
+                      {si < phaseIdx || (si === phaseIdx && data.phase === "complete") ? (
                         <CheckCircle2 className="h-3 w-3 text-green-600" />
                       ) : si === phaseIdx ? (
                         <Loader2 className="h-3 w-3 animate-spin text-blue-600" />
@@ -219,7 +285,8 @@ export default function GraphTab({
           {/* Node status list */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-semibold tracking-[-0.02em]">
+              <CardTitle className="flex items-center gap-2 text-sm font-semibold tracking-[-0.02em]">
+                <Timer className="h-4 w-4" />
                 Node Status
               </CardTitle>
             </CardHeader>
@@ -228,21 +295,26 @@ export default function GraphTab({
               {data.nodes.map((node) => (
                 <div
                   key={node.id}
-                  className="flex items-center justify-between rounded-lg border px-3 py-2 transition-colors hover:bg-muted/50"
+                  className="flex flex-col rounded-lg border px-3 py-2 transition-colors hover:bg-muted/50"
                 >
-                  <div className="flex items-center gap-2">
-                    {STATUS_ICONS[node.status] ?? STATUS_ICONS.pending}
-                    <span className="text-sm">{node.label}</span>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      {STATUS_ICONS[node.status] ?? STATUS_ICONS.pending}
+                      <span className="text-sm">{node.label}</span>
+                    </div>
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        "text-xs capitalize",
+                        STATUS_COLORS[node.status] ?? STATUS_COLORS.pending
+                      )}
+                    >
+                      {node.status}
+                    </Badge>
                   </div>
-                  <Badge
-                    variant="outline"
-                    className={cn(
-                      "text-xs capitalize",
-                      STATUS_COLORS[node.status] ?? STATUS_COLORS.pending
-                    )}
-                  >
-                    {node.status}
-                  </Badge>
+                  <div className="ml-[22px] text-xs text-muted-foreground">
+                    <NodeTiming node={node} />
+                  </div>
                 </div>
               ))}
             </CardContent>

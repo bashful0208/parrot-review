@@ -32,6 +32,9 @@ export interface GraphNodeState {
   label: string;
   status: "pending" | "running" | "completed";
   type: "reviewer" | "aggregator" | "critic" | "collect" | "summarizer";
+  startedAt: string | null;
+  completedAt: string | null;
+  durationMs: number | null;
 }
 
 export interface GraphMetrics {
@@ -60,13 +63,13 @@ export interface GraphProgress {
 }
 
 const GRAPH_NODES: GraphNodeState[] = [
-  { id: "quality_reviewer", label: "Quality Reviewer", status: "pending", type: "reviewer" },
-  { id: "security_reviewer", label: "Security Reviewer", status: "pending", type: "reviewer" },
-  { id: "error_handler_reviewer", label: "Error Handler Reviewer", status: "pending", type: "reviewer" },
-  { id: "aggregator", label: "Aggregator", status: "pending", type: "aggregator" },
-  { id: "critic", label: "Critic", status: "pending", type: "critic" },
-  { id: "collect_findings", label: "Collect Findings", status: "pending", type: "collect" },
-  { id: "summarizer", label: "Summarizer", status: "pending", type: "summarizer" },
+  { id: "quality_reviewer", label: "Quality Reviewer", status: "pending", type: "reviewer", startedAt: null, completedAt: null, durationMs: null },
+  { id: "security_reviewer", label: "Security Reviewer", status: "pending", type: "reviewer", startedAt: null, completedAt: null, durationMs: null },
+  { id: "error_handler_reviewer", label: "Error Handler Reviewer", status: "pending", type: "reviewer", startedAt: null, completedAt: null, durationMs: null },
+  { id: "aggregator", label: "Aggregator", status: "pending", type: "aggregator", startedAt: null, completedAt: null, durationMs: null },
+  { id: "critic", label: "Critic", status: "pending", type: "critic", startedAt: null, completedAt: null, durationMs: null },
+  { id: "collect_findings", label: "Collect Findings", status: "pending", type: "collect", startedAt: null, completedAt: null, durationMs: null },
+  { id: "summarizer", label: "Summarizer", status: "pending", type: "summarizer", startedAt: null, completedAt: null, durationMs: null },
 ];
 
 function inferPhase(versions: Record<string, string>): GraphPhase {
@@ -139,6 +142,91 @@ function extractMetrics(channels: Record<string, unknown>): GraphMetrics {
     finalFindingsCount: len(finalFindings),
     hasSummary: summary !== undefined && summary !== null,
   };
+}
+
+const CHANNEL_FIRST_NODES: Record<string, string> = {
+  draftFindings: "quality_reviewer",
+  aggregatedFindings: "aggregator",
+  perFinding: "critic",
+  finalFindings: "collect_findings",
+  summary: "summarizer",
+};
+
+/**
+ * 从 checkpoint 历史中提取每个节点的开始/结束时间。
+ * 通过 versions_seen 追踪节点首次出现，用相邻 checkpoint 的 ts 计算 duration。
+ */
+async function extractNodeTimings(
+  pg: Pool,
+  graphThreadId: string,
+  namespace: string
+): Promise<Map<string, { startedAt: string; completedAt: string; durationMs: number }>> {
+  const timings = new Map<string, { startedAt: string; completedAt: string; durationMs: number }>();
+
+  try {
+    const result = await pg.query<{ checkpoint: Record<string, unknown> }>(
+      `select checkpoint
+       from public.checkpoints
+       where thread_id = $1
+         and checkpoint_ns = $2
+       order by (checkpoint->>'ts') asc`,
+      [graphThreadId, namespace]
+    );
+
+    if (result.rows.length < 2) return timings;
+
+    const nodeIds = GRAPH_NODES.map((n) => n.id);
+    let prevTs: string | null = null;
+
+    for (const row of result.rows) {
+      const cp = row.checkpoint as Record<string, unknown>;
+      const ts = cp.ts as string;
+      const versionsSeen = (cp.versions_seen ?? {}) as Record<string, unknown>;
+
+      for (const nodeId of nodeIds) {
+        if (timings.has(nodeId)) continue;
+
+        let seen = versionsSeen[nodeId] !== undefined;
+
+        // fallback: use channel_versions for nodes not tracked individually
+        if (!seen) {
+          const channelVersions = (cp.channel_versions ?? {}) as Record<string, string>;
+          for (const [ch, node] of Object.entries(CHANNEL_FIRST_NODES)) {
+            if (node === nodeId && channelVersions[ch] !== undefined) {
+              // For the three reviewers, they all complete when draftFindings appears.
+              // Track each via versions_seen first; if that fails, mark all three at once.
+              if (nodeId === "quality_reviewer" || nodeId === "security_reviewer" || nodeId === "error_handler_reviewer") {
+                seen = GRAPH_NODES
+                  .filter((n) => n.type === "reviewer")
+                  .every((n) => timings.has(n.id))
+                  ? false
+                  : true;
+                // Only mark the first unseen reviewer
+                if (seen && timings.has(nodeId)) seen = false;
+              } else {
+                seen = true;
+              }
+            }
+          }
+        }
+
+        if (seen) {
+          const startedAt = prevTs ?? ts;
+          timings.set(nodeId, {
+            startedAt,
+            completedAt: ts,
+            durationMs: new Date(ts).getTime() - new Date(startedAt).getTime(),
+          });
+        }
+      }
+
+      prevTs = ts;
+    }
+  } catch {
+    // timing extraction is best-effort; failures should not block progress display
+  }
+
+  return timings;
 }
 
 /**
@@ -294,6 +382,17 @@ export async function getGraphProgress(
       const idx = nodes.findIndex((n) => n.id === runningNode);
       if (idx >= 0 && nodes[idx]!.status === "pending") {
         nodes[idx]!.status = "running";
+      }
+    }
+
+    // 5. 提取节点时间信息
+    const nodeTimings = await extractNodeTimings(pg, graphThreadId, matchedNs);
+    for (const node of nodes) {
+      const t = nodeTimings.get(node.id);
+      if (t) {
+        node.startedAt = t.startedAt;
+        node.completedAt = t.completedAt;
+        node.durationMs = t.durationMs;
       }
     }
 
