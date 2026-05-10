@@ -161,19 +161,30 @@ export default function GraphTab({
   useEffect(() => {
     if (!isLive) return;
 
-    const timer = setInterval(async () => {
+    let cancelled = false;
+    const fetchGraph = async () => {
       try {
         const res = await fetch(`/api/review-runs/${reviewRunId}/graph-status`);
         if (res.ok) {
           const json = await res.json();
-          if (json.ok) setData(json.data);
+          if (json.ok && !cancelled) setData(json.data);
         }
       } catch {
         // polling failure silently skipped
       }
+    };
+
+    // 立即查一次，不等 interval
+    void fetchGraph();
+
+    const timer = setInterval(() => {
+      void fetchGraph();
     }, 5000);
 
-    return () => clearInterval(timer);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
   }, [isLive, reviewRunId]);
 
   const phaseIdx = getPhaseIndex(data.phase);
