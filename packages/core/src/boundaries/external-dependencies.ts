@@ -127,7 +127,8 @@ export async function withExternalApiErrorBoundary<T>(
       try {
         return await operation();
       } catch (error: unknown) {
-        if (error?.status === 429) {
+        const err = error as Record<string, unknown> | null | undefined;
+        if (err?.status === 429) {
           const appError = new AppError(
             ErrorCode.DependencyApiRateLimit,
             `External API rate limit: ${provider}`,
@@ -135,10 +136,10 @@ export async function withExternalApiErrorBoundary<T>(
           );
           logger?.error('API rate limit error', appError);
           throw appError;
-        } else if (error?.status >= 500) {
+        } else if (Number(err?.status) >= 500) {
           const appError = new AppError(
             ErrorCode.DependencyApiTimeout,
-            `External API error: ${provider} (${error?.status})`,
+            `External API error: ${provider} (${err?.status})`,
             { ...context, resource: 'api', provider }
           );
           logger?.error('API server error', appError);

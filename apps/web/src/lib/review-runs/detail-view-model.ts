@@ -5,6 +5,8 @@ import type {
   ReviewRunDetailRow,
 } from "@reviewer/core";
 
+import type { GraphStatusViewModel } from "./graph-view-model";
+
 import { DASHBOARD_NAVIGATION } from "@/lib/dashboard/view-model";
 import type {
   DashboardShellModel,
@@ -45,6 +47,7 @@ export interface ReviewRunDetailViewModel {
   topbar: DashboardTopbarModel;
   viewerName: string;
   backHref: string;
+  breadcrumb: string;
   metadata: ReviewRunDetailMeta[];
   summaryMd: string | null;
   issues: ReviewRunIssueItem[];
@@ -53,6 +56,8 @@ export interface ReviewRunDetailViewModel {
   errorMessage: string | null;
   isFailed: boolean;
   status: string;
+  reviewRunId: string;
+  graphStatus: GraphStatusViewModel;
 }
 
 const TRIGGER_LABELS: Record<string, string> = {
@@ -106,6 +111,7 @@ export function buildReviewRunDetailViewModel(args: {
   run: ReviewRunDetailRow;
   issues: ReviewIssueRow[];
   comments: ReviewCommentRow[];
+  graphStatus: GraphStatusViewModel;
 }): ReviewRunDetailViewModel {
   const { run, issues, comments } = args;
 
@@ -163,6 +169,7 @@ export function buildReviewRunDetailViewModel(args: {
     },
     viewerName: getViewerName(args.user),
     backHref: "/review-runs",
+    breadcrumb: `Run #${run.runNumber} · ${run.repositoryFullName}`,
     metadata: meta,
     summaryMd: run.summaryMd,
     issues: issues.map((issue) => ({
@@ -199,5 +206,7 @@ export function buildReviewRunDetailViewModel(args: {
     errorMessage: run.errorMessage,
     isFailed: run.status === "failed",
     status: run.status,
+    reviewRunId: run.id,
+    graphStatus: args.graphStatus,
   };
 }
