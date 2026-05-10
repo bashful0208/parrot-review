@@ -144,17 +144,19 @@ function extractMetrics(channels: Record<string, unknown>): GraphMetrics {
   };
 }
 
-const CHANNEL_FIRST_NODES: Record<string, string> = {
-  draftFindings: "quality_reviewer",
-  aggregatedFindings: "aggregator",
-  perFinding: "critic",
-  finalFindings: "collect_findings",
-  summary: "summarizer",
+/** channel → nodes: which nodes complete when this channel first appears */
+const CHANNEL_TO_NODES: Record<string, string[]> = {
+  draftFindings: ["quality_reviewer", "security_reviewer", "error_handler_reviewer"],
+  aggregatedFindings: ["aggregator"],
+  perFinding: ["critic"],
+  finalFindings: ["collect_findings"],
+  summary: ["summarizer"],
 };
 
 /**
  * 从 checkpoint 历史中提取每个节点的开始/结束时间。
  * 通过 versions_seen 追踪节点首次出现，用相邻 checkpoint 的 ts 计算 duration。
+ * 并行节点（三个 reviewer）共享同一组时间，因为它们在同一 superstep 中执行。
  */
 async function extractNodeTimings(
   pg: Pool,
@@ -182,41 +184,31 @@ async function extractNodeTimings(
       const cp = row.checkpoint as Record<string, unknown>;
       const ts = cp.ts as string;
       const versionsSeen = (cp.versions_seen ?? {}) as Record<string, unknown>;
+      const channelVersions = (cp.channel_versions ?? {}) as Record<string, string>;
 
       for (const nodeId of nodeIds) {
-        if (timings.has(nodeId)) continue;
+        const seen =
+          versionsSeen[nodeId] !== undefined ||
+          Object.entries(CHANNEL_TO_NODES).some(
+            ([ch, nodes]) => channelVersions[ch] !== undefined && nodes.includes(nodeId)
+          );
 
-        let seen = versionsSeen[nodeId] !== undefined;
+        if (!seen) continue;
 
-        // fallback: use channel_versions for nodes not tracked individually
-        if (!seen) {
-          const channelVersions = (cp.channel_versions ?? {}) as Record<string, string>;
-          for (const [ch, node] of Object.entries(CHANNEL_FIRST_NODES)) {
-            if (node === nodeId && channelVersions[ch] !== undefined) {
-              // For the three reviewers, they all complete when draftFindings appears.
-              // Track each via versions_seen first; if that fails, mark all three at once.
-              if (nodeId === "quality_reviewer" || nodeId === "security_reviewer" || nodeId === "error_handler_reviewer") {
-                seen = GRAPH_NODES
-                  .filter((n) => n.type === "reviewer")
-                  .every((n) => timings.has(n.id))
-                  ? false
-                  : true;
-                // Only mark the first unseen reviewer
-                if (seen && timings.has(nodeId)) seen = false;
-              } else {
-                seen = true;
-              }
-            }
-          }
-        }
-
-        if (seen) {
+        const existing = timings.get(nodeId);
+        if (!existing) {
+          // first time this node appears — record startedAt from previous checkpoint
           const startedAt = prevTs ?? ts;
           timings.set(nodeId, {
             startedAt,
             completedAt: ts,
             durationMs: new Date(ts).getTime() - new Date(startedAt).getTime(),
           });
+        } else {
+          // node seen again (e.g. critic in a loop) — keep startedAt, update completedAt
+          existing.completedAt = ts;
+          existing.durationMs =
+            new Date(ts).getTime() - new Date(existing.startedAt).getTime();
         }
       }
 
@@ -355,7 +347,10 @@ export async function getGraphProgress(
     }
 
     // 3. 计算进度
-    const phase = inferPhase(channelVersions);
+    const rawPhase = inferPhase(channelVersions);
+    // 第一个 superstep 中 reviewer 并行执行，draftFindings 还未写入 checkpoint，
+    // 此时 inferPhase 返回 "idle" 但实际上已经进入 reviewing 阶段
+    const phase: GraphPhase = rawPhase === "idle" ? "reviewing" : rawPhase;
     const completedNodes = inferCompletedNodes(channelVersions);
     const metrics = extractMetrics(decodedChannels);
 
@@ -369,17 +364,17 @@ export async function getGraphProgress(
     }));
 
     // 如果 phase 在某个阶段但对应节点还没完成，标记为 running
-    const runningNode = (() => {
+    const runningNodeIds: string[] = (() => {
       switch (phase) {
-        case "reviewing": return "quality_reviewer";
-        case "aggregating": return "aggregator";
-        case "reflecting": return "critic";
-        case "summarizing": return "summarizer";
-        default: return null;
+        case "reviewing": return ["quality_reviewer", "security_reviewer", "error_handler_reviewer"];
+        case "aggregating": return ["aggregator"];
+        case "reflecting": return ["critic"];
+        case "summarizing": return ["summarizer"];
+        default: return [];
       }
     })();
-    if (runningNode) {
-      const idx = nodes.findIndex((n) => n.id === runningNode);
+    for (const nodeId of runningNodeIds) {
+      const idx = nodes.findIndex((n) => n.id === nodeId);
       if (idx >= 0 && nodes[idx]!.status === "pending") {
         nodes[idx]!.status = "running";
       }

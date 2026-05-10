@@ -60,7 +60,8 @@ function formatTime(iso: string): string {
 }
 
 function formatDuration(ms: number | null): string {
-  if (ms == null || ms <= 0 || !isFinite(ms)) return "—";
+  if (ms == null || ms < 0 || !isFinite(ms)) return "—";
+  if (ms < 1000) return "< 1s";
   const seconds = Math.floor(ms / 1000);
   if (seconds < 60) return `${seconds}s`;
   const minutes = Math.floor(seconds / 60);
