@@ -4,6 +4,7 @@ import type { AiAdapter } from "../../adapter.js";
 import type { ReviewFocus } from "../../types.js";
 import { getCtx } from "../ctx-cache.js";
 import type { ReviewGraphStateType } from "../state.js";
+import { filterDiffsByFocus } from "../diff-filter.js";
 
 export interface ReviewerNodeOpts {
   /** Called before the LLM call; result is prepended to guidelines as extra context. */
@@ -41,9 +42,11 @@ export function makeReviewerNode(
         ? extraContext + "\n" + (ctx.guidelines ?? "")
         : ctx.guidelines;
 
+      const filteredDiffs = filterDiffsByFocus(ctx.diffs, focus);
+
       const { findings } = await adapter.generateReviewFindings({
         ...state.context,
-        diffs: ctx.diffs,
+        diffs: filteredDiffs,
         guidelines: effectiveGuidelines,
         projectContext: ctx.projectContext,
         focus,

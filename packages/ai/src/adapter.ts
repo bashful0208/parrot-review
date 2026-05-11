@@ -789,7 +789,7 @@ export class AnthropicAdapter implements AiAdapter {
     return withUsageInstrumentation(
       buildUsageCtx(context, this.provider, this.model, "review_findings"),
       async () => {
-        const MAX_ROUNDS = 6;
+        const MAX_ROUNDS = 3;
         const MAX_FORMAT_RETRIES = 3;
 
         const allFindings: ReviewFinding[] = [];
@@ -1169,7 +1169,7 @@ export class OpenAICompatibleAdapter implements AiAdapter {
     return withUsageInstrumentation(
       buildUsageCtx(context, this.provider, this.model, "review_findings"),
       async () => {
-        const MAX_ROUNDS = 6;
+        const MAX_ROUNDS = 3;
         const MAX_FORMAT_RETRIES = 3;
 
         const allFindings: ReviewFinding[] = [];
