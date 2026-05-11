@@ -1,10 +1,11 @@
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ChevronLeft } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 
 import {
   AUTH_SESSION_COOKIE,
+  getGraphProgress,
   getOrgIdForUser,
   getReviewRunDetail,
   getSessionUser,
@@ -15,6 +16,7 @@ import {
 import AdminShell from "@/components/layout/admin-shell";
 import ReviewRunDetail from "@/components/review-runs/ReviewRunDetail";
 import { buildReviewRunDetailViewModel } from "@/lib/review-runs/detail-view-model";
+import { buildGraphStatusViewModel } from "@/lib/review-runs/graph-view-model";
 
 export default async function ReviewRunDetailPage({
   params,
@@ -39,23 +41,43 @@ export default async function ReviewRunDetailPage({
 
   if (!run) notFound();
 
+  let graphStatus = buildGraphStatusViewModel(null);
+  try {
+    const progress = await getGraphProgress(id);
+    graphStatus = buildGraphStatusViewModel(
+      progress,
+      progress ? undefined : `No checkpoint found for thread_id="${id}". The review was likely run before LangGraph checkpointing was added, or has not started yet.`
+    );
+  } catch (err) {
+    graphStatus = buildGraphStatusViewModel(
+      null,
+      err instanceof Error ? err.message : String(err)
+    );
+  }
+
   const vm = buildReviewRunDetailViewModel({
     user,
     run,
     issues,
     comments,
+    graphStatus,
   });
 
   return (
     <AdminShell shell={vm.shell} topbar={vm.topbar} viewerName={vm.viewerName}>
-      <div className="space-y-4">
-        <Link
-          href={vm.backHref}
-          className="inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-zinc-900 transition-colors"
-        >
-          <ChevronLeft className="h-4 w-4" />
-          Back to Review Runs
-        </Link>
+      <div className="space-y-6">
+        <nav className="flex items-center gap-1.5 text-sm">
+          <Link
+            href={vm.backHref}
+            className="text-muted-foreground transition-colors hover:text-foreground"
+          >
+            Review Runs
+          </Link>
+          <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" />
+          <span className="font-medium text-foreground">
+            {vm.breadcrumb}
+          </span>
+        </nav>
         <ReviewRunDetail detail={vm} />
       </div>
     </AdminShell>

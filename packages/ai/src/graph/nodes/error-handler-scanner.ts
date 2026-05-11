@@ -93,7 +93,6 @@ export function scanErrorHandlingPatterns(
             estimateLineInFile(
               diff.patch,
               (match.index ?? 0) + match[0].length,
-              true
             ) + 1,
           pattern: "broad_catch",
           context: ctx,
@@ -111,7 +110,6 @@ export function scanErrorHandlingPatterns(
             estimateLineInFile(
               diff.patch,
               (match.index ?? 0) + match[0].length,
-              true
             ) + 1,
           pattern: "downgraded_logging",
           context: extractAddLinesContext(addLines, match.index ?? 0),
@@ -129,7 +127,6 @@ export function scanErrorHandlingPatterns(
             estimateLineInFile(
               diff.patch,
               (match.index ?? 0) + match[0].length,
-              true
             ) + 1,
           pattern: "downgraded_logging",
           context: extractAddLinesContext(addLines, match.index ?? 0),
@@ -147,7 +144,6 @@ export function scanErrorHandlingPatterns(
             estimateLineInFile(
               diff.patch,
               (match.index ?? 0) + match[0].length,
-              true
             ) + 1,
           pattern: "non_actionable_message",
           context: match[0].trim(),

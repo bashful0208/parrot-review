@@ -18,7 +18,7 @@ export default function ReviewRunCommentCard({
   return (
     <Card>
       <CardContent className="p-4">
-        <div className="flex items-center gap-2 mb-2">
+        <div className="flex flex-wrap items-center gap-2 mb-2">
           <Badge
             variant={COMMENT_STATUS_VARIANT[comment.status] ?? "secondary"}
             className="capitalize"
@@ -32,7 +32,7 @@ export default function ReviewRunCommentCard({
             <Badge variant="outline">{comment.provider}</Badge>
           )}
           {comment.fileLocation && (
-            <span className="font-mono text-xs text-muted-foreground">
+            <span className="rounded-md border bg-muted/50 px-2 py-0.5 font-mono text-xs text-muted-foreground">
               {comment.fileLocation}
             </span>
           )}
@@ -40,9 +40,9 @@ export default function ReviewRunCommentCard({
             {comment.postedAtLabel ? `Posted ${comment.postedAtLabel}` : "Not posted"}
           </span>
         </div>
-        <pre className="whitespace-pre-wrap text-sm font-sans">
+        <div className="whitespace-pre-wrap text-sm font-sans leading-relaxed">
           {comment.body}
-        </pre>
+        </div>
       </CardContent>
     </Card>
   );
