@@ -82,7 +82,7 @@ export default function RegisterForm({
         Create an account
       </h1>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-5">
         <div className="space-y-2">
           <Label htmlFor="register-email">Email address</Label>
           <Input
@@ -93,7 +93,7 @@ export default function RegisterForm({
             placeholder="name@example.com"
             disabled={loading}
             aria-invalid={Boolean(emailError)}
-            className={`px-4 py-3 ${emailError ? "border-red-500" : ""}`}
+            className={`h-12 px-4 text-base ${emailError ? "border-red-500" : ""}`}
           />
           {emailError && (
             <p className="text-sm text-red-500">{emailError}</p>
@@ -111,7 +111,7 @@ export default function RegisterForm({
               placeholder="At least 8 characters"
               disabled={loading}
               aria-invalid={Boolean(passwordError)}
-              className={`px-4 py-3 ${passwordError ? "border-red-500" : ""}`}
+              className={`h-12 px-4 text-base ${passwordError ? "border-red-500" : ""}`}
             />
             <button
               type="button"
@@ -146,7 +146,7 @@ export default function RegisterForm({
               placeholder="Repeat your password"
               disabled={loading}
               aria-invalid={Boolean(confirmPasswordError)}
-              className={`px-4 py-3 ${confirmPasswordError ? "border-red-500" : ""}`}
+              className={`h-12 px-4 text-base ${confirmPasswordError ? "border-red-500" : ""}`}
             />
             <button
               type="button"
@@ -176,7 +176,7 @@ export default function RegisterForm({
         <Button
           type="submit"
           loading={loading}
-          className="w-full bg-green-600 px-4 py-3 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700"
+          className="h-12 w-full bg-green-600 text-base hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700"
         >
           Create an account
         </Button>

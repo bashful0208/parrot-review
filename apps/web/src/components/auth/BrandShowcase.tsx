@@ -20,7 +20,7 @@ const features = [
 
 export default function BrandShowcase() {
   return (
-    <div className="flex flex-col justify-center bg-gradient-to-br from-slate-800 to-slate-900 p-8 text-white lg:p-12">
+    <div className="flex h-full flex-col justify-center bg-gradient-to-br from-[#1a1d23] to-[#111318] p-8 text-white lg:p-12">
       <div className="mb-8">
         <h2 className="text-3xl font-bold tracking-tight">Code Reviewer</h2>
         <p className="mt-2 text-lg text-slate-300">

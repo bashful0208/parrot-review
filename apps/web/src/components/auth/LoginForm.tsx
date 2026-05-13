@@ -82,7 +82,7 @@ export default function LoginForm({
 
       <Divider />
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-5">
         <div className="space-y-2">
           <Label htmlFor="login-email">Email address</Label>
           <Input
@@ -93,7 +93,7 @@ export default function LoginForm({
             placeholder="name@example.com"
             disabled={loading}
             aria-invalid={Boolean(emailError)}
-            className={`px-4 py-3 ${emailError ? "border-red-500" : ""}`}
+            className={`h-12 px-4 text-base ${emailError ? "border-red-500" : ""}`}
           />
           {emailError && (
             <p className="text-sm text-red-500">{emailError}</p>
@@ -121,7 +121,7 @@ export default function LoginForm({
               placeholder="Enter your password"
               disabled={loading}
               aria-invalid={Boolean(passwordError)}
-              className={`px-4 py-3 ${passwordError ? "border-red-500" : ""}`}
+              className={`h-12 px-4 text-base ${passwordError ? "border-red-500" : ""}`}
             />
             <button
               type="button"
@@ -151,7 +151,7 @@ export default function LoginForm({
         <Button
           type="submit"
           loading={loading}
-          className="w-full bg-green-600 px-4 py-3 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700"
+          className="h-12 w-full bg-green-600 text-base hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700"
         >
           Sign in
         </Button>
