@@ -77,7 +77,7 @@ export default function RegisterForm({
   };
 
   return (
-    <div>
+    <div className="w-full">
       <h1 className="mb-6 text-2xl font-semibold text-gray-900 dark:text-white">
         Create an account
       </h1>
@@ -93,7 +93,7 @@ export default function RegisterForm({
             placeholder="name@example.com"
             disabled={loading}
             aria-invalid={Boolean(emailError)}
-            className={emailError ? "border-red-500" : ""}
+            className={`px-4 py-3 ${emailError ? "border-red-500" : ""}`}
           />
           {emailError && (
             <p className="text-sm text-red-500">{emailError}</p>
@@ -111,7 +111,7 @@ export default function RegisterForm({
               placeholder="At least 8 characters"
               disabled={loading}
               aria-invalid={Boolean(passwordError)}
-              className={passwordError ? "border-red-500" : ""}
+              className={`px-4 py-3 ${passwordError ? "border-red-500" : ""}`}
             />
             <button
               type="button"
@@ -146,7 +146,7 @@ export default function RegisterForm({
               placeholder="Repeat your password"
               disabled={loading}
               aria-invalid={Boolean(confirmPasswordError)}
-              className={confirmPasswordError ? "border-red-500" : ""}
+              className={`px-4 py-3 ${confirmPasswordError ? "border-red-500" : ""}`}
             />
             <button
               type="button"
@@ -176,7 +176,7 @@ export default function RegisterForm({
         <Button
           type="submit"
           loading={loading}
-          className="w-full bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700"
+          className="w-full bg-green-600 px-4 py-3 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700"
         >
           Create an account
         </Button>

@@ -13,8 +13,8 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
       </div>
 
       {/* Form Area */}
-      <div className="flex w-full items-center justify-center bg-white px-4 py-8 sm:px-6 lg:w-1/2">
-        <div className="w-full max-w-[320px]">{children}</div>
+      <div className="flex w-full items-center justify-center bg-white px-6 py-8 sm:px-8 lg:w-1/2">
+        <div className="w-full max-w-[360px]">{children}</div>
       </div>
     </main>
   );

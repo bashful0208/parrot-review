@@ -69,7 +69,7 @@ export default function LoginForm({
   };
 
   return (
-    <div>
+    <div className="w-full">
       <h1 className="mb-6 text-2xl font-semibold text-gray-900 dark:text-white">
         Sign in
       </h1>
@@ -93,7 +93,7 @@ export default function LoginForm({
             placeholder="name@example.com"
             disabled={loading}
             aria-invalid={Boolean(emailError)}
-            className={emailError ? "border-red-500" : ""}
+            className={`px-4 py-3 ${emailError ? "border-red-500" : ""}`}
           />
           {emailError && (
             <p className="text-sm text-red-500">{emailError}</p>
@@ -121,7 +121,7 @@ export default function LoginForm({
               placeholder="Enter your password"
               disabled={loading}
               aria-invalid={Boolean(passwordError)}
-              className={passwordError ? "border-red-500" : ""}
+              className={`px-4 py-3 ${passwordError ? "border-red-500" : ""}`}
             />
             <button
               type="button"
@@ -151,7 +151,7 @@ export default function LoginForm({
         <Button
           type="submit"
           loading={loading}
-          className="w-full bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700"
+          className="w-full bg-green-600 px-4 py-3 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700"
         >
           Sign in
         </Button>
