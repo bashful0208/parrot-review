@@ -1,9 +1,4 @@
-import {
-  GithubIcon,
-  GiteeIcon,
-  GoogleIcon,
-  getProviderName,
-} from "@/lib/icons/social-icons";
+import { Github, GitBranch, Globe } from "lucide-react";
 
 export interface SocialLoginButtonProps {
   provider: "github" | "gitee" | "google";
@@ -19,22 +14,22 @@ export default function SocialLoginButton({
   const getIcon = (provider: "github" | "gitee" | "google") => {
     switch (provider) {
       case "github":
-        return <GithubIcon />;
+        return <Github className="h-5 w-5" />;
       case "gitee":
-        return <GiteeIcon />;
+        return <GitBranch className="h-5 w-5" />;
       case "google":
-        return <GoogleIcon />;
+        return <Globe className="h-5 w-5" />;
     }
   };
 
-  const getIconColor = (provider: "github" | "gitee" | "google") => {
+  const getLabel = (provider: "github" | "gitee" | "google") => {
     switch (provider) {
       case "github":
-        return "text-zinc-900 dark:text-zinc-100";
+        return "GitHub";
       case "gitee":
-        return "text-red-600 dark:text-red-400";
+        return "Gitee";
       case "google":
-        return "text-blue-600 dark:text-blue-400";
+        return "Google";
     }
   };
 
@@ -43,21 +38,10 @@ export default function SocialLoginButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="group flex w-full items-center justify-between rounded-[16px] border border-black/8 bg-white px-4 py-3 text-left transition-colors duration-200 hover:bg-zinc-50 active:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-white/10 dark:bg-[#20242b] dark:hover:bg-[#262b33] dark:active:bg-[#2c313a]"
+      className="flex flex-1 items-center justify-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 active:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 dark:active:bg-gray-600"
     >
-      <div className="flex items-center gap-3">
-        <div className={`${getIconColor(provider)}`}>
-          {getIcon(provider)}
-        </div>
-        <div>
-          <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-            {getProviderName(provider)}
-          </p>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400">
-            Not yet enabled. Use email sign-in for now.
-          </p>
-        </div>
-      </div>
+      {getIcon(provider)}
+      <span>{getLabel(provider)}</span>
     </button>
   );
 }
