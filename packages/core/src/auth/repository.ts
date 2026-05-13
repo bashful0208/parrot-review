@@ -234,3 +234,51 @@ export async function expireSession(sessionTokenHash: string): Promise<void> {
     [sessionTokenHash]
   );
 }
+
+export async function createPasswordResetToken(
+  client: PoolClient,
+  input: { userId: string; tokenHash: string; expiresAt: Date }
+): Promise<void> {
+  await client.query(
+    `insert into public.password_reset_tokens (user_id, token_hash, expires_at)
+     values ($1, $2, $3)`,
+    [input.userId, input.tokenHash, input.expiresAt]
+  );
+}
+
+export async function findValidPasswordResetToken(tokenHash: string): Promise<
+  { id: string; user_id: string } | null
+> {
+  const result = await getPool().query(
+    `select id, user_id
+       from public.password_reset_tokens
+      where token_hash = $1
+        and expires_at > now()
+        and used_at is null
+      limit 1`,
+    [tokenHash]
+  );
+  return result.rows[0] ?? null;
+}
+
+export async function markPasswordResetTokenUsed(
+  client: PoolClient,
+  tokenId: string
+): Promise<void> {
+  await client.query(
+    `update public.password_reset_tokens set used_at = now() where id = $1`,
+    [tokenId]
+  );
+}
+
+export async function updatePassword(
+  client: PoolClient,
+  input: { userId: string; passwordHash: string }
+): Promise<void> {
+  await client.query(
+    `update public.local_credentials
+        set password_hash = $2, password_updated_at = now()
+      where user_id = $1`,
+    [input.userId, input.passwordHash]
+  );
+}

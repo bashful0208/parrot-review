@@ -1,13 +1,18 @@
 import { AppError, ErrorCode } from "../errors.js";
+import { createLogger } from "../logging.js";
 import {
   createLocalCredential,
   createLocalIdentity,
   createOrganizationWithOwner,
+  createPasswordResetToken,
   createSession,
   expireSession,
   findLocalCredentialByEmail,
   findSessionWithUser,
   findUserByEmail,
+  findValidPasswordResetToken,
+  markPasswordResetTokenUsed,
+  updatePassword,
   createUser,
   withAuthTransaction,
 } from "./repository.ts";
@@ -57,7 +62,7 @@ export async function registerWithPassword(input: {
 }): Promise<AuthSessionResult> {
   const existingUser = await findUserByEmail(input.email);
   if (existingUser) {
-    throw new Error(AUTH_EMAIL_ALREADY_EXISTS);
+    throw new AppError(ErrorCode.ValidationFailed, AUTH_EMAIL_ALREADY_EXISTS);
   }
 
   const passwordHash = await hashPassword(input.password);
@@ -116,12 +121,12 @@ export async function loginWithPassword(input: {
 }): Promise<AuthSessionResult> {
   const record = await findLocalCredentialByEmail(input.email);
   if (!record) {
-    throw new Error(AUTH_INVALID_CREDENTIALS);
+    throw new AppError(ErrorCode.ValidationFailed, AUTH_INVALID_CREDENTIALS);
   }
 
   const isValid = await verifyPassword(input.password, record.password_hash);
   if (!isValid) {
-    throw new Error(AUTH_INVALID_CREDENTIALS);
+    throw new AppError(ErrorCode.ValidationFailed, AUTH_INVALID_CREDENTIALS);
   }
 
   const token = createSessionToken();
@@ -157,4 +162,61 @@ export async function getSessionUser(sessionToken: string): Promise<Authenticate
 
 export async function invalidateSession(sessionToken: string): Promise<void> {
   await expireSession(hashSessionToken(sessionToken));
+}
+
+export async function requestPasswordReset(input: {
+  email: string;
+}): Promise<void> {
+  const user = await findUserByEmail(input.email);
+  if (!user) {
+    // Don't reveal whether email exists
+    return;
+  }
+
+  const token = createSessionToken();
+  const tokenHash = hashSessionToken(token);
+  const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+  await withAuthTransaction(async (client) => {
+    await createPasswordResetToken(client, {
+      userId: user.id,
+      tokenHash,
+      expiresAt,
+    });
+  });
+
+  // TODO: Send email with reset link containing token
+  // For now, log the token for development
+  const logger = createLogger({ component: "auth" });
+  logger.info("Password reset token generated", {
+    email: input.email,
+    token, // Remove in production
+  });
+}
+
+export async function resetPassword(input: {
+  token: string;
+  newPassword: string;
+}): Promise<void> {
+  const tokenHash = hashSessionToken(input.token);
+  const resetRecord = await findValidPasswordResetToken(tokenHash);
+
+  if (!resetRecord) {
+    throw new AppError(ErrorCode.ValidationFailed, "Invalid or expired reset token.");
+  }
+
+  const passwordHash = await hashPassword(input.newPassword);
+
+  await withAuthTransaction(async (client) => {
+    await updatePassword(client, {
+      userId: resetRecord.user_id,
+      passwordHash,
+    });
+    await markPasswordResetTokenUsed(client, resetRecord.id);
+    // Invalidate all existing sessions for this user
+    await client.query(
+      `delete from public.user_sessions where user_id = $1`,
+      [resetRecord.user_id]
+    );
+  });
 }
