@@ -12,7 +12,7 @@ export default function SocialLoginGroup({
   disabled = false,
 }: SocialLoginGroupProps) {
   return (
-    <div className="mb-8 grid grid-cols-1 gap-3">
+    <div className="flex gap-3">
       {providers.map((provider) => (
         <SocialLoginButton
           key={provider}
