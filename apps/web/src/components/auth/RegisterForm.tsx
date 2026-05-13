@@ -1,12 +1,15 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import type { RegisterCredentials } from "@/lib/auth/types";
 import {
   validateConfirmPassword,
   validateEmail,
   validatePassword,
 } from "@/lib/auth/validators";
+import { Eye, EyeOff } from "lucide-react";
 
 export interface RegisterFormProps {
   onSubmit: (credentials: RegisterCredentials) => Promise<void>;
@@ -73,144 +76,123 @@ export default function RegisterForm({
     }
   };
 
-  const inputBaseClassName =
-    "w-full rounded-[18px] border border-black/8 bg-white px-4 py-3 text-[15px] text-zinc-950 outline-none transition-all duration-200 placeholder:text-zinc-400 focus:border-zinc-400 focus:ring-4 focus:ring-black/5 disabled:cursor-not-allowed disabled:opacity-55 dark:border-white/10 dark:bg-[#20242b] dark:text-zinc-50 dark:placeholder:text-zinc-500 dark:focus:border-zinc-500 dark:focus:ring-white/8";
-
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
-      <div className="space-y-2">
-        <p className="text-sm leading-6 text-zinc-500 dark:text-zinc-400">
-          Use your email to create an account.
-        </p>
-      </div>
+    <div>
+      <h1 className="mb-6 text-2xl font-semibold text-gray-900 dark:text-white">
+        Create an account
+      </h1>
 
-      <div className="space-y-3">
-        <label
-          htmlFor="register-email"
-          className="block text-sm font-medium text-zinc-700 dark:text-zinc-200"
-        >
-          Email
-        </label>
-        <input
-          id="register-email"
-          type="email"
-          value={email}
-          onChange={(e) => handleEmailChange(e.target.value)}
-          placeholder="name@company.com"
-          disabled={loading}
-          aria-invalid={Boolean(emailError)}
-          aria-describedby={emailError ? "register-email-error" : undefined}
-          className={`${inputBaseClassName} ${emailError ? "border-red-400 focus:border-red-400 focus:ring-red-100/70 dark:border-red-400/70 dark:focus:ring-red-500/10" : ""}`}
-        />
-        {emailError && (
-          <p id="register-email-error" className="px-1 text-sm text-red-600 dark:text-red-300">
-            {emailError}
-          </p>
-        )}
-      </div>
-
-      <div className="space-y-3">
-        <label
-          htmlFor="register-password"
-          className="block text-sm font-medium text-zinc-700 dark:text-zinc-200"
-        >
-          Password
-        </label>
-        <div className="relative">
-          <input
-            id="register-password"
-            type={showPassword ? "text" : "password"}
-            value={password}
-            onChange={(e) => handlePasswordChange(e.target.value)}
-            placeholder="At least 8 characters"
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="register-email">Email address</Label>
+          <Input
+            id="register-email"
+            type="email"
+            value={email}
+            onChange={(e) => handleEmailChange(e.target.value)}
+            placeholder="name@example.com"
             disabled={loading}
-            aria-invalid={Boolean(passwordError)}
-            aria-describedby={passwordError ? "register-password-error" : undefined}
-            className={`${inputBaseClassName} pr-16 ${passwordError ? "border-red-400 focus:border-red-400 focus:ring-red-100/70 dark:border-red-400/70 dark:focus:ring-red-500/10" : ""}`}
+            aria-invalid={Boolean(emailError)}
+            className={emailError ? "border-red-500" : ""}
           />
-          <button
-            type="button"
-            onClick={() => setShowPassword(!showPassword)}
-            disabled={loading}
-            className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 transition-colors hover:text-zinc-700 dark:text-zinc-500 dark:hover:text-zinc-300 disabled:cursor-not-allowed disabled:opacity-50"
-            aria-label={showPassword ? "Hide password" : "Show password"}
-          >
-            {showPassword ? "Hide" : "Show"}
-          </button>
+          {emailError && (
+            <p className="text-sm text-red-500">{emailError}</p>
+          )}
         </div>
-        {passwordError && (
-          <p id="register-password-error" className="px-1 text-sm text-red-600 dark:text-red-300">
-            {passwordError}
-          </p>
-        )}
-      </div>
 
-      <div className="space-y-3">
-        <label
-          htmlFor="register-confirm-password"
-          className="block text-sm font-medium text-zinc-700 dark:text-zinc-200"
+        <div className="space-y-2">
+          <Label htmlFor="register-password">Password</Label>
+          <div className="relative">
+            <Input
+              id="register-password"
+              type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={(e) => handlePasswordChange(e.target.value)}
+              placeholder="At least 8 characters"
+              disabled={loading}
+              aria-invalid={Boolean(passwordError)}
+              className={passwordError ? "border-red-500" : ""}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              disabled={loading}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              aria-label={showPassword ? "Hide password" : "Show password"}
+            >
+              {showPassword ? (
+                <EyeOff className="h-4 w-4" />
+              ) : (
+                <Eye className="h-4 w-4" />
+              )}
+            </button>
+          </div>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Must be at least 8 characters with uppercase, lowercase, and number
+          </p>
+          {passwordError && (
+            <p className="text-sm text-red-500">{passwordError}</p>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="register-confirm-password">Confirm password</Label>
+          <div className="relative">
+            <Input
+              id="register-confirm-password"
+              type={showConfirmPassword ? "text" : "password"}
+              value={confirmPassword}
+              onChange={(e) => handleConfirmPasswordChange(e.target.value)}
+              placeholder="Repeat your password"
+              disabled={loading}
+              aria-invalid={Boolean(confirmPasswordError)}
+              className={confirmPasswordError ? "border-red-500" : ""}
+            />
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              disabled={loading}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              aria-label={showConfirmPassword ? "Hide confirmation password" : "Show confirmation password"}
+            >
+              {showConfirmPassword ? (
+                <EyeOff className="h-4 w-4" />
+              ) : (
+                <Eye className="h-4 w-4" />
+              )}
+            </button>
+          </div>
+          {confirmPasswordError && (
+            <p className="text-sm text-red-500">{confirmPasswordError}</p>
+          )}
+        </div>
+
+        {error && (
+          <div className="rounded-md bg-red-50 p-3 dark:bg-red-900/20">
+            <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+          </div>
+        )}
+
+        <Button
+          type="submit"
+          loading={loading}
+          className="w-full bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700"
         >
-          Confirm password
-        </label>
-        <div className="relative">
-          <input
-            id="register-confirm-password"
-            type={showConfirmPassword ? "text" : "password"}
-            value={confirmPassword}
-            onChange={(e) => handleConfirmPasswordChange(e.target.value)}
-            placeholder="Repeat your password"
-            disabled={loading}
-            aria-invalid={Boolean(confirmPasswordError)}
-            aria-describedby={confirmPasswordError ? "register-confirm-password-error" : undefined}
-            className={`${inputBaseClassName} pr-16 ${confirmPasswordError ? "border-red-400 focus:border-red-400 focus:ring-red-100/70 dark:border-red-400/70 dark:focus:ring-red-500/10" : ""}`}
-          />
-          <button
-            type="button"
-            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-            disabled={loading}
-            className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 transition-colors hover:text-zinc-700 dark:text-zinc-500 dark:hover:text-zinc-300 disabled:cursor-not-allowed disabled:opacity-50"
-            aria-label={showConfirmPassword ? "Hide confirmation password" : "Show confirmation password"}
-          >
-            {showConfirmPassword ? "Hide" : "Show"}
-          </button>
-        </div>
-        {confirmPasswordError && (
-          <p
-            id="register-confirm-password-error"
-            className="px-1 text-sm text-red-600 dark:text-red-300"
-          >
-            {confirmPasswordError}
-          </p>
-        )}
-      </div>
+          Create an account
+        </Button>
 
-      {error && (
-        <div className="rounded-[16px] border border-red-200 bg-red-50 px-4 py-3 dark:border-red-500/20 dark:bg-red-500/10">
-          <p className="text-sm text-red-700 dark:text-red-200">{error}</p>
-        </div>
-      )}
-
-      <Button
-        type="submit"
-        loading={loading}
-        className="mt-2 w-full rounded-[16px] px-5 py-3.5 text-[15px] font-semibold"
-      >
-        Create account
-      </Button>
-
-      <div className="pt-1 text-center">
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">
+        <p className="text-center text-sm text-gray-600 dark:text-gray-400">
           Already have an account?{" "}
           <button
             type="button"
             onClick={() => router.push("/login")}
-            className="font-medium text-zinc-900 transition-colors hover:text-zinc-600 dark:text-zinc-100 dark:hover:text-zinc-300 disabled:cursor-not-allowed disabled:opacity-50"
+            className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400"
             disabled={loading}
           >
             Sign in
           </button>
         </p>
-      </div>
-    </form>
+      </form>
+    </div>
   );
 }
