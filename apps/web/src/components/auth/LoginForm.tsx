@@ -1,7 +1,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { validateEmail, validatePassword } from "@/lib/auth/validators";
+import SocialLoginGroup from "./SocialLoginGroup";
+import Divider from "./Divider";
+import { Eye, EyeOff } from "lucide-react";
 
 export interface LoginFormProps {
   onSubmit: (email: string, password: string) => Promise<void>;
@@ -58,127 +63,111 @@ export default function LoginForm({
     }
   };
 
-  const inputBaseClassName =
-    "w-full rounded-[18px] border border-black/8 bg-white px-4 py-3 text-[15px] text-zinc-950 outline-none transition-all duration-200 placeholder:text-zinc-400 focus:border-zinc-400 focus:ring-4 focus:ring-black/5 disabled:cursor-not-allowed disabled:opacity-55 dark:border-white/10 dark:bg-[#20242b] dark:text-zinc-50 dark:placeholder:text-zinc-500 dark:focus:border-zinc-500 dark:focus:ring-white/8";
+  const handleSocialLogin = (provider: "github" | "gitee" | "google") => {
+    // TODO: Implement social login
+    console.log(`Social login with ${provider}`);
+  };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
-      <div className="space-y-2">
-        <p className="text-sm leading-6 text-zinc-500 dark:text-zinc-400">
-          Use your email to sign in.
-        </p>
-      </div>
+    <div>
+      <h1 className="mb-6 text-2xl font-semibold text-gray-900 dark:text-white">
+        Sign in
+      </h1>
 
-      <div className="space-y-3">
-        <label
-          htmlFor="login-email"
-          className="block text-sm font-medium text-zinc-700 dark:text-zinc-200"
-        >
-          Email
-        </label>
-        <div className="relative">
-          <input
+      <SocialLoginGroup
+        providers={["github", "gitee", "google"]}
+        onProviderClick={handleSocialLogin}
+        disabled={loading}
+      />
+
+      <Divider />
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="login-email">Email address</Label>
+          <Input
             id="login-email"
             type="email"
             value={email}
             onChange={(e) => handleEmailChange(e.target.value)}
-            placeholder="name@company.com"
+            placeholder="name@example.com"
             disabled={loading}
             aria-invalid={Boolean(emailError)}
-            aria-describedby={emailError ? "login-email-error" : undefined}
-            className={`${inputBaseClassName} pr-11 ${emailError ? "border-red-400 focus:border-red-400 focus:ring-red-100/70 dark:border-red-400/70 dark:focus:ring-red-500/10" : ""}`}
+            className={emailError ? "border-red-500" : ""}
           />
-          <svg
-            className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400 dark:text-zinc-500"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-          >
-            <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z" />
-          </svg>
+          {emailError && (
+            <p className="text-sm text-red-500">{emailError}</p>
+          )}
         </div>
-        {emailError && (
-          <p id="login-email-error" className="px-1 text-sm text-red-600 dark:text-red-300">
-            {emailError}
-          </p>
+
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="login-password">Password</Label>
+            <button
+              type="button"
+              onClick={() => router.push("/forgot-password")}
+              className="text-sm text-blue-600 hover:text-blue-500 dark:text-blue-400"
+              disabled={loading}
+            >
+              Forgot password?
+            </button>
+          </div>
+          <div className="relative">
+            <Input
+              id="login-password"
+              type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={(e) => handlePasswordChange(e.target.value)}
+              placeholder="Enter your password"
+              disabled={loading}
+              aria-invalid={Boolean(passwordError)}
+              className={passwordError ? "border-red-500" : ""}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              disabled={loading}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              aria-label={showPassword ? "Hide password" : "Show password"}
+            >
+              {showPassword ? (
+                <EyeOff className="h-4 w-4" />
+              ) : (
+                <Eye className="h-4 w-4" />
+              )}
+            </button>
+          </div>
+          {passwordError && (
+            <p className="text-sm text-red-500">{passwordError}</p>
+          )}
+        </div>
+
+        {error && (
+          <div className="rounded-md bg-red-50 p-3 dark:bg-red-900/20">
+            <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+          </div>
         )}
-      </div>
 
-      <div className="space-y-3">
-        <div className="flex items-center justify-between gap-4">
-          <label
-            htmlFor="login-password"
-            className="block text-sm font-medium text-zinc-700 dark:text-zinc-200"
-          >
-            Password
-          </label>
-          <button
-            type="button"
-            onClick={() => router.push("/forgot-password")}
-            className="text-sm text-zinc-500 transition-colors hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 disabled:cursor-not-allowed disabled:opacity-50"
-            disabled={loading}
-          >
-            Forgot password?
-          </button>
-        </div>
-        <div className="relative">
-          <input
-            id="login-password"
-            type={showPassword ? "text" : "password"}
-            value={password}
-            onChange={(e) => handlePasswordChange(e.target.value)}
-            placeholder="Enter your password"
-            disabled={loading}
-            aria-invalid={Boolean(passwordError)}
-            aria-describedby={passwordError ? "login-password-error" : undefined}
-            className={`${inputBaseClassName} pr-12 ${passwordError ? "border-red-400 focus:border-red-400 focus:ring-red-100/70 dark:border-red-400/70 dark:focus:ring-red-500/10" : ""}`}
-          />
-          <button
-            type="button"
-            onClick={() => setShowPassword(!showPassword)}
-            disabled={loading}
-            className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 transition-colors hover:text-zinc-700 dark:text-zinc-500 dark:hover:text-zinc-300 disabled:cursor-not-allowed disabled:opacity-50"
-            aria-label={showPassword ? "Hide password" : "Show password"}
-          >
-            {showPassword ? "Hide" : "Show"}
-          </button>
-        </div>
-        {passwordError && (
-          <p
-            id="login-password-error"
-            className="px-1 text-sm text-red-600 dark:text-red-300"
-          >
-            {passwordError}
-          </p>
-        )}
-      </div>
+        <Button
+          type="submit"
+          loading={loading}
+          className="w-full bg-green-600 hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700"
+        >
+          Sign in
+        </Button>
 
-      {error && (
-        <div className="rounded-[16px] border border-red-200 bg-red-50 px-4 py-3 dark:border-red-500/20 dark:bg-red-500/10">
-          <p className="text-sm text-red-700 dark:text-red-200">{error}</p>
-        </div>
-      )}
-
-      <Button
-        type="submit"
-        loading={loading}
-        className="mt-2 w-full rounded-[16px] px-5 py-3.5 text-[15px] font-semibold"
-      >
-        Sign in
-      </Button>
-
-      <div className="space-y-3 pt-1 text-center">
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">
-          No account?{" "}
+        <p className="text-center text-sm text-gray-600 dark:text-gray-400">
+          New to Code Reviewer?{" "}
           <button
             type="button"
             onClick={() => router.push("/register")}
-            className="font-medium text-zinc-900 transition-colors hover:text-zinc-600 dark:text-zinc-100 dark:hover:text-zinc-300 disabled:cursor-not-allowed disabled:opacity-50"
+            className="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400"
             disabled={loading}
           >
-            Create account
+            Create an account
           </button>
         </p>
-      </div>
-    </form>
+      </form>
+    </div>
   );
 }
