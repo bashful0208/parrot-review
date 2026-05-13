@@ -23,37 +23,46 @@ reviewer/
 └── package.json
 ```
 
-## 启动命令
+## 启动方式
 
-先安装依赖：
+### 方式一：Docker Compose（推荐）
 
-```bash
-pnpm run setup
-```
-
-同时启动 Web 和 Worker：
+**完整部署**（PostgreSQL + Redis + Web + Worker）：
 
 ```bash
-pnpm run dev
+cp .env.example .env
+docker compose up -d
 ```
 
-- 这个命令会同时拉起 `apps/web` 和 `apps/worker`
-- 如果任一服务以非零状态退出，根脚本也会返回相同失败码
-- 数据库配置统一使用 `DATABASE_URL`
-- 默认会使用 `REDIS_URL=redis://127.0.0.1:6379` 与 `REVIEW_QUEUE_NAME=review-jobs`
-- 其他必填环境变量可先复制根目录 `.env.example`，完整说明见 `doc/startup-and-deployment.md`
-- Redis 不可达时，worker 会立即失败退出；详细说明见 `doc/startup-and-deployment.md`
-
-只启动 Web：
+**仅基础组件**（只启动 PostgreSQL + Redis，Web/Worker 在宿主机开发）：
 
 ```bash
-pnpm run dev:web
+docker compose -f docker-compose.dev.yml up -d
 ```
 
-只启动 Worker：
+### 方式二：本地开发（pnpm）
+
+前置条件：PostgreSQL 和 Redis 已启动（可用上面的 `docker compose -f docker-compose.dev.yml up -d`）。
 
 ```bash
-pnpm run dev:worker
+cp .env.example .env          # 首次需要
+pnpm run setup                # 安装依赖
+pnpm run dev                  # 同时启动 web + worker
 ```
 
-- `pnpm run dev:worker` 同样会使用默认的本地 Redis 地址，除非你在启动前覆盖 `REDIS_URL`
+单独启动：
+
+```bash
+pnpm run dev:web              # 只启动 Web (localhost:3000)
+pnpm run dev:worker           # 只启动 Worker
+```
+
+### 环境变量
+
+| 变量 | 默认值 | 说明 |
+| --- | --- | --- |
+| `DATABASE_URL` | - | PostgreSQL 连接串，必填 |
+| `REDIS_URL` | `redis://127.0.0.1:6379` | Redis 连接串 |
+| `REVIEW_QUEUE_NAME` | `review-jobs` | BullMQ 队列名 |
+
+详细说明见 `doc/startup-and-deployment.md`。
