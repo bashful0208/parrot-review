@@ -122,7 +122,7 @@ export default function RegisterForm({
             type={showPassword ? "text" : "password"}
             value={password}
             onChange={(e) => handlePasswordChange(e.target.value)}
-            placeholder="At least 6 characters"
+            placeholder="At least 8 characters"
             disabled={loading}
             aria-invalid={Boolean(passwordError)}
             aria-describedby={passwordError ? "register-password-error" : undefined}
