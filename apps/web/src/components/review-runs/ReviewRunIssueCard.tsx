@@ -1,6 +1,7 @@
 import { Lightbulb } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { MarkdownRenderer } from "@/components/ui/markdown";
 import type { ReviewRunIssueItem } from "@/lib/review-runs/detail-view-model";
 
 const SEVERITY_VARIANT: Record<string, "outline" | "default" | "secondary" | "destructive"> = {
@@ -43,9 +44,7 @@ export default function ReviewRunIssueCard({
               <Lightbulb className="h-3.5 w-3.5" />
               Suggestion
             </p>
-            <div className="whitespace-pre-wrap text-sm font-sans">
-              {issue.suggestion}
-            </div>
+            <MarkdownRenderer>{issue.suggestion}</MarkdownRenderer>
           </div>
         )}
       </CardContent>

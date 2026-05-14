@@ -72,7 +72,6 @@ export async function POST(request: Request) {
     });
 
     requestLogger.info("Register request accepted", {
-      email,
       userId: result.user.id,
     });
 

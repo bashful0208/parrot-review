@@ -186,11 +186,9 @@ export async function requestPasswordReset(input: {
   });
 
   // TODO: Send email with reset link containing token
-  // For now, log the token for development
   const logger = createLogger({ component: "auth" });
   logger.info("Password reset token generated", {
-    email: input.email,
-    token, // Remove in production
+    userId: user.id,
   });
 }
 

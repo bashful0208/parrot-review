@@ -770,9 +770,13 @@ export class AnthropicAdapter implements AiAdapter {
   constructor(config: {
     apiKey: string;
     model: string;
+    baseUrl?: string;
     recorder?: UsageRecorder;
   }) {
-    this.client = new Anthropic({ apiKey: config.apiKey });
+    this.client = new Anthropic({
+      apiKey: config.apiKey,
+      ...(config.baseUrl ? { baseURL: config.baseUrl } : {}),
+    });
     this.model = config.model;
     this.recorder = config.recorder ?? noopUsageRecorder;
   }
@@ -1613,6 +1617,7 @@ export function createAdapter(
     return new AnthropicAdapter({
       apiKey: config.apiKey,
       model: config.model,
+      baseUrl: config.baseUrl,
       recorder,
     });
   }

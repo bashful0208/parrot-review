@@ -1,14 +1,23 @@
-# Reviewer - AI 驱动的代码审查系统
+# Reviewer — AI Code Review, Automated
 
-一个基于多 Agent 的智能代码审查系统，支持 GitHub、Gitee、GitLab 的 PR 自动审查。通过 LangGraph 编排多个 AI Agent 并行执行质量审查和安全审查，自动将审查结果评论到 PR。
+> 接入你的 GitHub / Gitee / GitLab 仓库，每次 PR 自动触发多 Agent 智能审查，结果直接评论到 PR —— 像请了一个永不疲倦的高级工程师团队。
+
+Reviewer 是一个 **AI 驱动的代码审查平台**。它不是简单的 LLM wrapper，而是通过 LangGraph 编排多个专业 Agent（质量审查、安全审查、错误处理审查）并行工作，再经过 Critic 验证和去重聚合，最终生成高质量的审查意见。支持 inline 评论、用量追踪、断点恢复，开箱即用。
+
+**和人工 Review 说再见：**
+- 每次 PR 提交自动触发，无需手动操作
+- 多维度并行审查（质量 / 安全 / 错误处理），覆盖面远超单一 Reviewer
+- 审查结果直接以评论形式出现在 PR 中，开发者无需离开工作流
+- 支持 AI 反思和自我验证，减少误报
 
 ## 核心功能
 
-- **多平台支持** - GitHub、Gitee、GitLab 的 Webhook 集成
+- **多平台支持** - GitHub、Gitee、GitLab 的 Webhook 集成，一键接入
 - **智能审查** - 基于 LangGraph 的多 Agent 并行审查流水线
-  - 质量审查（Quality Reviewer）
-  - 安全审查（Security Reviewer）
-  - 错误处理审查（Error Handler Reviewer）
+  - 质量审查（Quality Reviewer）— 代码规范、可维护性、最佳实践
+  - 安全审查（Security Reviewer）— 漏洞检测、OWASP Top 10
+  - 错误处理审查（Error Handler Reviewer）— 异常处理、边界情况
+- **Critic 验证** - 每条审查意见经过 AI 自我验证，过滤误报
 - **审查结果反馈** - 自动将审查意见评论到 PR（支持 inline 评论）
 - **用量统计** - 跟踪每次审查的 Token 消耗和成本
 - **Web 管理后台** - 仓库管理、AI Provider 配置、审查记录查看

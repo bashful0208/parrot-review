@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { MarkdownRenderer } from "@/components/ui/markdown";
 import type { ReviewRunCommentItem } from "@/lib/review-runs/detail-view-model";
 
 const COMMENT_STATUS_VARIANT: Record<string, "outline" | "default" | "secondary" | "destructive"> = {
@@ -40,9 +41,7 @@ export default function ReviewRunCommentCard({
             {comment.postedAtLabel ? `Posted ${comment.postedAtLabel}` : "Not posted"}
           </span>
         </div>
-        <div className="whitespace-pre-wrap text-sm font-sans leading-relaxed">
-          {comment.body}
-        </div>
+        <MarkdownRenderer>{comment.body}</MarkdownRenderer>
       </CardContent>
     </Card>
   );

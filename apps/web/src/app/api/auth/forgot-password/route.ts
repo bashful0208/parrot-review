@@ -2,6 +2,12 @@ import { NextResponse } from "next/server";
 import { createLogger, requestPasswordReset } from "@reviewer/core";
 import { validateEmail } from "@/lib/auth/validators";
 
+function maskEmail(email: string): string {
+  const [local, domain] = email.split("@");
+  if (!domain) return "***";
+  return `${local[0]}***@${domain}`;
+}
+
 export const runtime = "nodejs";
 
 const logger = createLogger({ component: "api", service: "reviewer-web" });
@@ -23,7 +29,7 @@ export async function POST(request: Request) {
 
     await requestPasswordReset({ email });
 
-    requestLogger.info("Password reset requested", { email });
+    requestLogger.info("Password reset requested", { maskedEmail: maskEmail(email) });
 
     // Always return success to prevent email enumeration
     return NextResponse.json({ ok: true });

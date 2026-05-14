@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, Loader2, AlertCircle } from "lucide-react";
+import { Plus, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,6 +41,9 @@ export default function AddProviderDialog({ onSuccess }: AddProviderDialogProps)
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [testing, setTesting] = useState(false);
+  const [tested, setTested] = useState(false);
+  const [testError, setTestError] = useState("");
 
   const [provider, setProvider] = useState<ProviderType>("anthropic");
   const [displayName, setDisplayName] = useState("");
@@ -50,11 +53,39 @@ export default function AddProviderDialog({ onSuccess }: AddProviderDialogProps)
 
   function handleProviderChange(value: ProviderType) {
     setProvider(value);
+    resetTest();
     if (value === "alibaba") {
       setBaseUrl(ALIBABA_BASE_URL);
     } else if (value !== "custom") {
       setBaseUrl("");
     }
+  }
+
+  async function handleTest() {
+    setTestError("");
+    setTesting(true);
+    try {
+      const res = await fetch("/api/providers/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider, apiKey, model, baseUrl: baseUrl || undefined }),
+      });
+      const data = (await res.json()) as { ok: boolean; error?: string };
+      if (data.ok) {
+        setTested(true);
+      } else {
+        setTestError(data.error ?? "Test failed");
+      }
+    } catch {
+      setTestError("Network error");
+    } finally {
+      setTesting(false);
+    }
+  }
+
+  function resetTest() {
+    setTested(false);
+    setTestError("");
   }
 
   function resetForm() {
@@ -64,6 +95,7 @@ export default function AddProviderDialog({ onSuccess }: AddProviderDialogProps)
     setModel("");
     setBaseUrl("");
     setError("");
+    resetTest();
   }
 
   function handleOpenChange(next: boolean) {
@@ -106,7 +138,12 @@ export default function AddProviderDialog({ onSuccess }: AddProviderDialogProps)
     }
   }
 
-  const showBaseUrl = provider === "alibaba" || provider === "custom";
+  const BASE_URL_PLACEHOLDER: Record<ProviderType, string> = {
+    anthropic: "https://api.anthropic.com",
+    openai: "https://api.openai.com/v1",
+    alibaba: ALIBABA_BASE_URL,
+    custom: "https://api.example.com/v1",
+  };
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -157,7 +194,7 @@ export default function AddProviderDialog({ onSuccess }: AddProviderDialogProps)
               id="displayName"
               placeholder="My Claude config"
               value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
+              onChange={(e) => { setDisplayName(e.target.value); }}
               required
             />
           </div>
@@ -169,7 +206,7 @@ export default function AddProviderDialog({ onSuccess }: AddProviderDialogProps)
               type="password"
               placeholder="sk-..."
               value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
+              onChange={(e) => { setApiKey(e.target.value); resetTest(); }}
               required
             />
           </div>
@@ -180,24 +217,34 @@ export default function AddProviderDialog({ onSuccess }: AddProviderDialogProps)
               id="model"
               placeholder={MODEL_PLACEHOLDER[provider]}
               value={model}
-              onChange={(e) => setModel(e.target.value)}
+              onChange={(e) => { setModel(e.target.value); resetTest(); }}
               required
             />
           </div>
 
-          {showBaseUrl && (
-            <div className="space-y-1.5">
-              <Label htmlFor="baseUrl">Base URL</Label>
-              <Input
-                id="baseUrl"
-                placeholder={
-                  provider === "alibaba"
-                    ? ALIBABA_BASE_URL
-                    : "https://api.example.com/v1"
-                }
-                value={baseUrl}
-                onChange={(e) => setBaseUrl(e.target.value)}
-              />
+          <div className="space-y-1.5">
+            <Label htmlFor="baseUrl">
+              Base URL <span className="text-muted-foreground">(optional)</span>
+            </Label>
+            <Input
+              id="baseUrl"
+              placeholder={BASE_URL_PLACEHOLDER[provider]}
+              value={baseUrl}
+              onChange={(e) => { setBaseUrl(e.target.value); resetTest(); }}
+            />
+          </div>
+
+          {testError && (
+            <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+              <AlertCircle className="mt-0.5 size-4 shrink-0" />
+              <span className="break-all">{testError}</span>
+            </div>
+          )}
+
+          {tested && (
+            <div className="flex items-center gap-2 text-sm text-green-600">
+              <CheckCircle2 className="size-4" />
+              Connection test passed
             </div>
           )}
 
@@ -209,7 +256,16 @@ export default function AddProviderDialog({ onSuccess }: AddProviderDialogProps)
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={loading}>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={testing || !apiKey || !model}
+              onClick={() => void handleTest()}
+            >
+              {testing && <Loader2 className="mr-1.5 size-4 animate-spin" />}
+              {testing ? "Testing…" : "Test Connection"}
+            </Button>
+            <Button type="submit" disabled={loading || !tested}>
               {loading && <Loader2 className="mr-1.5 size-4 animate-spin" />}
               {loading ? "Adding…" : "Add Provider"}
             </Button>
