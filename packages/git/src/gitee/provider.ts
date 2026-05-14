@@ -226,9 +226,15 @@ export class GiteeProvider implements IProvider {
     const client = getGiteePatClient(cred);
     const position = computeDiffPosition(input.patch, input.line, input.side);
     if (position === null) {
-      throw new Error(
-        `Unable to compute Gitee diff position for ${input.filePath}:${input.line} (${input.side}); patch missing or line not in diff`
-      );
+      // Target line is outside diff range — fallback to PR conversation comment
+      logger?.warn("Gitee diff position not found, falling back to PR conversation comment", {
+        filePath: input.filePath,
+        line: input.line,
+        side: input.side,
+      });
+      const fallbackBody =
+        `**${input.filePath}** (line ${input.line}, ${input.side})\n\n${input.bodyMd}`;
+      return this.postPullRequestComment(fullName, input.prNumber, fallbackBody, credential, logger);
     }
     return withGitPlatformErrorBoundary(
       async () => {
