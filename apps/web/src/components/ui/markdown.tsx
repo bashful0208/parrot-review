@@ -2,115 +2,12 @@
 
 import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import ReactMarkdown from "react-markdown";
-import type { Components } from "react-markdown";
 
-const MERMAID_KEYWORDS = [
-  "sequenceDiagram",
-  "flowchart",
-  "graph",
-  "classDiagram",
-  "stateDiagram",
-  "erDiagram",
-  "gantt",
-  "pie",
-  "journey",
-  "gitgraph",
-  "mindmap",
-  "timeline",
-  "requirementDiagram",
-];
+const MERMAID_RE =
+  /^(sequenceDiagram|flowchart|graph|classDiagram|stateDiagram|erDiagram|gantt|pie|journey|gitgraph|mindmap|timeline|requirementDiagram)\b/;
 
-/**
- * Check if a line looks like mermaid syntax (indented block content,
- * arrows, keywords like loop/alt/end, participant declarations, etc.)
- */
-function isMermaidLine(line: string): boolean {
-  if (line === "") return true; // blank lines within a block are fine
-  if (line.startsWith(" ") || line.startsWith("\t")) return true; // indented = diagram content
-  const t = line.trim();
-  if (/^(loop|alt|else|opt|par|break|critical|rect|end)\b/.test(t)) return true;
-  if (/\w+--?>>\w+:/.test(t)) return true; // arrows: A->>B: msg
-  if (/^participant\s/.test(t) || /^actor\s/.test(t)) return true;
-  if (/^note\s/.test(t)) return true;
-  if (/^activate\s|^deactivate\s/.test(t)) return true;
-  return false;
-}
-
-/**
- * Wrap bare mermaid blocks (not already in fenced code blocks) with ```mermaid fences.
- * This handles legacy data where mermaid syntax was inserted as plain text.
- */
-function wrapBareMermaid(md: string): string {
-  const lines = md.split("\n");
-  const result: string[] = [];
-  let inFence = false;
-  let inMermaid = false;
-  let mermaidLines: string[] = [];
-
-  const flushMermaid = () => {
-    // Trim trailing blank lines
-    while (mermaidLines.length > 0 && mermaidLines[mermaidLines.length - 1].trim() === "") {
-      mermaidLines.pop();
-    }
-    if (mermaidLines.length > 0) {
-      result.push("```mermaid", ...mermaidLines, "```");
-    }
-    mermaidLines = [];
-    inMermaid = false;
-  };
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-
-    // Track fenced code blocks
-    if (line.trimStart().startsWith("```")) {
-      if (inMermaid) flushMermaid();
-      inFence = !inFence;
-      result.push(line);
-      continue;
-    }
-
-    if (inFence) {
-      result.push(line);
-      continue;
-    }
-
-    const trimmed = line.trim();
-
-    // Detect bare mermaid: line starts with a mermaid keyword
-    if (!inMermaid && MERMAID_KEYWORDS.some((kw) => trimmed.startsWith(kw))) {
-      inMermaid = true;
-    }
-
-    if (inMermaid) {
-      // Check if this blank line is followed by more mermaid content
-      if (trimmed === "") {
-        // Look ahead: if next non-blank line is still mermaid, keep going
-        let j = i + 1;
-        while (j < lines.length && lines[j].trim() === "") j++;
-        const nextLine = j < lines.length ? lines[j] : "";
-        if (nextLine !== "" && isMermaidLine(nextLine)) {
-          mermaidLines.push(line);
-        } else {
-          flushMermaid();
-          result.push(line);
-        }
-      } else if (isMermaidLine(line)) {
-        mermaidLines.push(line);
-      } else {
-        // Not mermaid syntax — end block
-        flushMermaid();
-        result.push(line);
-      }
-    } else {
-      result.push(line);
-    }
-  }
-
-  if (inMermaid) flushMermaid();
-
-  return result.join("\n");
-}
+const MERMAID_BLOCK_RE =
+  /(```mermaid\n([\s\S]*?)\n```)|((?:^|\n)((?:sequenceDiagram|flowchart|graph|classDiagram|stateDiagram|erDiagram|gantt|pie|journey|gitgraph|mindmap|timeline|requirementDiagram)\b)[\s\S]*?)(?=\n(?:##|\n\n|$))/g;
 
 function MermaidBlock({ code }: { code: string }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -164,30 +61,106 @@ function MermaidBlock({ code }: { code: string }) {
   );
 }
 
-const components: Components = {
-  code({ className, children, ...props }) {
-    const match = /language-(\w+)/.exec(className || "");
-    const isMermaid = match && match[1] === "mermaid";
-    const code = String(children).replace(/\n$/, "");
+/**
+ * Split markdown into segments: normal markdown text and mermaid code blocks.
+ * Returns an array of { type: 'md', content } and { type: 'mermaid', content }.
+ */
+function splitMermaidBlocks(md: string): Array<{ type: "md" | "mermaid"; content: string }> {
+  const segments: Array<{ type: "md" | "mermaid"; content: string }> = [];
+  const lines = md.split("\n");
+  let i = 0;
 
-    if (isMermaid) {
-      return <MermaidBlock code={code} />;
+  while (i < lines.length) {
+    const line = lines[i];
+
+    // Fenced mermaid block: ```mermaid ... ```
+    if (line.trimStart() === "```mermaid" || line.trimStart() === "```mermaid ") {
+      const block: string[] = [];
+      i++;
+      while (i < lines.length && !lines[i].trimStart().startsWith("```")) {
+        block.push(lines[i]);
+        i++;
+      }
+      if (i < lines.length) i++; // skip closing ```
+      if (block.length > 0) {
+        segments.push({ type: "mermaid", content: block.join("\n") });
+      }
+      continue;
     }
 
-    return (
-      <code className={className} {...props}>
-        {children}
-      </code>
-    );
-  },
-};
+    // Bare mermaid block: starts with a mermaid keyword, not inside a code fence
+    const trimmed = line.trim();
+    if (MERMAID_RE.test(trimmed)) {
+      const block: string[] = [line];
+      i++;
+
+      // Collect lines until we hit a clear boundary
+      while (i < lines.length) {
+        const t = lines[i].trim();
+        if (t.startsWith("##") || t.startsWith("# ")) break;
+        if (lines[i].trimStart().startsWith("```")) break;
+
+        if (t === "") {
+          // Blank line: peek ahead
+          let j = i + 1;
+          while (j < lines.length && lines[j].trim() === "") j++;
+          if (j >= lines.length) {
+            i = j; // consume trailing blanks
+            break;
+          }
+          const next = lines[j].trim();
+          if (next.startsWith("##") || next.startsWith("# ") || next.startsWith("```")) break;
+          // If next line doesn't look like mermaid continuation, stop
+          if (
+            !next.startsWith(" ") &&
+            !/^(loop|alt|else|opt|par|break|critical|rect|end|participant|actor|note|activate|deactivate)\b/.test(next) &&
+            !/\w+[-.]--?>>?\w+:/.test(next) &&
+            !/\w+--?>>?\w+:/.test(next) &&
+            !MERMAID_RE.test(next)
+          ) {
+            break;
+          }
+          block.push(lines[i]);
+          i++;
+        } else {
+          block.push(lines[i]);
+          i++;
+        }
+      }
+
+      // Trim trailing blanks
+      while (block.length > 0 && block[block.length - 1].trim() === "") block.pop();
+      if (block.length > 0) {
+        segments.push({ type: "mermaid", content: block.join("\n") });
+      }
+      continue;
+    }
+
+    // Normal markdown line
+    // Accumulate consecutive normal lines into one segment
+    if (segments.length > 0 && segments[segments.length - 1].type === "md") {
+      segments[segments.length - 1].content += "\n" + line;
+    } else {
+      segments.push({ type: "md", content: line });
+    }
+    i++;
+  }
+
+  return segments;
+}
 
 export function MarkdownRenderer({ children }: { children: string }) {
-  const content = useMemo(() => wrapBareMermaid(children), [children]);
+  const segments = useMemo(() => splitMermaidBlocks(children), [children]);
 
   return (
     <div className="prose prose-sm dark:prose-invert max-w-none">
-      <ReactMarkdown components={components}>{content}</ReactMarkdown>
+      {segments.map((seg, idx) =>
+        seg.type === "mermaid" ? (
+          <MermaidBlock key={`mmd-${idx}`} code={seg.content} />
+        ) : (
+          <ReactMarkdown key={`md-${idx}`}>{seg.content}</ReactMarkdown>
+        )
+      )}
     </div>
   );
 }
