@@ -23,6 +23,7 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import ReviewRunCommentCard from "./ReviewRunCommentCard";
 import ReviewRunIssueCard from "./ReviewRunIssueCard";
+import { MarkdownRenderer } from "@/components/ui/markdown";
 import GraphTab from "./GraphTab";
 import type { ReviewRunDetailViewModel } from "@/lib/review-runs/detail-view-model";
 
@@ -156,8 +157,8 @@ export default function ReviewRunDetail({
               </CardHeader>
               <Separator />
               <CardContent className="pt-4">
-                <div className="whitespace-pre-wrap text-sm text-muted-foreground leading-relaxed">
-                  {detail.summaryMd}
+                <div className="text-muted-foreground">
+                  <MarkdownRenderer>{detail.summaryMd}</MarkdownRenderer>
                 </div>
               </CardContent>
             </Card>
