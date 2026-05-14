@@ -26,7 +26,7 @@ export function renderSummary(
 
   const mermaid = summary.mermaid_flow.trim();
   if (mermaid !== "") {
-    sections.push(language === "zh-CN" ? `## 流程\n\n${mermaid}` : `## Flow\n\n${mermaid}`);
+    sections.push(language === "zh-CN" ? `## 流程\n\n\`\`\`mermaid\n${mermaid}\n\`\`\`` : `## Flow\n\n\`\`\`mermaid\n${mermaid}\n\`\`\``);
   }
 
   return sections.join("\n\n---\n\n");
@@ -54,7 +54,7 @@ export function renderBilingualSummary(summary: ReviewSummary): string {
 
   const mermaid = summary.mermaid_flow.trim();
   if (mermaid !== "") {
-    sections.push(`## Flow / 流程\n\n${mermaid}`);
+    sections.push(`## Flow / 流程\n\n\`\`\`mermaid\n${mermaid}\n\`\`\``);
   }
 
   return sections.join("\n\n---\n\n");
