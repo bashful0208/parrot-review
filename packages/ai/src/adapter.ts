@@ -807,12 +807,15 @@ export class AnthropicAdapter implements AiAdapter {
           let formatRetries = 0;
           let parsed: unknown = undefined;
           let roundTruncated = false;
+          let lastFormatError: string | undefined;
 
           while (formatRetries <= MAX_FORMAT_RETRIES && parsed === undefined) {
             const retryMsg =
               formatRetries === 0
                 ? userMsg
-                : `Please call the report_findings tool with valid JSON. Do not leave string fields empty or unclosed.\n\n${userMsg}`;
+                : lastFormatError
+                  ? `Your previous response had invalid tool input: "${lastFormatError}". Please ensure 'findings' is a JSON array of objects with all required fields (filePath, startLine, endLine, title, summary, suggestion, aiPrompt). Call the report_findings tool again.\n\n${userMsg}`
+                  : `Please call the report_findings tool with valid JSON. Do not leave string fields empty or unclosed.\n\n${userMsg}`;
             try {
               log("info", "Anthropic batch round start", {
                 prNumber: context.prNumber,
@@ -848,6 +851,18 @@ export class AnthropicAdapter implements AiAdapter {
 
               if (toolUseBlock) {
                 parsed = toolUseBlock.input;
+                try {
+                  validateAndNormalizeFindings(parsed, lang);
+                } catch (validationErr) {
+                  lastFormatError = validationErr instanceof Error ? validationErr.message : String(validationErr);
+                  log("warn", "Anthropic tool input validation failed, will retry", {
+                    prNumber: context.prNumber,
+                    round,
+                    attempt: formatRetries,
+                    error: lastFormatError,
+                  });
+                  parsed = undefined;
+                }
               }
             } catch (apiErr) {
               log("warn", "Anthropic API error in batch round", {
@@ -1187,12 +1202,15 @@ export class OpenAICompatibleAdapter implements AiAdapter {
           let formatRetries = 0;
           let parsed: unknown = undefined;
           let roundTruncated = false;
+          let lastFormatError: string | undefined;
 
           while (formatRetries <= MAX_FORMAT_RETRIES && parsed === undefined) {
             const retryMsg =
               formatRetries === 0
                 ? userMsg
-                : `Please call the report_findings tool with valid JSON. Do not leave string fields empty or unclosed.\n\n${userMsg}`;
+                : lastFormatError
+                  ? `Your previous response had invalid tool input: "${lastFormatError}". Please ensure 'findings' is a JSON array of objects with all required fields (filePath, startLine, endLine, title, summary, suggestion, aiPrompt). Call the report_findings tool again.\n\n${userMsg}`
+                  : `Please call the report_findings tool with valid JSON. Do not leave string fields empty or unclosed.\n\n${userMsg}`;
             try {
               log("info", "OpenAI batch round start", {
                 prNumber: context.prNumber,
@@ -1235,10 +1253,34 @@ export class OpenAICompatibleAdapter implements AiAdapter {
                 }
                 try {
                   parsed = JSON.parse(toolCall.function.arguments);
+                  try {
+                    validateAndNormalizeFindings(parsed, lang);
+                  } catch (validationErr) {
+                    lastFormatError = validationErr instanceof Error ? validationErr.message : String(validationErr);
+                    log("warn", "OpenAI tool input validation failed, will retry", {
+                      prNumber: context.prNumber,
+                      round,
+                      attempt: formatRetries,
+                      error: lastFormatError,
+                    });
+                    parsed = undefined;
+                  }
                 } catch {
                   if (roundTruncated) {
                     try {
                       parsed = repairTruncatedJson(toolCall.function.arguments);
+                      try {
+                        validateAndNormalizeFindings(parsed, lang);
+                      } catch (validationErr) {
+                        lastFormatError = validationErr instanceof Error ? validationErr.message : String(validationErr);
+                        log("warn", "OpenAI truncated JSON validation failed, will retry", {
+                          prNumber: context.prNumber,
+                          round,
+                          attempt: formatRetries,
+                          error: lastFormatError,
+                        });
+                        parsed = undefined;
+                      }
                     } catch {
                       // repair also failed
                     }
@@ -1251,6 +1293,20 @@ export class OpenAICompatibleAdapter implements AiAdapter {
                     ? choice.message.content
                     : undefined;
                 parsed = extractJsonFromText(content);
+                if (parsed !== undefined) {
+                  try {
+                    validateAndNormalizeFindings(parsed, lang);
+                  } catch (validationErr) {
+                    lastFormatError = validationErr instanceof Error ? validationErr.message : String(validationErr);
+                    log("warn", "OpenAI text extraction validation failed, will retry", {
+                      prNumber: context.prNumber,
+                      round,
+                      attempt: formatRetries,
+                      error: lastFormatError,
+                    });
+                    parsed = undefined;
+                  }
+                }
                 if (parsed === undefined) formatRetries++;
               }
             } catch (apiErr) {
