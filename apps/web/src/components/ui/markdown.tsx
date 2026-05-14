@@ -21,6 +21,22 @@ const MERMAID_KEYWORDS = [
 ];
 
 /**
+ * Check if a line looks like mermaid syntax (indented block content,
+ * arrows, keywords like loop/alt/end, participant declarations, etc.)
+ */
+function isMermaidLine(line: string): boolean {
+  if (line === "") return true; // blank lines within a block are fine
+  if (line.startsWith(" ") || line.startsWith("\t")) return true; // indented = diagram content
+  const t = line.trim();
+  if (/^(loop|alt|else|opt|par|break|critical|rect|end)\b/.test(t)) return true;
+  if (/\w+--?>>\w+:/.test(t)) return true; // arrows: A->>B: msg
+  if (/^participant\s/.test(t) || /^actor\s/.test(t)) return true;
+  if (/^note\s/.test(t)) return true;
+  if (/^activate\s|^deactivate\s/.test(t)) return true;
+  return false;
+}
+
+/**
  * Wrap bare mermaid blocks (not already in fenced code blocks) with ```mermaid fences.
  * This handles legacy data where mermaid syntax was inserted as plain text.
  */
@@ -32,14 +48,20 @@ function wrapBareMermaid(md: string): string {
   let mermaidLines: string[] = [];
 
   const flushMermaid = () => {
+    // Trim trailing blank lines
+    while (mermaidLines.length > 0 && mermaidLines[mermaidLines.length - 1].trim() === "") {
+      mermaidLines.pop();
+    }
     if (mermaidLines.length > 0) {
       result.push("```mermaid", ...mermaidLines, "```");
-      mermaidLines = [];
     }
+    mermaidLines = [];
     inMermaid = false;
   };
 
-  for (const line of lines) {
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
     // Track fenced code blocks
     if (line.trimStart().startsWith("```")) {
       if (inMermaid) flushMermaid();
@@ -53,19 +75,32 @@ function wrapBareMermaid(md: string): string {
       continue;
     }
 
-    // Detect bare mermaid: line starts with a mermaid keyword
     const trimmed = line.trim();
+
+    // Detect bare mermaid: line starts with a mermaid keyword
     if (!inMermaid && MERMAID_KEYWORDS.some((kw) => trimmed.startsWith(kw))) {
       inMermaid = true;
     }
 
     if (inMermaid) {
-      // Empty line after content ends the mermaid block
-      if (trimmed === "" && mermaidLines.length > 0) {
+      // Check if this blank line is followed by more mermaid content
+      if (trimmed === "") {
+        // Look ahead: if next non-blank line is still mermaid, keep going
+        let j = i + 1;
+        while (j < lines.length && lines[j].trim() === "") j++;
+        const nextLine = j < lines.length ? lines[j] : "";
+        if (nextLine !== "" && isMermaidLine(nextLine)) {
+          mermaidLines.push(line);
+        } else {
+          flushMermaid();
+          result.push(line);
+        }
+      } else if (isMermaidLine(line)) {
+        mermaidLines.push(line);
+      } else {
+        // Not mermaid syntax — end block
         flushMermaid();
         result.push(line);
-      } else {
-        mermaidLines.push(line);
       }
     } else {
       result.push(line);
