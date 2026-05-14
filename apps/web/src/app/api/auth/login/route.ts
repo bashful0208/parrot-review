@@ -54,7 +54,7 @@ export async function POST(request: Request) {
       userAgent: request.headers.get("user-agent"),
     });
 
-    requestLogger.info("Login request accepted", { email, userId: result.user.id });
+    requestLogger.info("Login request accepted", { userId: result.user.id });
 
     const response = NextResponse.json({
       ok: true,
