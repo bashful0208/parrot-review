@@ -35,42 +35,42 @@
 
 ### 2.1 组织与权限
 
-- [ ] 建立 `organizations`
-- [ ] 建立 `memberships`
-- [ ] 建立基础角色：`owner`、`admin`、`member`
-- [ ] 建立 `app_users` 作为稳定用户主体；业务表中的 `user_id` / `owner_user_id` / `generated_by_user_id` 等字段统一引用该主体，不锁定具体 Auth 产品
+- [x] 建立 `organizations`
+- [x] 建立 `memberships`
+- [x] 建立基础角色：`owner`、`admin`、`member`
+- [x] 建立 `app_users` 作为稳定用户主体；业务表中的 `user_id` / `owner_user_id` / `generated_by_user_id` 等字段统一引用该主体，不锁定具体 Auth 产品
 - [ ] 确保组织切换、membership 校验与权限判断统一基于该稳定主体
-- [ ] 为核心业务表补 `organization_id`
+- [x] 为核心业务表补 `organization_id`
 - [ ] 按最终访问方案决定是否启用 `RLS`
 - [ ] 确保用户只能访问自己组织的数据
 
 ### 2.2 仓库与 PR 主数据
 
-- [ ] 建立 `repositories`
-- [ ] 建立 `repo_integrations`，包含接入元数据、状态、最近健康检查时间/结果、最近同步时间和 secret reference
-- [ ] 建立 `pull_requests`，并以 `repository_id + provider_pr_id` 作为外部平台稳定标识唯一约束
-- [ ] 建立 `pr_commits`
-- [ ] 建立 `changed_files`，明确它是每次 `review_run` 的变更文件快照
-- [ ] 建立仓库默认语言、审查严格度、默认模型绑定字段
+- [x] 建立 `repositories`
+- [x] 建立 `repo_integrations`，包含接入元数据、状态、最近健康检查时间/结果、最近同步时间和 secret reference
+- [x] 建立 `pull_requests`，并以 `repository_id + provider_pr_id` 作为外部平台稳定标识唯一约束
+- [x] 建立 `pr_commits`
+- [x] 建立 `changed_files`，明确它是每次 `review_run` 的变更文件快照
+- [x] 建立仓库默认语言、审查严格度、默认模型绑定字段
 
 ### 2.3 审查结果数据
 
-- [ ] 建立 `review_runs`
-- [ ] 建立 `review_issues`，统一使用 `issue_type: quality/security` 表达问题类型
-- [ ] 为 `review_issues.fingerprint` 统一最小定义：用于跨 `review_run` 去重与状态继承，建议由仓库 / 规则类型 / 语义归一化后的问题特征 / 文件路径或代码定位信息组成
+- [x] 建立 `review_runs`
+- [x] 建立 `review_issues`，统一使用 `issue_type: quality/security` 表达问题类型
+- [x] 为 `review_issues.fingerprint` 统一最小定义：用于跨 `review_run` 去重与状态继承，建议由仓库 / 规则类型 / 语义归一化后的问题特征 / 文件路径或代码定位信息组成
 - [ ] P0 保证同类问题可稳定归并、不同问题不被过度合并，具体算法可后续迭代
-- [ ] 建立 `review_comments`
-- [ ] 建立 `review_feedback`
-- [ ] 建立 `agent_prompts`
-- [ ] 建立 `usage_events`
-- [ ] 设计 `review_run` 状态机：`queued`、`running`、`succeeded`、`failed`、`retrying`、`cancelled`
+- [x] 建立 `review_comments`
+- [x] 建立 `review_feedback`
+- [x] 建立 `agent_prompts`
+- [x] 建立 `usage_events`
+- [x] 设计 `review_run` 状态机：`queued`、`running`、`succeeded`、`failed`、`retrying`、`cancelled`
 
 ### 2.4 规则与模型配置
 
-- [ ] 建立 `rule_sets`
-- [ ] 建立 `rule_versions`
-- [ ] 建立 `ai_provider_configs`
-- [ ] 建立 `ai_provider_bindings`
+- [x] 建立 `rule_sets`
+- [x] 建立 `rule_versions`
+- [x] 建立 `ai_provider_configs`
+- [x] 建立 `ai_provider_bindings`
 - [ ] 业务表只保存 `vault_secret_id` 等 secret reference 和元数据；这些字段名仅表示历史命名或通用 secret reference 语义，不代表 Vault 方案已定
 - [ ] `repo_integrations` 只保存接入元数据、状态和 secret reference，不保存明文 token / secret
 
@@ -78,146 +78,146 @@
 
 - [ ] 使用受控 secret 管理能力存储模型密钥
 - [ ] 后台支持录入 `OpenAI / Anthropic / Alibaba(Qwen)` 配置元数据，并只保存 secret reference，不保存明文密钥
-- [ ] 前端只显示掩码后的模型配置
+- [x] 前端只显示掩码后的模型配置
 - [ ] 禁止前端读取原始密钥
 - [ ] `worker` 调模型前通过受控服务端机制解析 secret reference 并读取对应 provider 密钥
-- [ ] 日志、错误栈、审计记录中不打印完整密钥
-- [ ] 支持禁用失效的 provider 配置
+- [x] 日志、错误栈、审计记录中不打印完整密钥
+- [x] 支持禁用失效的 provider 配置
 - [ ] P0 必交付密钥能力边界与最小可工作实现，不锁定具体供应商或产品
 
 ## 4. 控制台与账号体系
 
-- [ ] 明确并落地 P0 登录能力
+- [x] 明确并落地 P0 登录能力
 - [ ] 完成组织切换
 - [ ] 完成成员管理基础页面
-- [ ] 完成仓库列表页
-- [ ] 完成仓库接入向导页
-- [ ] 完成 PR 列表页
-- [ ] 完成 PR 审查详情页
+- [x] 完成仓库列表页
+- [x] 完成仓库接入向导页
+- [x] 完成 PR 列表页
+- [x] 完成 PR 审查详情页
 - [ ] 完成规则配置页
-- [ ] 完成模型配置页
+- [x] 完成模型配置页
 
 ## 5. 仓库接入
 
 ### 5.1 平台接入
 
-- [ ] 按 `GitHub / GitLab / Gitee` 设计统一数据模型与 provider 接入抽象
-- [ ] P0 最小可工作闭环先打通单一平台即可
+- [x] 按 `GitHub / GitLab / Gitee` 设计统一数据模型与 provider 接入抽象
+- [x] P0 最小可工作闭环先打通单一平台即可
 - [ ] 其他平台作为兼容预留，不要求三平台同时完成上线闭环
-- [ ] 统一抽象 provider 接口：安装信息、仓库列表、PR 拉取、diff 拉取、评论回写
+- [x] 统一抽象 provider 接口：安装信息、仓库列表、PR 拉取、diff 拉取、评论回写
 
 ### 5.2 接入流程
 
 - [ ] 实现 OAuth / App 安装后的回调处理
 - [ ] 支持最小权限校验
-- [ ] 支持选择要接入的仓库
-- [ ] 首次接入自动拉取仓库元信息
+- [x] 支持选择要接入的仓库
+- [x] 首次接入自动拉取仓库元信息
 - [ ] 接入完成后自动触发一次健康检查
-- [ ] 接入失败时给出明确错误提示
+- [x] 接入失败时给出明确错误提示
 
 ### 5.3 Webhook
 
-- [ ] 为 `GitHub / GitLab / Gitee` 建立独立 webhook handler
-- [ ] 验签
-- [ ] 识别 `PR opened / synchronize / reopened`
+- [x] 为 `GitHub / GitLab / Gitee` 建立独立 webhook handler
+- [x] 验签
+- [x] 识别 `PR opened / synchronize / reopened`
 - [ ] 识别评论和状态回写事件
-- [ ] 实现 webhook 幂等
-- [ ] webhook 只负责写库和入队，不做重活
+- [x] 实现 webhook 幂等
+- [x] webhook 只负责写库和入队，不做重活
 
 ## 6. 队列与 Worker
 
 ### 6.1 BullMQ
 
-- [ ] 建立 `pr_review_jobs`
+- [x] 建立 `pr_review_jobs`
 - [ ] 建立 `review_retry_jobs`
 - [ ] 配置重试次数和退避策略
 - [ ] 配置任务超时
 - [ ] 配置死信处理策略
-- [ ] 支持任务去重键
+- [x] 支持任务去重键
 
 ### 6.2 Worker 主链路
 
-- [ ] 读取审查任务
-- [ ] 拉取目标仓库和 PR 信息
-- [ ] 获取 base/head diff
-- [ ] 解析变更文件列表
-- [ ] 拉取必要上下文文件
-- [ ] 合并规则配置
-- [ ] 构造模型输入
-- [ ] 调用 AI 生成摘要、问题、修复提示词
-- [ ] 写回审查结果
-- [ ] 预留 `review_run` 状态同步能力边界，并交付轮询或待定实时机制中的一种可工作最小实现
+- [x] 读取审查任务
+- [x] 拉取目标仓库和 PR 信息
+- [x] 获取 base/head diff
+- [x] 解析变更文件列表
+- [x] 拉取必要上下文文件
+- [x] 合并规则配置
+- [x] 构造模型输入
+- [x] 调用 AI 生成摘要、问题、修复提示词
+- [x] 写回审查结果
+- [x] 预留 `review_run` 状态同步能力边界，并交付轮询或待定实时机制中的一种可工作最小实现
 
 ### 6.3 稳定性
 
-- [ ] 任务失败可重试
+- [x] 任务失败可重试
 - [ ] 模型超时可 fallback
 - [ ] 拉仓库失败可重试
-- [ ] 重复 webhook 不重复生成多份结果
+- [x] 重复 webhook 不重复生成多份结果
 - [ ] 任务可取消
 
 ## 7. AI 接入层
 
 ### 7.1 `packages/ai`
 
-- [ ] 建立统一 provider 工厂
-- [ ] 建立统一任务接口：`generateReviewSummary`
-- [ ] 建立统一任务接口：`generateReviewFindings`
+- [x] 建立统一 provider 工厂
+- [x] 建立统一任务接口：`generateReviewSummary`
+- [x] 建立统一任务接口：`generateReviewFindings`
 - [ ] 建立统一任务接口：`generateFixPrompt`
 - [ ] 建立统一任务接口：`embedKnowledge`
-- [ ] 统一结构化输出 schema
+- [x] 统一结构化输出 schema
 
 ### 7.2 Provider 支持
 
-- [ ] 接入 `OpenAI`
-- [ ] 接入 `Anthropic`
-- [ ] 接入 `Alibaba(Qwen)`
-- [ ] 支持组织级默认 provider
+- [x] 接入 `OpenAI`
+- [x] 接入 `Anthropic`
+- [x] 接入 `Alibaba(Qwen)`
+- [x] 支持组织级默认 provider
 - [ ] 支持仓库级覆盖 provider
 - [ ] 支持 fallback provider
 
 ### 7.3 调用治理
 
-- [ ] 记录 `provider`
-- [ ] 记录 `model`
-- [ ] 记录 `task_type`
-- [ ] 记录 `latency_ms`
-- [ ] 记录 `input_tokens`
-- [ ] 记录 `output_tokens`
-- [ ] 记录 `estimated_cost`
-- [ ] 记录 `success / failure`
+- [x] 记录 `provider`
+- [x] 记录 `model`
+- [x] 记录 `task_type`
+- [x] 记录 `latency_ms`
+- [x] 记录 `input_tokens`
+- [x] 记录 `output_tokens`
+- [x] 记录 `estimated_cost`
+- [x] 记录 `success / failure`
 
 ## 8. PR 自动审查
 
 ### 8.1 审查输入
 
-- [ ] 支持读取 PR 标题、描述、diff
-- [ ] 支持读取变更文件路径
-- [ ] 支持读取相邻上下文文件
-- [ ] 支持注入仓库规则
-- [ ] 支持注入默认语言
+- [x] 支持读取 PR 标题、描述、diff
+- [x] 支持读取变更文件路径
+- [x] 支持读取相邻上下文文件
+- [x] 支持注入仓库规则
+- [x] 支持注入默认语言
 
 ### 8.2 审查输出
 
-- [ ] 生成 PR 摘要
-- [ ] 生成问题列表
-- [ ] 每条问题带严重级别
-- [ ] 每条问题带置信度
-- [ ] 每条问题带文件定位信息
-- [ ] 每条问题带修复建议
-- [ ] 每条问题通过 `issue_type: quality/security` 区分类型
+- [x] 生成 PR 摘要
+- [x] 生成问题列表
+- [x] 每条问题带严重级别
+- [x] 每条问题带置信度
+- [x] 每条问题带文件定位信息
+- [x] 每条问题带修复建议
+- [x] 每条问题通过 `issue_type: quality/security` 区分类型
 
 ### 8.3 展示
 
-- [ ] PR 详情页展示摘要
-- [ ] PR 详情页展示问题列表
+- [x] PR 详情页展示摘要
+- [x] PR 详情页展示问题列表
 - [ ] 支持按严重级别筛选
 - [ ] 支持按可修复筛选
 - [ ] 支持按安全问题筛选
 
 ## 9. 增量审查
 
-- [ ] 识别 `synchronize` 事件
+- [x] 识别 `synchronize` 事件
 - [ ] 只分析新增 commit 的 diff
 - [ ] 比较新旧 `review_run`
 - [ ] 自动标记已解决问题
@@ -229,8 +229,8 @@
 
 ### 10.1 排序
 
-- [ ] 建立 `severity` 评分
-- [ ] 建立 `confidence` 评分
+- [x] 建立 `severity` 评分
+- [x] 建立 `confidence` 评分
 - [ ] 建立 `fixability` 评分
 - [ ] 建立总排序规则
 - [ ] 默认优先展示高价值问题
@@ -238,16 +238,16 @@
 
 ### 10.2 去重
 
-- [ ] 相同文件、相同问题类型做去重
+- [x] 相同文件、相同问题类型做去重
 - [ ] 同一问题跨次审查做合并识别
 - [ ] 已忽略问题避免重复出现
 - [ ] 已确认问题避免重复刷屏
 
 ### 10.3 用户反馈
 
-- [ ] 支持标记“有帮助”
-- [ ] 支持标记“无帮助”
-- [ ] 支持标记“误报”
+- [ ] 支持标记"有帮助"
+- [ ] 支持标记"无帮助"
+- [ ] 支持标记"误报"
 - [ ] 支持填写忽略原因
 - [ ] `review_issues.status/ignored_by_user_id/ignored_reason` 负责问题状态变更与忽略原因记录
 - [ ] `review_feedback` 负责记录每用户对每问题的当前反馈记录 / 闭环记录，不作为完整事件流
@@ -256,10 +256,10 @@
 
 ## 11. Agent 修复建议
 
-- [ ] 支持按单条问题生成修复提示词
+- [x] 支持按单条问题生成修复提示词
 - [ ] 支持按多条问题合并生成修复提示词
 - [ ] 输出结构包含：问题摘要、根因、影响范围、修改约束、验收标准、测试建议
-- [ ] 支持一键复制
+- [x] 支持一键复制
 - [ ] 记录提示词生成与复制事件
 - [ ] 支持中 / 英 / 西三语模板
 
@@ -283,36 +283,36 @@
 
 ## 13. 基础安全审查
 
-- [ ] 定义首版支持的高频风险类型
+- [x] 定义首版支持的高频风险类型
 - [ ] 建立基础安全规则库
-- [ ] 安全问题单独分类展示
+- [x] 安全问题单独分类展示
 - [ ] 安全问题默认高优先级
-- [ ] 安全问题支持生成修复提示词
+- [x] 安全问题支持生成修复提示词
 - [ ] 避免被低噪声模式完全折叠
 
 ## 14. 多语言输出
 
-- [ ] 支持中文输出
-- [ ] 支持英文输出
+- [x] 支持中文输出
+- [x] 支持英文输出
 - [ ] 支持西班牙语输出
-- [ ] 支持仓库默认语言
-- [ ] 支持用户临时切换
+- [x] 支持仓库默认语言
+- [x] 支持用户临时切换
 - [ ] 同一问题在不同语言下保持严重级别和修复方向一致
 - [ ] 统一术语表
 
 ## 15. 实时状态与通知
 
-- [ ] P0 只预留 `review_run` 状态同步能力边界，不预设具体实时产品
-- [ ] 交付轮询或待定实时机制中的一种可工作最小实现，不锁定具体供应商或产品
-- [ ] 控制台自动刷新任务状态
-- [ ] 审查完成后刷新问题列表
-- [ ] 审查失败时展示失败原因
+- [x] P0 只预留 `review_run` 状态同步能力边界，不预设具体实时产品
+- [x] 交付轮询或待定实时机制中的一种可工作最小实现，不锁定具体供应商或产品
+- [x] 控制台自动刷新任务状态
+- [x] 审查完成后刷新问题列表
+- [x] 审查失败时展示失败原因
 
 ## 16. 观测与运维
 
-- [ ] 接入任务日志
-- [ ] 接入模型调用日志
-- [ ] 接入 webhook 接收日志
+- [x] 接入任务日志
+- [x] 接入模型调用日志
+- [x] 接入 webhook 接收日志
 - [ ] 统计首轮分析耗时
 - [ ] 统计增量审查耗时
 - [ ] 统计误报反馈率
@@ -323,24 +323,24 @@
 
 ### 17.1 自动化测试
 
-- [ ] webhook handler 单测
+- [x] webhook handler 单测
 - [ ] 队列入队 / 消费测试
 - [ ] 规则解析测试
-- [ ] AI 输出 schema 校验测试
+- [x] AI 输出 schema 校验测试
 - [ ] 审查结果去重测试
 - [ ] 多语言模板测试
 
 ### 17.2 P0 验收
 
 - [ ] 新仓库能在 10 分钟内完成接入
-- [ ] 新 PR 能自动触发审查
-- [ ] 首轮反馈结果可被成功写入并在控制台可见
+- [x] 新 PR 能自动触发审查
+- [x] 首轮反馈结果可被成功写入并在控制台可见
 - [ ] 增量提交不会大量重复评论
-- [ ] 可按单条或多条问题生成人工可读的 Agent 修复提示词
+- [x] 可按单条或多条问题生成人工可读的 Agent 修复提示词
 - [ ] YAML 规则变更后可完成校验并参与后续审查
-- [ ] 安全问题可单独识别
-- [ ] 中 / 英 / 西输出可切换
-- [ ] 模型可按组织 / 仓库切换
+- [x] 安全问题可单独识别
+- [x] 中 / 英 / 西输出可切换
+- [x] 模型可按组织 / 仓库切换
 - [ ] 模型密钥可通过受控服务端机制和 secret reference 安全读取
 
 ## 18. P0 明确不做
