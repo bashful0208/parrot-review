@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
+import { AppError, ErrorCode } from "@reviewer/core";
 
 import type {
   CritiqueResult,
@@ -1604,6 +1605,81 @@ export class OpenAICompatibleAdapter implements AiAdapter {
 }
 
 // ---------------------------------------------------------------------------
+// FallbackAdapter
+// ---------------------------------------------------------------------------
+
+export class FallbackAdapter implements AiAdapter {
+  private readonly primary: AiAdapter;
+  private readonly fallbacks: AiAdapter[];
+
+  constructor(primary: AiAdapter, fallbacks: AiAdapter[]) {
+    this.primary = primary;
+    this.fallbacks = fallbacks;
+  }
+
+  async generateReviewFindings(context: ReviewContext): Promise<ReviewResult> {
+    return this.withFallback("generateReviewFindings", context);
+  }
+
+  async generateReviewSummary(context: ReviewContext): Promise<ReviewSummaryResult> {
+    return this.withFallback("generateReviewSummary", context);
+  }
+
+  async verifyFinding(
+    finding: ReviewFinding,
+    context: ReviewContext
+  ): Promise<CritiqueResult> {
+    return this.withFallback("verifyFinding", finding, context);
+  }
+
+  async regenerateFinding(
+    finding: ReviewFinding,
+    critique: CritiqueResult,
+    context: ReviewContext
+  ): Promise<ReviewFinding> {
+    return this.withFallback("regenerateFinding", finding, critique, context);
+  }
+
+  private async withFallback<T>(
+    method: keyof AiAdapter,
+    ...args: unknown[]
+  ): Promise<T> {
+    try {
+      return await (this.primary[method] as Function)(...args);
+    } catch (err) {
+      if (this.isRetryableError(err) && this.fallbacks.length > 0) {
+        log("warn", "Primary provider failed, trying fallback", {
+          method,
+          error: err instanceof Error ? err.message : String(err),
+        });
+        return await (this.fallbacks[0]![method] as Function)(...args);
+      }
+      throw err;
+    }
+  }
+
+  private isRetryableError(err: unknown): boolean {
+    if (err instanceof AppError) {
+      return (
+        err.code === ErrorCode.ModelInvocationTimeout ||
+        err.code === ErrorCode.ModelInvocationProviderUnavailable ||
+        err.code === ErrorCode.ModelInvocationRateLimit
+      );
+    }
+    if (err instanceof Error) {
+      const msg = err.message.toLowerCase();
+      return (
+        msg.includes("timeout") ||
+        msg.includes("503") ||
+        msg.includes("502") ||
+        msg.includes("econnreset")
+      );
+    }
+    return false;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Factory
 // ---------------------------------------------------------------------------
 
@@ -1632,6 +1708,17 @@ export function createAdapter(
     provider: config.provider,
     recorder,
   });
+}
+
+export function createAdapterWithFallback(
+  primary: AiAdapterConfig,
+  fallbacks: AiAdapterConfig[],
+  recorder: UsageRecorder = noopUsageRecorder
+): AiAdapter {
+  const primaryAdapter = createAdapter(primary, recorder);
+  if (fallbacks.length === 0) return primaryAdapter;
+  const fallbackAdapters = fallbacks.map((f) => createAdapter(f, recorder));
+  return new FallbackAdapter(primaryAdapter, fallbackAdapters);
 }
 
 // ---------------------------------------------------------------------------
