@@ -13,7 +13,7 @@
     "build": "tsc -p tsconfig.json",
     "lint": "pnpm --dir ../.. exec eslint .",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "pnpm exec tsx --test src/gitee/*.test.ts src/github/*.test.ts"
+    "test": "pnpm exec tsx --test src/errors.test.ts src/gitee/*.test.ts src/github/*.test.ts"
   },
   "dependencies": {
     "@octokit/app": "^15.1.1",
