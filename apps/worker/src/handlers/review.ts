@@ -33,6 +33,7 @@ import {
 import {
   GiteeProvider,
   GitHubProvider,
+  withRetry,
   type IProvider,
   type ProviderCredential,
 } from "@reviewer/git";
@@ -77,7 +78,9 @@ export async function handleReviewJob(
 
     // 步骤 3: 拉取 PR 详情
     const provider = buildProvider(repo.provider);
-    const pr = await provider.getPullRequest(repo.full_name, prNumber, credential, logger);
+    const pr = await withRetry(() =>
+      provider.getPullRequest(repo.full_name, prNumber, credential, logger)
+    );
 
     // 步骤 4: Upsert pull_requests 记录
     const { id: pullRequestId } = await upsertPullRequest({
@@ -174,12 +177,16 @@ export async function handleReviewJob(
       }
 
       // 步骤 7: 拉取 diff
-      const diffs = await provider.getPullRequestDiff(repo.full_name, prNumber, credential, logger);
+      const diffs = await withRetry(() =>
+        provider.getPullRequestDiff(repo.full_name, prNumber, credential, logger)
+      );
 
       // 步骤 7a: 并发加载 reviewer 自身规范 + 目标仓库背景
       const [guidelines, projectContext] = await Promise.all([
         loadReviewerGuidelines(),
-        loadTargetRepoContext(provider, repo.full_name, headSha, credential, logger),
+        withRetry(() =>
+          loadTargetRepoContext(provider, repo.full_name, headSha, credential, logger)
+        ),
       ]);
 
       // 步骤 8: 从 DB 加载 AI provider 配置
