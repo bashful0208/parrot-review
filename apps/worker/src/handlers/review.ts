@@ -15,6 +15,7 @@ import {
   insertUsageEvent,
   markWebhookEventStatus,
   getOrgOutputLanguage,
+  TaskCancelledError,
 } from "@reviewer/core";
 import type { Logger } from "@reviewer/core";
 import type { WebhookJobPayload } from "@reviewer/core";
@@ -26,13 +27,14 @@ import {
   buildReviewGraph,
   setCtx,
   clearCtx,
-  createAdapter,
+  createAdapterWithFallback,
   type UsageRecorder,
   type OutputLanguage,
 } from "@reviewer/ai";
 import {
   GiteeProvider,
   GitHubProvider,
+  withRetry,
   type IProvider,
   type ProviderCredential,
 } from "@reviewer/git";
@@ -77,7 +79,9 @@ export async function handleReviewJob(
 
     // 步骤 3: 拉取 PR 详情
     const provider = buildProvider(repo.provider);
-    const pr = await provider.getPullRequest(repo.full_name, prNumber, credential, logger);
+    const pr = await withRetry(() =>
+      provider.getPullRequest(repo.full_name, prNumber, credential, logger)
+    );
 
     // 步骤 4: Upsert pull_requests 记录
     const { id: pullRequestId } = await upsertPullRequest({
@@ -174,25 +178,24 @@ export async function handleReviewJob(
       }
 
       // 步骤 7: 拉取 diff
-      const diffs = await provider.getPullRequestDiff(repo.full_name, prNumber, credential, logger);
+      const diffs = await withRetry(() =>
+        provider.getPullRequestDiff(repo.full_name, prNumber, credential, logger)
+      );
 
       // 步骤 7a: 并发加载 reviewer 自身规范 + 目标仓库背景
       const [guidelines, projectContext] = await Promise.all([
         loadReviewerGuidelines(),
-        loadTargetRepoContext(provider, repo.full_name, headSha, credential, logger),
+        withRetry(() =>
+          loadTargetRepoContext(provider, repo.full_name, headSha, credential, logger)
+        ),
       ]);
 
-      // 步骤 8: 从 DB 加载 AI provider 配置
-      const activeConfig = await getActiveAiProviderConfig(organizationId);
-      if (!activeConfig) {
+      // 步骤 8: 从 DB 加载 AI provider 配置（主 + 备用）
+      const activeResult = await getActiveAiProviderConfig(organizationId);
+      if (!activeResult) {
         throw new Error(`No active AI provider config for organization ${organizationId}`);
       }
-      const adapterConfig = {
-        provider: activeConfig.provider,
-        model: activeConfig.model,
-        apiKey: activeConfig.apiKey,
-        baseUrl: activeConfig.baseUrl ?? undefined,
-      };
+      const { primary, fallbacks } = activeResult;
 
       // 步骤 8a: 调用治理 — 把每次 AI 调用落到 usage_events
       const usageRecorder: UsageRecorder = async (draft) => {
@@ -218,6 +221,22 @@ export async function handleReviewJob(
         });
       };
 
+      const adapter = createAdapterWithFallback(
+        {
+          provider: primary.provider,
+          model: primary.model,
+          apiKey: primary.apiKey,
+          baseUrl: primary.baseUrl ?? undefined,
+        },
+        fallbacks.map((f) => ({
+          provider: f.provider,
+          model: f.model,
+          apiKey: f.apiKey,
+          baseUrl: f.baseUrl ?? undefined,
+        })),
+        usageRecorder
+      );
+
       // 步骤 8b: 跑 LangGraph review 图（多 agent + 反思 + checkpoint）
       // 大对象（diffs/guidelines/projectContext）走 ctx-cache，不进 LangGraph state
       setCtx(runId!, { diffs, guidelines, projectContext });
@@ -225,7 +244,6 @@ export async function handleReviewJob(
       let finalFindings: import("@reviewer/ai").ReviewGraphStateType["finalFindings"] = [];
       let summaryMd: string | null = null;
       try {
-        const adapter = createAdapter(adapterConfig, usageRecorder);
         const graph = buildReviewGraph(adapter, checkpointer);
 
         const graphConfig = {
@@ -245,7 +263,7 @@ export async function handleReviewJob(
             repositoryId,
             pullRequestId,
             reviewRunId: runId!,
-            providerConfigId: activeConfig.id,
+            providerConfigId: primary.id,
             outputLanguage,
           },
         };
@@ -422,6 +440,15 @@ export async function handleReviewJob(
         await markWebhookEventStatus(webhookEventId, "processed");
       }
     } catch (err) {
+      if (err instanceof TaskCancelledError) {
+        logger.info("Job cancelled", { review_run_id: runId });
+        // Status already updated to 'cancelled' in checkCancelled
+        // Normal exit — do not throw, do not mark as failed
+        if (webhookEventId) {
+          await markWebhookEventStatus(webhookEventId, "failed", "cancelled");
+        }
+        return;
+      }
       const errorMessage = err instanceof Error ? err.message : String(err);
       logger.error("Review job failed", err instanceof Error ? err : new Error(errorMessage), {
         review_run_id: runId,

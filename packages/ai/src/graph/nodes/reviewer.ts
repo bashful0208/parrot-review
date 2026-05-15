@@ -2,6 +2,7 @@ import type { FileDiff } from "@reviewer/git";
 
 import type { AiAdapter } from "../../adapter.js";
 import type { ReviewFocus } from "../../types.js";
+import { checkCancelled } from "../cancellation.js";
 import { getCtx } from "../ctx-cache.js";
 import type { ReviewGraphStateType } from "../state.js";
 
@@ -30,6 +31,8 @@ export function makeReviewerNode(
         reviewerErrors: [{ role: focus, error: "ctx-cache miss" }],
       };
     }
+
+    await checkCancelled(state.reviewRunId);
 
     try {
       // Pre-scan for extra context (e.g. deterministic error-handling patterns)

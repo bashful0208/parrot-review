@@ -573,6 +573,48 @@ export async function getReviewRunCount(
   }
 }
 
+export async function getReviewRunStatus(
+  id: string
+): Promise<string | null> {
+  const result = await getPool().query<{ status: string }>(
+    "select status from public.review_runs where id = $1",
+    [id]
+  );
+  return result.rows[0]?.status ?? null;
+}
+
+export async function cancelReviewRun(id: string): Promise<boolean> {
+  const logger = createLogger({ component: "queue" });
+  try {
+    const result = await getPool().query(
+      `update public.review_runs
+          set status = 'cancelling', updated_at = now()
+        where id = $1
+          and status in ('queued', 'running')
+        returning id`,
+      [id]
+    );
+    const success = (result.rowCount ?? 0) > 0;
+    if (success) {
+      logger.info("Review run set to cancelling", { review_run_id: id });
+    } else {
+      logger.warn("Review run not found or not in cancellable state", {
+        review_run_id: id,
+      });
+    }
+    return success;
+  } catch (error) {
+    logger.error("Failed to cancel review run", error as Error, {
+      operation: "cancel_review_run",
+      review_run_id: id,
+    });
+    throw new AppError(
+      ErrorCode.DependencyDatabaseConnection,
+      "Failed to cancel review run"
+    );
+  }
+}
+
 export async function getReviewRunSuccessRate(
   organizationId: string,
   sinceDays: number

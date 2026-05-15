@@ -1,4 +1,5 @@
 import type { AiAdapter } from "../../adapter.js";
+import { checkCancelled } from "../cancellation.js";
 import { getCtx } from "../ctx-cache.js";
 import type { ReviewGraphStateType } from "../state.js";
 
@@ -12,6 +13,8 @@ export function makeSummarizerNode(adapter: AiAdapter) {
   ): Promise<Partial<ReviewGraphStateType>> {
     const ctx = getCtx(state.reviewRunId);
     if (!ctx) return { summary: null };
+
+    await checkCancelled(state.reviewRunId);
 
     try {
       const { summary } = await adapter.generateReviewSummary({

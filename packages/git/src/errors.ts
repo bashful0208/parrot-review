@@ -131,3 +131,59 @@ export async function withGitPlatformErrorBoundary<T>(
     throw error;
   }
 }
+
+export interface RetryOptions {
+  maxAttempts?: number;
+  baseDelayMs?: number;
+  maxDelayMs?: number;
+  isRetryable?: (err: unknown) => boolean;
+}
+
+const RETRYABLE_NETWORK_CODES = new Set([
+  "ECONNRESET",
+  "ETIMEDOUT",
+  "ENOTFOUND",
+  "ECONNREFUSED",
+  "EAI_AGAIN",
+]);
+
+const RETRYABLE_HTTP_STATUSES = new Set([502, 503, 504]);
+
+function defaultIsRetryable(err: unknown): boolean {
+  const e = err as Record<string, unknown>;
+  if (typeof e?.["code"] === "string" && RETRYABLE_NETWORK_CODES.has(e["code"])) {
+    return true;
+  }
+  if (typeof e?.["status"] === "number" && RETRYABLE_HTTP_STATUSES.has(e["status"])) {
+    return true;
+  }
+  return false;
+}
+
+export async function withRetry<T>(
+  operation: () => Promise<T>,
+  options?: RetryOptions
+): Promise<T> {
+  const maxAttempts = options?.maxAttempts ?? 3;
+  const baseDelayMs = options?.baseDelayMs ?? 1000;
+  const maxDelayMs = options?.maxDelayMs ?? 8000;
+  const isRetryable = options?.isRetryable ?? defaultIsRetryable;
+
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await operation();
+    } catch (err) {
+      lastError = err;
+      if (attempt >= maxAttempts || !isRetryable(err)) {
+        throw err;
+      }
+      const delay = Math.min(
+        baseDelayMs * Math.pow(2, attempt - 1) + Math.floor(Math.random() * 1000),
+        maxDelayMs
+      );
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+  throw lastError;
+}

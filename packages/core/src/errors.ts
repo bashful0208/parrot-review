@@ -35,6 +35,9 @@ export const ErrorCode = {
   TaskTimeoutNoHeartbeat: "TASK_TIMEOUT_NO_HEARTBEAT",
   TaskTimeoutResourceConstraint: "TASK_TIMEOUT_RESOURCE_CONSTRAINT",
 
+  // 任务取消错误
+  TaskCancelled: "TASK_CANCELLED",
+
   // 外部依赖错误
   DependencyRedisConnection: "DEPENDENCY_REDIS_CONNECTION_ERROR",
   DependencyDatabaseConnection: "DEPENDENCY_DATABASE_CONNECTION_ERROR",
@@ -69,6 +72,7 @@ const ERROR_CATEGORY_BY_CODE: Record<ErrorCode, ErrorCategory> = {
   [ErrorCode.TaskTimeoutExceeded]: "timeout",
   [ErrorCode.TaskTimeoutNoHeartbeat]: "timeout",
   [ErrorCode.TaskTimeoutResourceConstraint]: "timeout",
+  [ErrorCode.TaskCancelled]: "timeout",
   [ErrorCode.DependencyRedisConnection]: "dependency",
   [ErrorCode.DependencyDatabaseConnection]: "dependency",
   [ErrorCode.DependencyApiTimeout]: "dependency",
@@ -116,5 +120,15 @@ export class AppError extends Error {
       context: this.context,
       stack: this.stack,
     };
+  }
+}
+
+export class TaskCancelledError extends AppError {
+  constructor(reviewRunId: string) {
+    super(ErrorCode.TaskCancelled, `Task cancelled: ${reviewRunId}`, {
+      operation: "task_execution",
+      review_run_id: reviewRunId,
+    });
+    this.name = "TaskCancelledError";
   }
 }

@@ -1,11 +1,15 @@
-import { describe, it } from "node:test";
+import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 
 import { makeCriticNode, type PerFindingTask } from "./critic.js";
 import { setCtx, clearCtx } from "../ctx-cache.js";
+import { setCheckCancelled } from "../cancellation.js";
 import type { AiAdapter } from "../../adapter.js";
 import type { CritiqueResult, ReviewFinding } from "../../types.js";
 import type { ReviewContextRef } from "../state.js";
+
+// Disable DB-dependent cancellation check in unit tests
+beforeEach(() => setCheckCancelled(async () => {}));
 
 const ctxRef: ReviewContextRef = {
   fullName: "o/r",

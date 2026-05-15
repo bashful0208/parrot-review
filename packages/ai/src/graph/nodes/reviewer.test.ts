@@ -1,11 +1,15 @@
-import { describe, it } from "node:test";
+import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 
 import { makeReviewerNode } from "./reviewer.js";
 import { setCtx, clearCtx } from "../ctx-cache.js";
+import { setCheckCancelled } from "../cancellation.js";
 import type { AiAdapter } from "../../adapter.js";
 import type { ReviewFinding } from "../../types.js";
 import type { ReviewGraphStateType } from "../state.js";
+
+// Disable DB-dependent cancellation check in unit tests
+beforeEach(() => setCheckCancelled(async () => {}));
 
 function fakeFinding(over: Partial<ReviewFinding> = {}): ReviewFinding {
   return {

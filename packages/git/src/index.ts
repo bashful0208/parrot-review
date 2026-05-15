@@ -35,7 +35,9 @@ export {
   GitWebhookSignatureError,
   GitProviderNotImplementedError,
   withGitPlatformErrorBoundary,
+  withRetry,
 } from "./errors.js";
+export type { RetryOptions } from "./errors.js";
 
 // GitHub provider
 export { GitHubProvider } from "./github/provider.js";

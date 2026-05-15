@@ -1,11 +1,15 @@
-import { describe, it } from "node:test";
+import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 
 import { makeSummarizerNode } from "./summarizer.js";
 import { setCtx, clearCtx } from "../ctx-cache.js";
+import { setCheckCancelled } from "../cancellation.js";
 import type { AiAdapter } from "../../adapter.js";
 import type { ReviewSummary } from "../../types.js";
 import type { ReviewGraphStateType } from "../state.js";
+
+// Disable DB-dependent cancellation check in unit tests
+beforeEach(() => setCheckCancelled(async () => {}));
 
 const summary: ReviewSummary = {
   summaryMd_en: "EN",

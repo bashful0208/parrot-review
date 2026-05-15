@@ -1,5 +1,6 @@
 import type { AiAdapter } from "../../adapter.js";
 import type { OutputLanguage, ReviewFinding, CritiqueResult } from "../../types.js";
+import { checkCancelled } from "../cancellation.js";
 import { getCtx } from "../ctx-cache.js";
 import type { ReviewContextRef, ReviewGraphStateType } from "../state.js";
 
@@ -30,6 +31,8 @@ export function makeCriticNode(adapter: AiAdapter) {
   return async function critic(
     task: PerFindingTask
   ): Promise<Partial<ReviewGraphStateType>> {
+    await checkCancelled(task.reviewRunId);
+
     const ctx = getCtx(task.reviewRunId);
     if (!ctx) {
       return {
