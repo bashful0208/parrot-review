@@ -4,6 +4,7 @@ import { MemorySaver } from "@langchain/langgraph";
 
 import { buildReviewGraph } from "./index.js";
 import { setCtx, clearCtx } from "./ctx-cache.js";
+import { setCheckCancelled } from "./cancellation.js";
 import type { AiAdapter } from "../adapter.js";
 import type {
   CritiqueResult,
@@ -56,12 +57,14 @@ const baseInitial = (rrId: string) => ({
 
 describe("review graph end-to-end (MemorySaver)", () => {
   beforeEach(() => {
+    setCheckCancelled(async () => {});
     setCtx("rr-A", { diffs: [], guidelines: "", projectContext: "" });
     setCtx("rr-B", { diffs: [], guidelines: "", projectContext: "" });
     setCtx("rr-C", { diffs: [], guidelines: "", projectContext: "" });
     setCtx("rr-D", { diffs: [], guidelines: "", projectContext: "" });
   });
   afterEach(() => {
+    setCheckCancelled(undefined);
     clearCtx("rr-A");
     clearCtx("rr-B");
     clearCtx("rr-C");
