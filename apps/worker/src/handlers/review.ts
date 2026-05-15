@@ -26,7 +26,7 @@ import {
   buildReviewGraph,
   setCtx,
   clearCtx,
-  createAdapter,
+  createAdapterWithFallback,
   type UsageRecorder,
   type OutputLanguage,
 } from "@reviewer/ai";
@@ -195,13 +195,6 @@ export async function handleReviewJob(
         throw new Error(`No active AI provider config for organization ${organizationId}`);
       }
       const { primary, fallbacks } = activeResult;
-      const adapterConfig = {
-        provider: primary.provider,
-        model: primary.model,
-        apiKey: primary.apiKey,
-        baseUrl: primary.baseUrl ?? undefined,
-      };
-      // fallbacks 将在 Task 6 中集成到适配器层
 
       // 步骤 8a: 调用治理 — 把每次 AI 调用落到 usage_events
       const usageRecorder: UsageRecorder = async (draft) => {
@@ -227,6 +220,22 @@ export async function handleReviewJob(
         });
       };
 
+      const adapter = createAdapterWithFallback(
+        {
+          provider: primary.provider,
+          model: primary.model,
+          apiKey: primary.apiKey,
+          baseUrl: primary.baseUrl ?? undefined,
+        },
+        fallbacks.map((f) => ({
+          provider: f.provider,
+          model: f.model,
+          apiKey: f.apiKey,
+          baseUrl: f.baseUrl ?? undefined,
+        })),
+        usageRecorder
+      );
+
       // 步骤 8b: 跑 LangGraph review 图（多 agent + 反思 + checkpoint）
       // 大对象（diffs/guidelines/projectContext）走 ctx-cache，不进 LangGraph state
       setCtx(runId!, { diffs, guidelines, projectContext });
@@ -234,7 +243,6 @@ export async function handleReviewJob(
       let finalFindings: import("@reviewer/ai").ReviewGraphStateType["finalFindings"] = [];
       let summaryMd: string | null = null;
       try {
-        const adapter = createAdapter(adapterConfig, usageRecorder);
         const graph = buildReviewGraph(adapter, checkpointer);
 
         const graphConfig = {
