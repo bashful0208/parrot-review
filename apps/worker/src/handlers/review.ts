@@ -189,17 +189,19 @@ export async function handleReviewJob(
         ),
       ]);
 
-      // 步骤 8: 从 DB 加载 AI provider 配置
-      const activeConfig = await getActiveAiProviderConfig(organizationId);
-      if (!activeConfig) {
+      // 步骤 8: 从 DB 加载 AI provider 配置（主 + 备用）
+      const activeResult = await getActiveAiProviderConfig(organizationId);
+      if (!activeResult) {
         throw new Error(`No active AI provider config for organization ${organizationId}`);
       }
+      const { primary, fallbacks } = activeResult;
       const adapterConfig = {
-        provider: activeConfig.provider,
-        model: activeConfig.model,
-        apiKey: activeConfig.apiKey,
-        baseUrl: activeConfig.baseUrl ?? undefined,
+        provider: primary.provider,
+        model: primary.model,
+        apiKey: primary.apiKey,
+        baseUrl: primary.baseUrl ?? undefined,
       };
+      // fallbacks 将在 Task 6 中集成到适配器层
 
       // 步骤 8a: 调用治理 — 把每次 AI 调用落到 usage_events
       const usageRecorder: UsageRecorder = async (draft) => {
@@ -252,7 +254,7 @@ export async function handleReviewJob(
             repositoryId,
             pullRequestId,
             reviewRunId: runId!,
-            providerConfigId: activeConfig.id,
+            providerConfigId: primary.id,
             outputLanguage,
           },
         };

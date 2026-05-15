@@ -47,6 +47,11 @@ export interface AiProviderConfigWithKey extends AiProviderConfigRow {
   apiKey: string;
 }
 
+export interface ActiveAiProviderResult {
+  primary: AiProviderConfigWithKey;
+  fallbacks: AiProviderConfigWithKey[];
+}
+
 export async function createAiProviderConfig(
   input: CreateAiProviderConfigInput
 ): Promise<{ id: string }> {
@@ -143,44 +148,68 @@ export async function listAiProviderConfigs(
 }
 
 export async function getActiveAiProviderConfig(
-  orgId: string
-): Promise<AiProviderConfigWithKey | null> {
+  organizationId: string
+): Promise<ActiveAiProviderResult | null> {
   const logger = createLogger({ component: "queue" });
   try {
-    const result = await getPool().query<Record<string, unknown>>(
+    // 获取主 provider（is_fallback = false）
+    const primaryResult = await getPool().query<Record<string, unknown>>(
       `select id, organization_id, provider, display_name,
               base_url, masked_key_suffix, is_active, created_at,
               metadata->>'model' as model,
               metadata->>'api_key' as api_key
          from public.ai_provider_configs
-        where organization_id = $1 and is_active = true
+        where organization_id = $1
+          and is_active = true
+          and is_fallback = false
+        order by created_at desc
         limit 1`,
-      [orgId]
+      [organizationId]
     );
 
-    if (result.rows.length === 0) {
-      return null;
-    }
-
-    const row = result.rows[0]!;
-    const config = mapRowWithKey(row);
-    if (!config.apiKey) {
+    if (primaryResult.rows.length === 0) return null;
+    const primary = mapRowWithKey(primaryResult.rows[0]!);
+    if (!primary.apiKey) {
       throw new AppError(
         ErrorCode.DependencyDatabaseConnection,
         "Active AI provider config has no API key stored"
       );
     }
-    return config;
+
+    // 获取 fallback providers（is_fallback = true）
+    const fallbackResult = await getPool().query<Record<string, unknown>>(
+      `select id, organization_id, provider, display_name,
+              base_url, masked_key_suffix, is_active, created_at,
+              metadata->>'model' as model,
+              metadata->>'api_key' as api_key
+         from public.ai_provider_configs
+        where organization_id = $1
+          and is_active = true
+          and is_fallback = true
+        order by created_at asc`,
+      [organizationId]
+    );
+    const fallbacks = fallbackResult.rows.map(mapRowWithKey);
+
+    return { primary, fallbacks };
   } catch (error) {
     logger.error("Failed to get active AI provider config", error as Error, {
       operation: "get_active_ai_provider_config",
-      organization_id: orgId,
+      organization_id: organizationId,
     });
     throw new AppError(
       ErrorCode.DependencyDatabaseConnection,
       "Failed to get active AI provider config"
     );
   }
+}
+
+/** @deprecated Use getActiveAiProviderConfig which returns primary + fallbacks */
+export async function getActiveAiProviderConfigLegacy(
+  organizationId: string
+): Promise<AiProviderConfigWithKey | null> {
+  const result = await getActiveAiProviderConfig(organizationId);
+  return result?.primary ?? null;
 }
 
 export async function setActiveAiProviderConfig(
