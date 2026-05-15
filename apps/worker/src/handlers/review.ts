@@ -15,6 +15,7 @@ import {
   insertUsageEvent,
   markWebhookEventStatus,
   getOrgOutputLanguage,
+  TaskCancelledError,
 } from "@reviewer/core";
 import type { Logger } from "@reviewer/core";
 import type { WebhookJobPayload } from "@reviewer/core";
@@ -439,6 +440,15 @@ export async function handleReviewJob(
         await markWebhookEventStatus(webhookEventId, "processed");
       }
     } catch (err) {
+      if (err instanceof TaskCancelledError) {
+        logger.info("Job cancelled", { review_run_id: runId });
+        // Status already updated to 'cancelled' in checkCancelled
+        // Normal exit — do not throw, do not mark as failed
+        if (webhookEventId) {
+          await markWebhookEventStatus(webhookEventId, "failed", "cancelled");
+        }
+        return;
+      }
       const errorMessage = err instanceof Error ? err.message : String(err);
       logger.error("Review job failed", err instanceof Error ? err : new Error(errorMessage), {
         review_run_id: runId,
