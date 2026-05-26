@@ -174,17 +174,7 @@ export default function ReviewRunDetail({
         </TabsContent>
 
         <TabsContent value="issues" className="mt-6">
-          {detail.issues.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No issues found in this run.
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {detail.issues.map((issue) => (
-                <ReviewRunIssueCard key={issue.id} issue={issue} />
-              ))}
-            </div>
-          )}
+          <IssuesTab issues={detail.issues} />
         </TabsContent>
 
         <TabsContent value="comments" className="mt-6">
@@ -201,6 +191,48 @@ export default function ReviewRunDetail({
           )}
         </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+function IssuesTab({
+  issues,
+}: {
+  issues: ReviewRunDetailViewModel["issues"];
+}) {
+  const [showResolved, setShowResolved] = useState(false);
+  const resolvedCount = issues.filter((i) => i.relation === "resolved").length;
+  const visible = showResolved
+    ? issues
+    : issues.filter((i) => i.relation !== "resolved");
+
+  if (issues.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        No issues found in this run.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {resolvedCount > 0 && (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <span>{resolvedCount} resolved in this run</span>
+          <button
+            type="button"
+            onClick={() => setShowResolved((v) => !v)}
+            className="underline underline-offset-2 hover:text-foreground"
+          >
+            {showResolved ? "Hide resolved" : "Show resolved"}
+          </button>
+        </div>
+      )}
+      <div className="space-y-2">
+        {visible.map((issue) => (
+          <ReviewRunIssueCard key={issue.id} issue={issue} />
+        ))}
+      </div>
     </div>
   );
 }

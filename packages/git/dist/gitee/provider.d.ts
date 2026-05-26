@@ -11,6 +11,7 @@ export declare class GiteeProvider implements IProvider {
     listPullRequests(fullName: string, credential: ProviderCredential, options?: ListPullRequestsOptions, logger?: Logger): Promise<ProviderPullRequest[]>;
     getPullRequest(fullName: string, prNumber: number, credential: ProviderCredential, logger?: Logger): Promise<ProviderPullRequest>;
     getPullRequestDiff(fullName: string, prNumber: number, credential: ProviderCredential, logger?: Logger): Promise<FileDiff[]>;
+    compareCommits(fullName: string, base: string, head: string, credential: ProviderCredential, logger?: Logger): Promise<FileDiff[]>;
     postReviewComment(fullName: string, input: ReviewCommentInput, credential: ProviderCredential, logger?: Logger): Promise<PostedComment>;
     postPullRequestComment(fullName: string, prNumber: number, bodyMd: string, credential: ProviderCredential, logger?: Logger): Promise<PostedComment>;
     getRepositoryFile(fullName: string, path: string, ref: string, credential: ProviderCredential, logger?: Logger): Promise<string | null>;

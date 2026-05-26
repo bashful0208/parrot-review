@@ -63,6 +63,15 @@ export class GitLabProvider implements IProvider {
     return Promise.reject(new GitProviderNotImplementedError("gitlab", "getPullRequestDiff"));
   }
 
+  compareCommits(
+    _fullName: string,
+    _base: string,
+    _head: string,
+    _credential: ProviderCredential
+  ): Promise<FileDiff[]> {
+    return Promise.reject(new GitProviderNotImplementedError("gitlab", "compareCommits"));
+  }
+
   postReviewComment(
     _fullName: string,
     _input: ReviewCommentInput,

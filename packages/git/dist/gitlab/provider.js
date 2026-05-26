@@ -19,6 +19,9 @@ export class GitLabProvider {
     getPullRequestDiff(_fullName, _prNumber, _credential) {
         return Promise.reject(new GitProviderNotImplementedError("gitlab", "getPullRequestDiff"));
     }
+    compareCommits(_fullName, _base, _head, _credential) {
+        return Promise.reject(new GitProviderNotImplementedError("gitlab", "compareCommits"));
+    }
     postReviewComment(_fullName, _input, _credential) {
         return Promise.reject(new GitProviderNotImplementedError("gitlab", "postReviewComment"));
     }

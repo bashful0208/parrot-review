@@ -24,6 +24,19 @@ export interface ReviewContext {
   finalFindings?: ReviewFinding[];
   /** 审查输出语言。 */
   outputLanguage: OutputLanguage;
+  /**
+   * 增量审查时上一次仍 open 的问题摘要。提示 reviewer "本次只看新增 diff，
+   * 这些是已知问题，不要再重复刷"。resolved 判定由 worker 用 fingerprint
+   * 比对完成，reviewer 无需主动判定。
+   */
+  previousIssuesSummary?: PreviousIssueSummary[];
+}
+
+export interface PreviousIssueSummary {
+  filePath: string | null;
+  title: string;
+  severity: string;
+  issueType: string;
 }
 
 export interface ReviewFinding {

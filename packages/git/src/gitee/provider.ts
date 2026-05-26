@@ -215,6 +215,38 @@ export class GiteeProvider implements IProvider {
     );
   }
 
+  async compareCommits(
+    fullName: string,
+    base: string,
+    head: string,
+    credential: ProviderCredential,
+    logger?: Logger
+  ): Promise<FileDiff[]> {
+    const { owner, repo } = splitFullName(fullName);
+    const cred = assertGitee(credential);
+    const client = getGiteePatClient(cred);
+    return withGitPlatformErrorBoundary(
+      async () => {
+        const data = await client.request<{ files?: GiteeFile[] }>(
+          `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/compare/${encodeURIComponent(
+            `${base}...${head}`
+          )}`
+        );
+        const files = data.files ?? [];
+        logger?.debug("Fetched Gitee compare diff", {
+          fullName,
+          base,
+          head,
+          fileCount: files.length,
+        });
+        return files.map(mapFileDiff);
+      },
+      PROVIDER,
+      logger,
+      context({ operation: "compareCommits", repository: fullName })
+    );
+  }
+
   async postReviewComment(
     fullName: string,
     input: ReviewCommentInput,

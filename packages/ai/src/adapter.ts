@@ -274,6 +274,23 @@ function buildUserMessage(context: ReviewContext, diffText: string): string {
     ? `<project_context>\n${context.projectContext}\n</project_context>\n\n`
     : "";
 
+  const previousIssuesBlock =
+    context.previousIssuesSummary && context.previousIssuesSummary.length > 0
+      ? (() => {
+          const isZhBlock = context.outputLanguage === "zh-CN";
+          const header = isZhBlock
+            ? "以下是上一轮审查在此 PR 中发现、目前仍未解决的问题。本轮只看新增 diff，请勿重复报告这些问题。是否解决由系统根据 fingerprint 比对判断，无需你主动判定。"
+            : "The following issues were reported in the previous review of this PR and are still open. The diff below contains ONLY new changes since then. Do NOT re-report these issues. Resolution is determined by the system via fingerprint matching — you do not need to judge it.";
+          const lines = context.previousIssuesSummary
+            .map(
+              (p, i) =>
+                `${i + 1}. [${p.severity}/${p.issueType}] ${p.filePath ?? "(unknown)"} — ${p.title}`
+            )
+            .join("\n");
+          return `<previously_known_issues>\n${header}\n\n${lines}\n</previously_known_issues>\n\n`;
+        })()
+      : "";
+
   const lang = context.outputLanguage;
   const langInstruction = lang === "zh-CN"
     ? `请为每个发现输出以下中文字段（不要输出英文标题/摘要/建议）：
@@ -321,7 +338,7 @@ Aim for 80–250 English words. Prefer specifics over generality. Do not paste l
 
 	return `${introText}
 
-${focusBlock}${guidelinesBlock}${projectBlock}${analyzePrompt}
+${focusBlock}${guidelinesBlock}${projectBlock}${previousIssuesBlock}${analyzePrompt}
 
 ${langInstruction}
 

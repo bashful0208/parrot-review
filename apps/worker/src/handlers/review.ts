@@ -15,8 +15,12 @@ import {
   insertUsageEvent,
   markWebhookEventStatus,
   getOrgOutputLanguage,
+  findPreviousSucceededRun,
+  listOpenIssuesByPullRequest,
+  markIssuesResolved,
   TaskCancelledError,
 } from "@reviewer/core";
+import type { OpenIssueForReconcile } from "@reviewer/core";
 import type { Logger } from "@reviewer/core";
 import type { WebhookJobPayload } from "@reviewer/core";
 import {
@@ -38,6 +42,8 @@ import {
   type IProvider,
   type ProviderCredential,
 } from "@reviewer/git";
+
+import { reconcileFindings } from "./reconcile.js";
 
 function buildProvider(provider: string): IProvider {
   if (provider === "github") return new GitHubProvider();
@@ -66,7 +72,9 @@ export async function handleReviewJob(
     headSha,
     baseSha,
     webhookEventId,
+    triggerType: payloadTriggerType,
   } = job.data;
+  const triggerType = payloadTriggerType ?? "pr_opened";
 
   let runId: string | undefined;
   try {
@@ -109,7 +117,7 @@ export async function handleReviewJob(
       organizationId,
       repositoryId,
       pullRequestId,
-      triggerType: "pr_opened",
+      triggerType,
       triggerEventId: webhookEventId,
       baseSha,
       headSha,
@@ -117,6 +125,35 @@ export async function handleReviewJob(
       outputLanguage,
     });
     runId = id;
+
+    // 步骤 6a: 增量审查准备 —— 只有 synchronize 才尝试增量
+    let reviewMode: "full" | "incremental" = "full";
+    let previousOpenIssues: OpenIssueForReconcile[] = [];
+    let incrementalBaseSha: string | null = null;
+    if (triggerType === "pr_synchronize") {
+      const previousRun = await findPreviousSucceededRun(pullRequestId, runNumber);
+      if (previousRun && previousRun.headSha && previousRun.headSha !== headSha) {
+        reviewMode = "incremental";
+        incrementalBaseSha = previousRun.headSha;
+        previousOpenIssues = await listOpenIssuesByPullRequest(pullRequestId, previousRun.id);
+        logger.info("Incremental review mode enabled", {
+          review_run_id: runId,
+          previous_run_id: previousRun.id,
+          previous_head_sha: previousRun.headSha,
+          current_head_sha: headSha,
+          previous_open_issues: previousOpenIssues.length,
+        });
+      } else {
+        logger.info("Synchronize event falls back to full review", {
+          review_run_id: runId,
+          reason: previousRun
+            ? previousRun.headSha === headSha
+              ? "previous_head_sha_equals_current"
+              : "previous_head_sha_missing"
+            : "no_previous_succeeded_run",
+        });
+      }
+    }
 
     // 步骤 7-12: 在 try/catch 中执行，失败时更新 run 状态
     try {
@@ -177,9 +214,11 @@ export async function handleReviewJob(
         }
       }
 
-      // 步骤 7: 拉取 diff
+      // 步骤 7: 拉取 diff（增量模式只看 previous_head..head 的新增改动）
       const diffs = await withRetry(() =>
-        provider.getPullRequestDiff(repo.full_name, prNumber, credential, logger)
+        reviewMode === "incremental" && incrementalBaseSha
+          ? provider.compareCommits(repo.full_name, incrementalBaseSha, headSha, credential, logger)
+          : provider.getPullRequestDiff(repo.full_name, prNumber, credential, logger)
       );
 
       // 步骤 7a: 并发加载 reviewer 自身规范 + 目标仓库背景
@@ -239,7 +278,20 @@ export async function handleReviewJob(
 
       // 步骤 8b: 跑 LangGraph review 图（多 agent + 反思 + checkpoint）
       // 大对象（diffs/guidelines/projectContext）走 ctx-cache，不进 LangGraph state
-      setCtx(runId!, { diffs, guidelines, projectContext });
+      setCtx(runId!, {
+        diffs,
+        guidelines,
+        projectContext,
+        previousIssuesSummary:
+          reviewMode === "incremental"
+            ? previousOpenIssues.map((p) => ({
+                filePath: p.filePath,
+                title: p.title,
+                severity: p.severity,
+                issueType: p.issueType,
+              }))
+            : undefined,
+      });
 
       let finalFindings: import("@reviewer/ai").ReviewGraphStateType["finalFindings"] = [];
       let summaryMd: string | null = null;
@@ -309,27 +361,69 @@ export async function handleReviewJob(
         clearCtx(runId!);
       }
 
-      // 步骤 9: 计算 fingerprint 并写入 review_issues
+      // 步骤 9: 计算 fingerprint，做 reconcile（new / persisted / resolved），再写入 review_issues
       // fingerprint 用 EN title 稳定（不随语言漂移）
-      const issueInputs = finalFindings.map((f) => ({
-        organizationId,
-        repositoryId,
-        pullRequestId,
-        reviewRunId: runId!,
+      const findingsWithFp = finalFindings.map((f) => ({
+        finding: f,
         fingerprint: createHash("sha256")
           .update(`${repositoryId}:${f.filePath}:${f.startLine}:${f.title_en || f.title_zh}`)
           .digest("hex"),
-        issueType: f.issueType,
-        title: outputLanguage === "zh-CN" ? (f.title_zh || f.title_en) : f.title_en,
-        summary: outputLanguage === "zh-CN" ? (f.summary_zh || f.summary_en) : f.summary_en,
-        severity: f.severity,
-        confidenceScore: f.confidenceScore,
-        filePath: f.filePath,
-        startLine: f.startLine,
-        endLine: f.endLine,
-        suggestionMd: outputLanguage === "zh-CN" ? (f.suggestion_zh || f.suggestion_en) : f.suggestion_en,
       }));
+      const { enriched, resolvedIssueIds, counts } = reconcileFindings({
+        findings: findingsWithFp,
+        previousOpenIssues,
+        currentRunId: runId!,
+      });
+
+      const issueInputs = enriched.map((e) => {
+        const f = e.finding;
+        return {
+          organizationId,
+          repositoryId,
+          pullRequestId,
+          reviewRunId: runId!,
+          fingerprint: e.fingerprint,
+          issueType: f.issueType,
+          title: outputLanguage === "zh-CN" ? (f.title_zh || f.title_en) : f.title_en,
+          summary: outputLanguage === "zh-CN" ? (f.summary_zh || f.summary_en) : f.summary_en,
+          severity: f.severity,
+          confidenceScore: f.confidenceScore,
+          filePath: f.filePath,
+          startLine: f.startLine,
+          endLine: f.endLine,
+          suggestionMd: outputLanguage === "zh-CN" ? (f.suggestion_zh || f.suggestion_en) : f.suggestion_en,
+          firstSeenRunId: e.firstSeenRunId,
+          lastSeenRunId: runId!,
+        };
+      });
       const insertedIssues = await insertReviewIssues(issueInputs);
+
+      // 步骤 9a: 上一次 open 但本次未再现的 issue → 标记 resolved
+      if (resolvedIssueIds.length > 0) {
+        await markIssuesResolved(resolvedIssueIds, runId!);
+      }
+
+      // 步骤 9b: 增量模式下在摘要末尾追加变更段
+      const { new: newCount, persisted: persistedCount, resolved: resolvedCount } = counts;
+      if (reviewMode === "incremental") {
+        const incrementalSection =
+          outputLanguage === "zh-CN"
+            ? [
+                "",
+                "### 本次增量",
+                `- 新增问题：${newCount} 条`,
+                `- 持续存在：${persistedCount} 条`,
+                `- 已解决：${resolvedCount} 条`,
+              ].join("\n")
+            : [
+                "",
+                "### Incremental changes",
+                `- New: ${newCount}`,
+                `- Persisted: ${persistedCount}`,
+                `- Resolved: ${resolvedCount}`,
+              ].join("\n");
+        summaryMd = (summaryMd ?? "") + incrementalSection;
+      }
 
       // 步骤 10: 先回写 PR 整体摘要评论（与 inline 评论同策略：失败仅 warn 不中断）
       if (summaryMd) {
@@ -373,7 +467,7 @@ export async function handleReviewJob(
       // 步骤 11: 再对每条 issue 回写行内评论
       for (let i = 0; i < insertedIssues.length; i++) {
         const issue = insertedIssues[i]!;
-        const finding = finalFindings[i]!;
+        const finding = enriched[i]!.finding;
 
         const bodyMd = renderFinding(finding, outputLanguage);
 

@@ -29,6 +29,11 @@ export interface IProvider {
     listPullRequests(fullName: string, credential: ProviderCredential, options?: ListPullRequestsOptions, logger?: Logger): Promise<ProviderPullRequest[]>;
     getPullRequest(fullName: string, prNumber: number, credential: ProviderCredential, logger?: Logger): Promise<ProviderPullRequest>;
     getPullRequestDiff(fullName: string, prNumber: number, credential: ProviderCredential, logger?: Logger): Promise<FileDiff[]>;
+    /**
+     * 取 base..head 两个 commit 之间的文件 diff，用于增量审查。
+     * 返回结构与 getPullRequestDiff 对齐。
+     */
+    compareCommits(fullName: string, base: string, head: string, credential: ProviderCredential, logger?: Logger): Promise<FileDiff[]>;
     postReviewComment(fullName: string, input: ReviewCommentInput, credential: ProviderCredential, logger?: Logger): Promise<PostedComment>;
     /**
      * 在 PR 的 conversation 区发一条整体评论（非行级），

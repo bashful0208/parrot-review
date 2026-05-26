@@ -73,6 +73,18 @@ export interface IProvider {
     logger?: Logger
   ): Promise<FileDiff[]>;
 
+  /**
+   * 取 base..head 两个 commit 之间的文件 diff，用于增量审查。
+   * 返回结构与 getPullRequestDiff 对齐。
+   */
+  compareCommits(
+    fullName: string,
+    base: string,
+    head: string,
+    credential: ProviderCredential,
+    logger?: Logger
+  ): Promise<FileDiff[]>;
+
   postReviewComment(
     fullName: string,
     input: ReviewCommentInput,

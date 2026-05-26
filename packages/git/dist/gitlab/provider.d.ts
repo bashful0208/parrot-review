@@ -10,6 +10,7 @@ export declare class GitLabProvider implements IProvider {
     listPullRequests(_fullName: string, _credential: ProviderCredential, _options?: ListPullRequestsOptions): Promise<ProviderPullRequest[]>;
     getPullRequest(_fullName: string, _prNumber: number, _credential: ProviderCredential): Promise<ProviderPullRequest>;
     getPullRequestDiff(_fullName: string, _prNumber: number, _credential: ProviderCredential): Promise<FileDiff[]>;
+    compareCommits(_fullName: string, _base: string, _head: string, _credential: ProviderCredential): Promise<FileDiff[]>;
     postReviewComment(_fullName: string, _input: ReviewCommentInput, _credential: ProviderCredential): Promise<PostedComment>;
     postPullRequestComment(_fullName: string, _prNumber: number, _bodyMd: string, _credential: ProviderCredential): Promise<PostedComment>;
     getRepositoryFile(_fullName: string, _path: string, _ref: string, _credential: ProviderCredential, _logger?: unknown): Promise<string | null>;

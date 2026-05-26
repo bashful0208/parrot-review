@@ -1,5 +1,7 @@
 import type { FileDiff } from "@reviewer/git";
 
+import type { PreviousIssueSummary } from "../types.js";
+
 /**
  * Per review_run 的大对象缓存。让 diffs / guidelines / projectContext 不进 LangGraph state，
  * 避免 checkpoint 表里塞大字段。生命周期由 handler 通过 setCtx / clearCtx 管理；
@@ -9,6 +11,8 @@ export interface ReviewCtxCacheEntry {
   diffs: FileDiff[];
   guidelines: string;
   projectContext: string;
+  /** 增量审查模式下传入；reviewer 节点会注入到 prompt。 */
+  previousIssuesSummary?: PreviousIssueSummary[];
 }
 
 const cache = new Map<string, ReviewCtxCacheEntry>();

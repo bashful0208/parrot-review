@@ -51,6 +51,7 @@ export function makeReviewerNode(
         projectContext: ctx.projectContext,
         focus,
         outputLanguage: state.outputLanguage,
+        previousIssuesSummary: ctx.previousIssuesSummary,
       });
 
       // Post-filter by confidence threshold

@@ -1,5 +1,5 @@
 // errors
-export { GitPlatformApiError, GitPlatformRateLimitError, GitPlatformAuthError, GitWebhookSignatureError, GitProviderNotImplementedError, withGitPlatformErrorBoundary, } from "./errors.js";
+export { GitPlatformApiError, GitPlatformRateLimitError, GitPlatformAuthError, GitWebhookSignatureError, GitProviderNotImplementedError, withGitPlatformErrorBoundary, withRetry, } from "./errors.js";
 // GitHub provider
 export { GitHubProvider } from "./github/provider.js";
 export { verifyGitHubWebhookSignature } from "./github/webhook.js";

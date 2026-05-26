@@ -108,13 +108,36 @@ export class GiteeProvider {
             return data.map(mapFileDiff);
         }, PROVIDER, logger, context({ operation: "getPullRequestDiff", repository: fullName }));
     }
+    async compareCommits(fullName, base, head, credential, logger) {
+        const { owner, repo } = splitFullName(fullName);
+        const cred = assertGitee(credential);
+        const client = getGiteePatClient(cred);
+        return withGitPlatformErrorBoundary(async () => {
+            const data = await client.request(`/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/compare/${encodeURIComponent(`${base}...${head}`)}`);
+            const files = data.files ?? [];
+            logger?.debug("Fetched Gitee compare diff", {
+                fullName,
+                base,
+                head,
+                fileCount: files.length,
+            });
+            return files.map(mapFileDiff);
+        }, PROVIDER, logger, context({ operation: "compareCommits", repository: fullName }));
+    }
     async postReviewComment(fullName, input, credential, logger) {
         const { owner, repo } = splitFullName(fullName);
         const cred = assertGitee(credential);
         const client = getGiteePatClient(cred);
         const position = computeDiffPosition(input.patch, input.line, input.side);
         if (position === null) {
-            throw new Error(`Unable to compute Gitee diff position for ${input.filePath}:${input.line} (${input.side}); patch missing or line not in diff`);
+            // Target line is outside diff range — fallback to PR conversation comment
+            logger?.warn("Gitee diff position not found, falling back to PR conversation comment", {
+                filePath: input.filePath,
+                line: input.line,
+                side: input.side,
+            });
+            const fallbackBody = `**${input.filePath}** (line ${input.line}, ${input.side})\n\n${input.bodyMd}`;
+            return this.postPullRequestComment(fullName, input.prNumber, fallbackBody, credential, logger);
         }
         return withGitPlatformErrorBoundary(async () => {
             // Gitee 行级评论：position 是该行在 unified diff 中的行号（不是文件行号）

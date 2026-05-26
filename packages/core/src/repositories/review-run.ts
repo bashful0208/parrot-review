@@ -573,6 +573,58 @@ export async function getReviewRunCount(
   }
 }
 
+export interface PreviousSucceededRun {
+  id: string;
+  runNumber: number;
+  headSha: string;
+  baseSha: string;
+}
+
+/**
+ * 取同一 PR 上一条 status='succeeded' 的 run（run_number 小于给定值）。
+ * 用于增量审查：决定从哪个 head_sha 起算 diff、复用哪一份历史 issue。
+ */
+export async function findPreviousSucceededRun(
+  pullRequestId: string,
+  beforeRunNumber: number
+): Promise<PreviousSucceededRun | null> {
+  const logger = createLogger({ component: "queue" });
+  try {
+    const result = await getPool().query<{
+      id: string;
+      run_number: string;
+      head_sha: string;
+      base_sha: string;
+    }>(
+      `select id, run_number, head_sha, base_sha
+         from public.review_runs
+        where pull_request_id = $1
+          and status = 'succeeded'
+          and run_number < $2
+        order by run_number desc
+        limit 1`,
+      [pullRequestId, beforeRunNumber]
+    );
+    const row = result.rows[0];
+    if (!row) return null;
+    return {
+      id: row.id,
+      runNumber: Number(row.run_number),
+      headSha: row.head_sha,
+      baseSha: row.base_sha,
+    };
+  } catch (error) {
+    logger.error("Failed to find previous succeeded run", error as Error, {
+      operation: "find_previous_succeeded_run",
+      pull_request_id: pullRequestId,
+    });
+    throw new AppError(
+      ErrorCode.DependencyDatabaseConnection,
+      "Failed to find previous succeeded run"
+    );
+  }
+}
+
 export async function getReviewRunStatus(
   id: string
 ): Promise<string | null> {

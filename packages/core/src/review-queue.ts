@@ -177,6 +177,13 @@ export async function enqueueReviewJob(
 
 export const DEFAULT_WEBHOOK_JOB_NAME = "webhook-review";
 
+export type ReviewTriggerType =
+  | "pr_opened"
+  | "pr_synchronize"
+  | "pr_reopened"
+  | "manual_rerun"
+  | "rules_changed";
+
 export interface WebhookJobPayload {
   source: "webhook";
   webhookEventId: string;
@@ -186,6 +193,8 @@ export interface WebhookJobPayload {
   prNumber: number;
   headSha: string;
   baseSha: string;
+  /** webhook 识别到的 review trigger 类型；老版本入队的 job 可能缺失。 */
+  triggerType?: ReviewTriggerType;
 }
 
 export async function enqueueWebhookJob(

@@ -184,6 +184,7 @@ test("processProviderWebhook: matched + valid signature + reviewable trigger ins
     prNumber: 42,
     headSha: "headsha",
     baseSha: "basesha",
+    triggerType: "pr_opened",
   });
   // status: enqueued (worker will later flip to processed/failed)
   assert.equal(rec.statusCalls.length, 1);
