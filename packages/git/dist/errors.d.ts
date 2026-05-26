@@ -17,3 +17,10 @@ export declare class GitProviderNotImplementedError extends AppError {
     constructor(provider: string, method: string);
 }
 export declare function withGitPlatformErrorBoundary<T>(operation: () => Promise<T>, provider: string, logger?: Logger, context?: ErrorContext): Promise<T>;
+export interface RetryOptions {
+    maxAttempts?: number;
+    baseDelayMs?: number;
+    maxDelayMs?: number;
+    isRetryable?: (err: unknown) => boolean;
+}
+export declare function withRetry<T>(operation: () => Promise<T>, options?: RetryOptions): Promise<T>;

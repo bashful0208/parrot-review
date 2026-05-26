@@ -224,6 +224,36 @@ export class GitHubProvider implements IProvider {
     );
   }
 
+  async compareCommits(
+    fullName: string,
+    base: string,
+    head: string,
+    credential: ProviderCredential,
+    logger?: Logger
+  ): Promise<FileDiff[]> {
+    const [owner, repo] = fullName.split("/");
+    const octokit = await buildOctokit(credential);
+    return withGitPlatformErrorBoundary(
+      async () => {
+        const { data } = await (octokit as Awaited<ReturnType<typeof getPatOctokit>>).request(
+          "GET /repos/{owner}/{repo}/compare/{basehead}",
+          { owner, repo, basehead: `${base}...${head}`, per_page: 100 }
+        );
+        const files = data.files ?? [];
+        logger?.debug("Fetched GitHub compare diff", {
+          fullName,
+          base,
+          head,
+          fileCount: files.length,
+        });
+        return files.map(mapFileDiff);
+      },
+      PROVIDER,
+      logger,
+      context({ operation: "compareCommits", repository: fullName })
+    );
+  }
+
   async postReviewComment(
     fullName: string,
     input: ReviewCommentInput,

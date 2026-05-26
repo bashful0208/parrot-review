@@ -34,6 +34,10 @@ export interface InsertReviewIssueInput {
   startLine: number | null;
   endLine: number | null;
   suggestionMd: string | null;
+  /** 历史 run id；增量审查命中已有 fingerprint 时复用，否则 = reviewRunId。 */
+  firstSeenRunId?: string;
+  /** 本次发现该问题的 run id；首次插入即 reviewRunId。 */
+  lastSeenRunId?: string;
 }
 
 export async function insertReviewIssues(
@@ -52,7 +56,7 @@ export async function insertReviewIssues(
 
     for (const issue of issues) {
       valuePlaceholders.push(
-        `($${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++})`
+        `($${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++}, $${idx++})`
       );
       params.push(
         issue.organizationId,
@@ -68,7 +72,9 @@ export async function insertReviewIssues(
         issue.filePath,
         issue.startLine,
         issue.endLine,
-        issue.suggestionMd
+        issue.suggestionMd,
+        issue.firstSeenRunId ?? issue.reviewRunId,
+        issue.lastSeenRunId ?? issue.reviewRunId
       );
     }
 
@@ -76,7 +82,8 @@ export async function insertReviewIssues(
       `insert into public.review_issues
          (organization_id, repository_id, pull_request_id, review_run_id,
           fingerprint, issue_type, title, summary, severity, confidence_score,
-          file_path, start_line, end_line, suggestion_md)
+          file_path, start_line, end_line, suggestion_md,
+          first_seen_run_id, last_seen_run_id)
        values ${valuePlaceholders.join(", ")}
        on conflict (review_run_id, fingerprint) do nothing
        returning id`,
@@ -117,6 +124,8 @@ export interface ReviewIssueRow {
   suggestionMd: string | null;
   status: string;
   createdAt: Date;
+  firstSeenRunId: string | null;
+  resolvedInRunId: string | null;
 }
 
 export async function listReviewIssuesByRun(
@@ -140,15 +149,19 @@ export async function listReviewIssuesByRun(
       suggestion_md: string | null;
       status: string;
       created_at: Date;
+      first_seen_run_id: string | null;
+      resolved_in_run_id: string | null;
     }>(
       `select ri.id, ri.review_run_id, ri.fingerprint, ri.issue_type,
               ri.title, ri.summary, ri.severity, ri.confidence_score,
               ri.file_path, ri.start_line, ri.end_line, ri.suggestion_md,
-              ri.status, ri.created_at
+              ri.status, ri.created_at,
+              ri.first_seen_run_id, ri.resolved_in_run_id
          from public.review_issues ri
-        where ri.review_run_id = $1
+        where (ri.review_run_id = $1 or ri.resolved_in_run_id = $1)
           and ri.organization_id = $2
         order by
+          case ri.status when 'resolved' then 1 else 0 end,
           case ri.severity
             when 'critical' then 1
             when 'high' then 2
@@ -175,6 +188,8 @@ export async function listReviewIssuesByRun(
       suggestionMd: row.suggestion_md,
       status: row.status,
       createdAt: row.created_at,
+      firstSeenRunId: row.first_seen_run_id,
+      resolvedInRunId: row.resolved_in_run_id,
     }));
   } catch (error) {
     logger.error("Failed to list review issues by run", error as Error, {
@@ -184,6 +199,99 @@ export async function listReviewIssuesByRun(
     throw new AppError(
       ErrorCode.DependencyDatabaseConnection,
       "Failed to list review issues by run"
+    );
+  }
+}
+
+export interface OpenIssueForReconcile {
+  id: string;
+  fingerprint: string;
+  firstSeenRunId: string | null;
+  filePath: string | null;
+  title: string;
+  severity: string;
+  issueType: string;
+}
+
+/**
+ * 取该 PR 上"上一次 succeeded run"所产出的、当前仍处于 open 状态的 issue。
+ * 用于增量审查的 reconcile：fingerprint 匹配本次新发现以判定 new/persisted/resolved。
+ */
+export async function listOpenIssuesByPullRequest(
+  pullRequestId: string,
+  previousRunId: string
+): Promise<OpenIssueForReconcile[]> {
+  const logger = createLogger({ component: "queue" });
+  try {
+    const result = await getPool().query<{
+      id: string;
+      fingerprint: string;
+      first_seen_run_id: string | null;
+      file_path: string | null;
+      title: string;
+      severity: string;
+      issue_type: string;
+    }>(
+      `select id, fingerprint, first_seen_run_id, file_path, title, severity, issue_type
+         from public.review_issues
+        where pull_request_id = $1
+          and review_run_id = $2
+          and status = 'open'`,
+      [pullRequestId, previousRunId]
+    );
+    return result.rows.map((row) => ({
+      id: row.id,
+      fingerprint: row.fingerprint,
+      firstSeenRunId: row.first_seen_run_id,
+      filePath: row.file_path,
+      title: row.title,
+      severity: row.severity,
+      issueType: row.issue_type,
+    }));
+  } catch (error) {
+    logger.error("Failed to list open issues by pull request", error as Error, {
+      operation: "list_open_issues_by_pr",
+      pull_request_id: pullRequestId,
+      previous_run_id: previousRunId,
+    });
+    throw new AppError(
+      ErrorCode.DependencyDatabaseConnection,
+      "Failed to list open issues by pull request"
+    );
+  }
+}
+
+/**
+ * 把上一次发现、本次未再现的 issue 标记为 resolved。
+ */
+export async function markIssuesResolved(
+  issueIds: string[],
+  resolvedInRunId: string
+): Promise<void> {
+  if (issueIds.length === 0) return;
+  const logger = createLogger({ component: "queue" });
+  try {
+    await getPool().query(
+      `update public.review_issues
+          set status = 'resolved',
+              resolved_in_run_id = $2,
+              updated_at = now()
+        where id = any($1::uuid[])
+          and status = 'open'`,
+      [issueIds, resolvedInRunId]
+    );
+    logger.info("Review issues marked resolved", {
+      resolved_in_run_id: resolvedInRunId,
+      count: issueIds.length,
+    });
+  } catch (error) {
+    logger.error("Failed to mark issues resolved", error as Error, {
+      operation: "mark_issues_resolved",
+      resolved_in_run_id: resolvedInRunId,
+    });
+    throw new AppError(
+      ErrorCode.DependencyDatabaseConnection,
+      "Failed to mark issues resolved"
     );
   }
 }

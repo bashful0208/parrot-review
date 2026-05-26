@@ -108,6 +108,21 @@ export class GitHubProvider {
             return data.map(mapFileDiff);
         }, PROVIDER, logger, context({ operation: "getPullRequestDiff", repository: fullName }));
     }
+    async compareCommits(fullName, base, head, credential, logger) {
+        const [owner, repo] = fullName.split("/");
+        const octokit = await buildOctokit(credential);
+        return withGitPlatformErrorBoundary(async () => {
+            const { data } = await octokit.request("GET /repos/{owner}/{repo}/compare/{basehead}", { owner, repo, basehead: `${base}...${head}`, per_page: 100 });
+            const files = data.files ?? [];
+            logger?.debug("Fetched GitHub compare diff", {
+                fullName,
+                base,
+                head,
+                fileCount: files.length,
+            });
+            return files.map(mapFileDiff);
+        }, PROVIDER, logger, context({ operation: "compareCommits", repository: fullName }));
+    }
     async postReviewComment(fullName, input, credential, logger) {
         const [owner, repo] = fullName.split("/");
         const octokit = await buildOctokit(credential);

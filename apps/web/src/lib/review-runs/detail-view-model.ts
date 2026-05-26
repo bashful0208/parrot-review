@@ -19,6 +19,8 @@ export interface ReviewRunDetailMeta {
   value: string;
 }
 
+export type ReviewIssueRelation = "new" | "persisted" | "resolved";
+
 export interface ReviewRunIssueItem {
   id: string;
   severity: string;
@@ -29,6 +31,7 @@ export interface ReviewRunIssueItem {
   confidencePercent: string;
   suggestion: string | null;
   status: string;
+  relation: ReviewIssueRelation;
 }
 
 export interface ReviewRunCommentItem {
@@ -172,21 +175,30 @@ export function buildReviewRunDetailViewModel(args: {
     breadcrumb: `Run #${run.runNumber} · ${run.repositoryFullName}`,
     metadata: meta,
     summaryMd: run.summaryMd,
-    issues: issues.map((issue) => ({
-      id: issue.id,
-      severity: issue.severity,
-      issueType: issue.issueType,
-      title: issue.title,
-      summary: issue.summary,
-      fileLocation: buildFileLocation(
-        issue.filePath,
-        issue.startLine,
-        issue.endLine
-      ),
-      confidencePercent: `${Math.round(issue.confidenceScore * 100)}%`,
-      suggestion: issue.suggestionMd,
-      status: issue.status,
-    })),
+    issues: issues.map((issue) => {
+      const relation: ReviewIssueRelation =
+        issue.status === "resolved" && issue.resolvedInRunId === run.id
+          ? "resolved"
+          : issue.firstSeenRunId === run.id
+            ? "new"
+            : "persisted";
+      return {
+        id: issue.id,
+        severity: issue.severity,
+        issueType: issue.issueType,
+        title: issue.title,
+        summary: issue.summary,
+        fileLocation: buildFileLocation(
+          issue.filePath,
+          issue.startLine,
+          issue.endLine
+        ),
+        confidencePercent: `${Math.round(issue.confidenceScore * 100)}%`,
+        suggestion: issue.suggestionMd,
+        status: issue.status,
+        relation,
+      };
+    }),
     comments: comments.map((comment) => ({
       id: comment.id,
       body: comment.bodyMd,

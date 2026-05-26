@@ -139,6 +139,7 @@ export async function processProviderWebhook(
         prNumber: event.providerPrNumber,
         headSha: event.headSha,
         baseSha: event.baseSha,
+        triggerType: event.reviewTrigger,
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);

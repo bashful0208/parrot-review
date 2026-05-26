@@ -11,13 +11,26 @@ const SEVERITY_VARIANT: Record<string, "outline" | "default" | "secondary" | "de
   low: "outline",
 };
 
+const RELATION_LABEL: Record<string, string> = {
+  new: "New",
+  persisted: "Persisted",
+  resolved: "Resolved",
+};
+
+const RELATION_VARIANT: Record<string, "outline" | "default" | "secondary" | "destructive"> = {
+  new: "default",
+  persisted: "secondary",
+  resolved: "outline",
+};
+
 export default function ReviewRunIssueCard({
   issue,
 }: {
   issue: ReviewRunIssueItem;
 }) {
+  const isResolved = issue.relation === "resolved";
   return (
-    <Card>
+    <Card className={isResolved ? "opacity-60" : undefined}>
       <CardContent className="p-4">
         <div className="flex flex-wrap items-center gap-2 mb-1.5">
           <Badge
@@ -27,6 +40,9 @@ export default function ReviewRunIssueCard({
             {issue.severity}
           </Badge>
           <Badge variant="outline">{issue.issueType}</Badge>
+          <Badge variant={RELATION_VARIANT[issue.relation] ?? "outline"}>
+            {RELATION_LABEL[issue.relation] ?? issue.relation}
+          </Badge>
           <span className="text-xs text-muted-foreground">
             {issue.confidencePercent} confidence
           </span>
