@@ -28,6 +28,15 @@ export class GitLabProvider {
     postPullRequestComment(_fullName, _prNumber, _bodyMd, _credential) {
         return Promise.reject(new GitProviderNotImplementedError("gitlab", "postPullRequestComment"));
     }
+    listWebhooks(_fullName, _credential) {
+        return Promise.reject(new GitProviderNotImplementedError("gitlab", "listWebhooks"));
+    }
+    createWebhook(_fullName, _input, _credential) {
+        return Promise.reject(new GitProviderNotImplementedError("gitlab", "createWebhook"));
+    }
+    deleteWebhook(_fullName, _hookId, _credential) {
+        return Promise.reject(new GitProviderNotImplementedError("gitlab", "deleteWebhook"));
+    }
     async getRepositoryFile(_fullName, _path, _ref, _credential, _logger) {
         throw new Error("GitLabProvider.getRepositoryFile is not implemented");
     }

@@ -1,5 +1,5 @@
 import type { Logger } from "@reviewer/core";
-import type { FileDiff, Installation, PostedComment, ProviderPullRequest, ProviderRepository, ReviewCommentInput } from "../domain/models.js";
+import type { CreateWebhookInput, FileDiff, Installation, PostedComment, ProviderPullRequest, ProviderRepository, ProviderWebhook, ReviewCommentInput } from "../domain/models.js";
 import type { NormalizedWebhookEvent } from "../domain/webhook.js";
 import type { ProviderCredential } from "../credentials.js";
 import type { IProvider, ListPullRequestsOptions, ListRepositoriesOptions } from "../provider.js";
@@ -14,6 +14,9 @@ export declare class GiteeProvider implements IProvider {
     compareCommits(fullName: string, base: string, head: string, credential: ProviderCredential, logger?: Logger): Promise<FileDiff[]>;
     postReviewComment(fullName: string, input: ReviewCommentInput, credential: ProviderCredential, logger?: Logger): Promise<PostedComment>;
     postPullRequestComment(fullName: string, prNumber: number, bodyMd: string, credential: ProviderCredential, logger?: Logger): Promise<PostedComment>;
+    listWebhooks(fullName: string, credential: ProviderCredential, logger?: Logger): Promise<ProviderWebhook[]>;
+    createWebhook(fullName: string, input: CreateWebhookInput, credential: ProviderCredential, logger?: Logger): Promise<ProviderWebhook>;
+    deleteWebhook(fullName: string, hookId: string, credential: ProviderCredential, logger?: Logger): Promise<void>;
     getRepositoryFile(fullName: string, path: string, ref: string, credential: ProviderCredential, logger?: Logger): Promise<string | null>;
     normalizeWebhookEvent(rawHeaders: Record<string, string>, rawBody: string, webhookSecret: string): Promise<NormalizedWebhookEvent>;
 }

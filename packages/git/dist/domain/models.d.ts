@@ -61,3 +61,13 @@ export interface PostedComment {
     htmlUrl: string;
     createdAt: Date;
 }
+export interface ProviderWebhook {
+    hookId: string;
+    url: string;
+    active: boolean;
+}
+export interface CreateWebhookInput {
+    url: string;
+    secret: string;
+    events: string[];
+}

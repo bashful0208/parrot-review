@@ -1,10 +1,12 @@
 import type { Logger, ErrorContext } from "@reviewer/core";
 import type {
+  CreateWebhookInput,
   FileDiff,
   Installation,
   PostedComment,
   ProviderPullRequest,
   ProviderRepository,
+  ProviderWebhook,
   ReviewCommentInput,
 } from "../domain/models.js";
 import type { NormalizedWebhookEvent } from "../domain/webhook.js";
@@ -327,6 +329,105 @@ export class GiteeProvider implements IProvider {
       logger,
       context({ operation: "postPullRequestComment", repository: fullName })
     );
+  }
+
+  async listWebhooks(
+    fullName: string,
+    credential: ProviderCredential,
+    logger?: Logger
+  ): Promise<ProviderWebhook[]> {
+    const { owner, repo } = splitFullName(fullName);
+    const cred = assertGitee(credential);
+    const client = getGiteePatClient(cred);
+    return withGitPlatformErrorBoundary(
+      async () => {
+        const data = await client.request<Array<{ id: number; url: string }>>(
+          `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/hooks`
+        );
+        logger?.debug("Fetched Gitee webhooks", { fullName, count: data.length });
+        return data.map((h) => ({
+          hookId: String(h.id),
+          url: String(h.url ?? ""),
+          active: true,
+        }));
+      },
+      PROVIDER,
+      logger,
+      context({ operation: "listWebhooks", repository: fullName })
+    );
+  }
+
+  async createWebhook(
+    fullName: string,
+    input: CreateWebhookInput,
+    credential: ProviderCredential,
+    logger?: Logger
+  ): Promise<ProviderWebhook> {
+    const { owner, repo } = splitFullName(fullName);
+    const cred = assertGitee(credential);
+    const client = getGiteePatClient(cred);
+    return withGitPlatformErrorBoundary(
+      async () => {
+        // Gitee 用 boolean 字段挑选事件；这里默认开启 PR 相关事件。
+        const data = await client.request<{ id: number; url: string }>(
+          `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/hooks`,
+          {
+            method: "POST",
+            body: {
+              url: input.url,
+              password: input.secret,
+              encryption_type: 1,
+              pull_request_events: input.events.includes("pull_request"),
+              push_events: false,
+              tag_push_events: false,
+              issues_events: false,
+              note_events: false,
+            },
+          }
+        );
+        logger?.info("Created Gitee webhook", { fullName, hookId: data.id });
+        return {
+          hookId: String(data.id),
+          url: String(data.url ?? input.url),
+          active: true,
+        };
+      },
+      PROVIDER,
+      logger,
+      context({ operation: "createWebhook", repository: fullName })
+    );
+  }
+
+  async deleteWebhook(
+    fullName: string,
+    hookId: string,
+    credential: ProviderCredential,
+    logger?: Logger
+  ): Promise<void> {
+    const { owner, repo } = splitFullName(fullName);
+    const cred = assertGitee(credential);
+    const client = getGiteePatClient(cred);
+    try {
+      await withGitPlatformErrorBoundary(
+        async () => {
+          await client.request<void>(
+            `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/hooks/${encodeURIComponent(hookId)}`,
+            { method: "DELETE" }
+          );
+          logger?.info("Deleted Gitee webhook", { fullName, hookId });
+        },
+        PROVIDER,
+        logger,
+        context({ operation: "deleteWebhook", repository: fullName })
+      );
+    } catch (err) {
+      const status = (err as { providerStatusCode?: number }).providerStatusCode;
+      if (status === 404) {
+        logger?.warn("Gitee webhook already gone", { fullName, hookId });
+        return;
+      }
+      throw err;
+    }
   }
 
   async getRepositoryFile(

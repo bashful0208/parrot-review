@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, CheckCircle2, Copy, GitBranch, Loader2, Search, Webhook, X } from "lucide-react";
+import { AlertTriangle, Check, CheckCircle2, Copy, GitBranch, Loader2, Search, Webhook, X } from "lucide-react";
+
+import { describeWebhookError } from "@/lib/repositories/webhook-error-labels";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +32,12 @@ interface WebhookInfo {
   webhookUrl: string;
   webhookSecret: string;
   repositoryId: string;
+  registration: {
+    status: "auto" | "manual";
+    hookId?: string;
+    errorCode?: string;
+    errorMessage?: string;
+  };
 }
 
 const DIALOG_DIMENSIONS = {
@@ -241,9 +249,21 @@ export default function ConnectRepositoryDialog({
           defaultBranch: selectedRepo.defaultBranch, token,
         }),
       });
-      const data = await res.json() as { ok: boolean; repositoryId?: string; webhookUrl?: string; webhookSecret?: string; error?: string };
+      const data = await res.json() as {
+        ok: boolean;
+        repositoryId?: string;
+        webhookUrl?: string;
+        webhookSecret?: string;
+        webhookRegistration?: { status: "auto" | "manual"; hookId?: string; errorCode?: string; errorMessage?: string };
+        error?: string;
+      };
       if (!data.ok) { setError(data.error ?? "Failed to connect repository"); return; }
-      setWebhookInfo({ webhookUrl: data.webhookUrl!, webhookSecret: data.webhookSecret!, repositoryId: data.repositoryId! });
+      setWebhookInfo({
+        webhookUrl: data.webhookUrl!,
+        webhookSecret: data.webhookSecret!,
+        repositoryId: data.repositoryId!,
+        registration: data.webhookRegistration ?? { status: "manual" },
+      });
       setStep(3);
     } catch { setError("Network error, please try again"); }
     finally { setLoading(false); }
@@ -492,13 +512,29 @@ export default function ConnectRepositoryDialog({
               {/* Step 3 */}
               {step === 3 && webhookInfo && (
                 <div className="flex h-full flex-col justify-center max-w-md">
-                  <div className="mb-6 flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
-                    <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" />
-                    <div>
-                      <p className="text-sm font-medium text-emerald-800">Repository connected</p>
-                      <p className="text-xs text-emerald-600 mt-0.5">{selectedRepo?.fullName}</p>
+                  {webhookInfo.registration.status === "auto" ? (
+                    <div className="mb-6 flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+                      <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" />
+                      <div>
+                        <p className="text-sm font-medium text-emerald-800">Webhook 已自动注册</p>
+                        <p className="text-xs text-emerald-600 mt-0.5">{selectedRepo?.fullName} · 无需手动配置</p>
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="mb-6 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+                      <AlertTriangle className="h-5 w-5 shrink-0 text-amber-600 mt-0.5" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-amber-800">仓库已接入，但 webhook 自动注册未完成</p>
+                        <p className="text-xs text-amber-700 mt-1">
+                          {describeWebhookError(
+                            webhookInfo.registration.errorCode,
+                            webhookInfo.registration.errorMessage,
+                            provider
+                          )}
+                        </p>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="space-y-4">
                     <div>

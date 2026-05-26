@@ -13,6 +13,9 @@ const baseRow: RepositoryDetailRow = {
   status: "active",
   created_at: new Date("2026-04-04T10:00:00Z"),
   webhook_secret: "abc123secret",
+  webhook_mode: null,
+  webhook_hook_id: null,
+  webhook_last_error: null,
 };
 
 test("buildRepositoryDetailViewModel maps all fields", () => {

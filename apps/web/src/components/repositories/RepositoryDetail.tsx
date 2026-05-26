@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import {
+  AlertTriangle,
   Calendar,
   Check,
   ChevronRight,
@@ -12,10 +13,14 @@ import {
   GitBranch,
   GitFork,
   Globe,
+  Loader2,
+  RotateCw,
   ShieldCheck,
   Trash2,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+
+import { describeWebhookError } from "@/lib/repositories/webhook-error-labels";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -101,6 +106,54 @@ export default function RepositoryDetail({
   const [showSecret, setShowSecret] = useState(false);
   const router = useRouter();
   const [deleting, setDeleting] = useState(false);
+  const [webhook, setWebhook] = useState(repository.webhook);
+  const [retrying, setRetrying] = useState(false);
+  const [retryMessage, setRetryMessage] = useState<string | null>(null);
+
+  async function handleRetryWebhook() {
+    setRetrying(true);
+    setRetryMessage(null);
+    try {
+      const res = await fetch(`/api/repositories/${repository.id}/webhook/retry`, {
+        method: "POST",
+      });
+      const data = (await res.json()) as {
+        ok: boolean;
+        error?: string;
+        webhookRegistration?: {
+          status: "auto" | "manual";
+          hookId?: string;
+          errorCode?: string;
+          errorMessage?: string;
+        };
+      };
+      if (!data.ok) {
+        setRetryMessage(data.error ?? "重试失败");
+        return;
+      }
+      const reg = data.webhookRegistration!;
+      if (reg.status === "auto") {
+        setWebhook({ mode: "auto", hookId: reg.hookId ?? null, lastError: null });
+        setRetryMessage("Webhook 已自动注册");
+      } else {
+        setWebhook({
+          mode: "manual",
+          hookId: null,
+          lastError:
+            reg.errorCode && reg.errorMessage
+              ? { code: reg.errorCode, message: reg.errorMessage }
+              : null,
+        });
+        setRetryMessage(
+          describeWebhookError(reg.errorCode, reg.errorMessage, repository.provider)
+        );
+      }
+    } catch (err) {
+      setRetryMessage(err instanceof Error ? err.message : "网络错误");
+    } finally {
+      setRetrying(false);
+    }
+  }
 
   async function handleDelete() {
     setDeleting(true);
@@ -399,20 +452,62 @@ export default function RepositoryDetail({
                 </div>
               </div>
 
-              <div className="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
-                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-100">
-                  <Check className="h-3.5 w-3.5 text-emerald-600" />
+              {webhook.mode === "auto" ? (
+                <div className="flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-emerald-100">
+                    <Check className="h-3.5 w-3.5 text-emerald-600" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-emerald-800">
+                      Webhook 已自动注册
+                    </p>
+                    <p className="mt-0.5 text-xs text-emerald-600">
+                      Hook ID: <span className="font-mono">{webhook.hookId ?? "—"}</span>。如果在 Git 平台手动删除了 webhook，可点重试重新注册。
+                    </p>
+                    <div className="mt-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => void handleRetryWebhook()}
+                        disabled={retrying}
+                      >
+                        {retrying ? <Loader2 className="size-3.5 animate-spin" /> : <RotateCw className="size-3.5" />}
+                        {retrying ? "Retrying…" : "重新注册"}
+                      </Button>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-emerald-800">
-                    Webhook Active
-                  </p>
-                  <p className="mt-0.5 text-xs text-emerald-600">
-                    Configure the URL and Secret in your provider&apos;s
-                    webhook settings to start receiving pull request events.
-                  </p>
+              ) : (
+                <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+                  <AlertTriangle className="h-5 w-5 shrink-0 text-amber-600 mt-0.5" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-amber-800">
+                      Webhook 自动注册未完成
+                    </p>
+                    <p className="mt-0.5 text-xs text-amber-700">
+                      {describeWebhookError(
+                        webhook.lastError?.code,
+                        webhook.lastError?.message,
+                        repository.provider
+                      )}
+                    </p>
+                    <div className="mt-2 flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => void handleRetryWebhook()}
+                        disabled={retrying}
+                      >
+                        {retrying ? <Loader2 className="size-3.5 animate-spin" /> : <RotateCw className="size-3.5" />}
+                        {retrying ? "Retrying…" : "重试自动注册"}
+                      </Button>
+                      {retryMessage && (
+                        <span className="text-xs text-amber-700">{retryMessage}</span>
+                      )}
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </CardContent>
         </Card>

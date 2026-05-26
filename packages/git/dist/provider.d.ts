@@ -1,6 +1,6 @@
 import type { GitProvider } from "@reviewer/db-types";
 import type { Logger } from "@reviewer/core";
-import type { Installation, ProviderRepository, ProviderPullRequest, FileDiff, ReviewCommentInput, PostedComment } from "./domain/models.js";
+import type { Installation, ProviderRepository, ProviderPullRequest, FileDiff, ReviewCommentInput, PostedComment, ProviderWebhook, CreateWebhookInput } from "./domain/models.js";
 import type { NormalizedWebhookEvent } from "./domain/webhook.js";
 import type { ProviderCredential } from "./credentials.js";
 export interface ListRepositoriesOptions {
@@ -41,6 +41,12 @@ export interface IProvider {
      */
     postPullRequestComment(fullName: string, prNumber: number, bodyMd: string, credential: ProviderCredential, logger?: Logger): Promise<PostedComment>;
     normalizeWebhookEvent(rawHeaders: Record<string, string>, rawBody: string, webhookSecret: string): Promise<NormalizedWebhookEvent>;
+    /** 列出目标仓库现有的 webhook（用于幂等判断）。 */
+    listWebhooks(fullName: string, credential: ProviderCredential, logger?: Logger): Promise<ProviderWebhook[]>;
+    /** 在目标仓库注册一个新的 webhook。 */
+    createWebhook(fullName: string, input: CreateWebhookInput, credential: ProviderCredential, logger?: Logger): Promise<ProviderWebhook>;
+    /** 删除目标仓库上的 webhook。404 视为成功（已被人手动删除）。 */
+    deleteWebhook(fullName: string, hookId: string, credential: ProviderCredential, logger?: Logger): Promise<void>;
     /**
      * 读取目标仓库某个文件的 utf-8 内容。
      *
