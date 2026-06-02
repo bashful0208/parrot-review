@@ -70,6 +70,10 @@ export interface RepositoryDetailRow {
   status: string;
   created_at: Date;
   webhook_secret: string;
+  /** null = 尚未做过自动注册（老仓库或元数据缺失），fallback 当作 manual 显示 */
+  webhook_mode: "auto" | "manual" | null;
+  webhook_hook_id: string | null;
+  webhook_last_error: { code: string; message: string } | null;
 }
 
 export async function getRepositoryById(
@@ -93,7 +97,11 @@ export async function getRepositoryById(
     if (result.rows.length === 0) return null;
 
     const row = result.rows[0]!;
-    const meta = row.metadata as { webhook_secret?: string } | null;
+    const meta = row.metadata as {
+      webhook_secret?: string;
+      webhook?: WebhookRegistrationMeta;
+    } | null;
+    const webhookMeta = meta?.webhook ?? null;
 
     return {
       id: row.id,
@@ -104,6 +112,9 @@ export async function getRepositoryById(
       status: row.status,
       created_at: row.created_at,
       webhook_secret: meta?.webhook_secret ?? "",
+      webhook_mode: webhookMeta?.mode ?? null,
+      webhook_hook_id: webhookMeta?.hook_id ?? null,
+      webhook_last_error: webhookMeta?.last_error ?? null,
     };
   } catch (error) {
     logger.error("Failed to fetch repository by id", error as Error, {
@@ -150,6 +161,7 @@ export async function getRepositoryWithCredential(
     const credentialToken = meta?.credential?.token;
     if (!credentialToken) return null;
 
+    const webhookMeta = (meta as { webhook?: WebhookRegistrationMeta } | null)?.webhook ?? null;
     return {
       id: row.id,
       name: row.name,
@@ -159,6 +171,9 @@ export async function getRepositoryWithCredential(
       status: row.status,
       created_at: row.created_at,
       webhook_secret: meta?.webhook_secret ?? "",
+      webhook_mode: webhookMeta?.mode ?? null,
+      webhook_hook_id: webhookMeta?.hook_id ?? null,
+      webhook_last_error: webhookMeta?.last_error ?? null,
       credentialToken,
     };
   } catch (error) {
@@ -258,6 +273,113 @@ export async function insertRepositoryWithIntegration(
     throw error;
   } finally {
     client.release();
+  }
+}
+
+export interface WebhookRegistrationMeta {
+  hook_id: string | null;
+  mode: "auto" | "manual";
+  registered_at: string | null;
+  last_error: { code: string; message: string } | null;
+}
+
+export interface RepoIntegrationWithCredential {
+  integrationId: string;
+  repositoryId: string;
+  organizationId: string;
+  provider: string;
+  fullName: string;
+  credentialToken: string;
+  credentialType: string;
+  webhookSecret: string;
+  webhookMeta: WebhookRegistrationMeta | null;
+}
+
+/**
+ * 读取 (repository, integration, credential) 三元组。给重试 / 删除 webhook 用。
+ */
+export async function getIntegrationByRepository(
+  repositoryId: string,
+  organizationId: string
+): Promise<RepoIntegrationWithCredential | null> {
+  const logger = createLogger({ component: "queue" });
+  try {
+    const result = await getPool().query<{
+      integration_id: string;
+      repository_id: string;
+      organization_id: string;
+      provider: string;
+      full_name: string;
+      metadata: Record<string, unknown> | null;
+    }>(
+      `select
+         ri.id as integration_id,
+         ri.repository_id, ri.organization_id, ri.provider,
+         r.full_name, ri.metadata
+       from public.repo_integrations ri
+       join public.repositories r on r.id = ri.repository_id
+       where ri.repository_id = $1 and ri.organization_id = $2`,
+      [repositoryId, organizationId]
+    );
+    const row = result.rows[0];
+    if (!row) return null;
+    const meta = row.metadata ?? {};
+    const credential = (meta as { credential?: { type?: string; token?: string } }).credential;
+    return {
+      integrationId: row.integration_id,
+      repositoryId: row.repository_id,
+      organizationId: row.organization_id,
+      provider: row.provider,
+      fullName: row.full_name,
+      credentialToken: credential?.token ?? "",
+      credentialType: credential?.type ?? "",
+      webhookSecret: String((meta as { webhook_secret?: string }).webhook_secret ?? ""),
+      webhookMeta:
+        ((meta as { webhook?: WebhookRegistrationMeta }).webhook as WebhookRegistrationMeta) ??
+        null,
+    };
+  } catch (error) {
+    logger.error("Failed to load integration", error as Error, {
+      operation: "get_integration_by_repository",
+      repository_id: repositoryId,
+    });
+    throw new AppError(
+      ErrorCode.DependencyDatabaseConnection,
+      "Failed to load integration"
+    );
+  }
+}
+
+/**
+ * 原子写 repo_integrations.metadata.webhook。其余 metadata 字段保留。
+ */
+export async function updateIntegrationWebhookMetadata(
+  integrationId: string,
+  webhook: WebhookRegistrationMeta
+): Promise<void> {
+  const logger = createLogger({ component: "queue" });
+  try {
+    await getPool().query(
+      `update public.repo_integrations
+          set metadata = jsonb_set(coalesce(metadata, '{}'::jsonb), '{webhook}', $2::jsonb, true),
+              updated_at = now()
+        where id = $1`,
+      [integrationId, JSON.stringify(webhook)]
+    );
+    logger.info("Webhook metadata updated", {
+      integration_id: integrationId,
+      mode: webhook.mode,
+      has_hook_id: webhook.hook_id != null,
+    });
+  } catch (error) {
+    logger.error("Failed to update webhook metadata", error as Error, {
+      operation: "update_integration_webhook_metadata",
+      integration_id: integrationId,
+    });
+    throw new AppError(
+      ErrorCode.DependencyDatabaseConnection,
+      "Failed to update webhook metadata"
+    );
   }
 }
 

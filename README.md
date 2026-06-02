@@ -1,36 +1,27 @@
-# Reviewer — AI Code Review, Automated
+# Reviewer - AI-Powered Code Review System
 
-> 接入你的 GitHub / Gitee / GitLab 仓库，每次 PR 自动触发多 Agent 智能审查，结果直接评论到 PR —— 像请了一个永不疲倦的高级工程师团队。
+An intelligent code review system based on multiple AI agents, supporting automatic PR review for GitHub, Gitee, and GitLab. Using LangGraph to orchestrate multiple AI agents for parallel quality and security reviews, automatically posting review comments to PRs.
 
-Reviewer 是一个 **AI 驱动的代码审查平台**。它不是简单的 LLM wrapper，而是通过 LangGraph 编排多个专业 Agent（质量审查、安全审查、错误处理审查）并行工作，再经过 Critic 验证和去重聚合，最终生成高质量的审查意见。支持 inline 评论、用量追踪、断点恢复，开箱即用。
+## Core Features
 
-**和人工 Review 说再见：**
-- 每次 PR 提交自动触发，无需手动操作
-- 多维度并行审查（质量 / 安全 / 错误处理），覆盖面远超单一 Reviewer
-- 审查结果直接以评论形式出现在 PR 中，开发者无需离开工作流
-- 支持 AI 反思和自我验证，减少误报
+- **Multi-Platform Support** - Webhook integration for GitHub, Gitee, and GitLab
+- **Intelligent Review** - Multi-agent parallel review pipeline based on LangGraph
+  - Quality Reviewer
+  - Security Reviewer
+  - Error Handler Reviewer
+- **Review Feedback** - Automatically post review comments to PRs (supports inline comments)
+- **Usage Tracking** - Track token consumption and costs for each review
+- **Web Dashboard** - Repository management, AI provider configuration, review history
+- **Checkpoint Recovery** - LangGraph checkpoint persistence, supports resuming interrupted reviews
 
-## 核心功能
-
-- **多平台支持** - GitHub、Gitee、GitLab 的 Webhook 集成，一键接入
-- **智能审查** - 基于 LangGraph 的多 Agent 并行审查流水线
-  - 质量审查（Quality Reviewer）— 代码规范、可维护性、最佳实践
-  - 安全审查（Security Reviewer）— 漏洞检测、OWASP Top 10
-  - 错误处理审查（Error Handler Reviewer）— 异常处理、边界情况
-- **Critic 验证** - 每条审查意见经过 AI 自我验证，过滤误报
-- **审查结果反馈** - 自动将审查意见评论到 PR（支持 inline 评论）
-- **用量统计** - 跟踪每次审查的 Token 消耗和成本
-- **Web 管理后台** - 仓库管理、AI Provider 配置、审查记录查看
-- **断点恢复** - LangGraph 检查点持久化，支持审查中断后恢复
-
-## 技术架构
+## Architecture
 
 ```
 GitHub/Gitee/GitLab ──webhook──▶ apps/web (Next.js) ──Redis──▶ apps/worker (BullMQ)
                                       │                              │
                                       ▼                              │
                                  PostgreSQL ◀─────────────────────────┘
-                            (业务数据 + LangGraph checkpoints)
+                            (Business data + LangGraph checkpoints)
                                       │
                                       ▼
                             ┌─────────────────┐
@@ -39,7 +30,7 @@ GitHub/Gitee/GitLab ──webhook──▶ apps/web (Next.js) ──Redis──�
                             └─────────────────┘
 ```
 
-**审查流水线拓扑：**
+**Review Pipeline Topology:**
 ```
                          ┌─ quality_reviewer ──────────┐
 START ──┤── security_reviewer ──────────┤── aggregator ──┐
@@ -47,136 +38,136 @@ START ──┤── security_reviewer ──────────┤── 
                                                                                          │
                ┌─────────────────────────────────────────────────────────┘
                ▼
-     fanOutFindings（路由判断）
-        ├─ 有待审 finding → 并行 Send 给 critic（每条一个）
-        │     └─ critic: while 循环（最多 MAX_REFLECTION_ATTEMPTS=2 轮）
+     fanOutFindings (routing logic)
+        ├─ Has pending findings → Parallel Send to critic (one per finding)
+        │     └─ critic: while loop (max MAX_REFLECTION_ATTEMPTS=2 rounds)
         │           ├─ verifyFinding → valid=true → approved
-        │           └─ verifyFinding → valid=false → regenerateFinding → 重试
-        │                                           └─ 用尽 → exhausted（回退到 patchedFinding）
-        └─ 无待审 finding → 直接 collect_findings
+        │           └─ verifyFinding → valid=false → regenerateFinding → retry
+        │                                           └─ Exhausted → exhausted (fallback to patchedFinding)
+        └─ No pending findings → Direct to collect_findings
                ▼
-     collect_findings（收集 approved + exhausted）
+     collect_findings (collect approved + exhausted)
                ▼
-     summarizer（生成最终审查摘要）
+     summarizer (generate final review summary)
                ▼
              END
 ```
 
-## 技术栈
+## Tech Stack
 
-| 层 | 技术 |
-|----|------|
-| 前端 | Next.js 16、React 19、Tailwind CSS 4、shadcn/ui |
-| 后端 Worker | Node.js、BullMQ、ioredis |
-| AI/ML | LangGraph、Anthropic SDK、OpenAI SDK |
-| 数据库 | PostgreSQL 16 |
-| 缓存/队列 | Redis 7 |
-| Git 集成 | Octokit (GitHub)、自定义客户端 (Gitee/GitLab) |
+| Layer | Technology |
+|-------|------------|
+| Frontend | Next.js 16, React 19, Tailwind CSS 4, shadcn/ui |
+| Backend Worker | Node.js, BullMQ, ioredis |
+| AI/ML | LangGraph, Anthropic SDK, OpenAI SDK |
+| Database | PostgreSQL 16 |
+| Cache/Queue | Redis 7 |
+| Git Integration | Octokit (GitHub), Custom clients (Gitee/GitLab) |
 
-## 目录结构
+## Directory Structure
 
 ```text
 reviewer/
 ├── apps/
-│   ├── web/                    # Next.js 前端应用
-│   │   ├── src/app/            # App Router 页面和 API 路由
-│   │   └── components/         # React 组件
-│   └── worker/                 # BullMQ 后台 Worker
-│       └── src/handlers/       # 任务处理器
+│   ├── web/                    # Next.js frontend application
+│   │   ├── src/app/            # App Router pages and API routes
+│   │   └── components/         # React components
+│   └── worker/                 # BullMQ background worker
+│       └── src/handlers/       # Task handlers
 ├── packages/
-│   ├── ai/                     # LangGraph 审查流水线、LLM 适配器
-│   │   └── src/graph/          # 审查图节点和状态定义
-│   ├── core/                   # 共享核心：认证、配置、错误处理、日志
-│   ├── db-types/               # 数据库类型定义
-│   ├── git/                    # Git 平台抽象层
-│   └── shared/                 # 共享类型
+│   ├── ai/                     # LangGraph review pipeline, LLM adapters
+│   │   └── src/graph/          # Review graph nodes and state definitions
+│   ├── core/                   # Shared core: auth, config, error handling, logging
+│   ├── db-types/               # Database type definitions
+│   ├── git/                    # Git platform abstraction layer
+│   └── shared/                 # Shared types
 ├── postgres/
-│   └── migrations/             # 数据库迁移文件
-├── scripts/                    # 开发和部署脚本
-├── doc/                        # 设计文档和研究报告
-├── docs/                       # 用户文档
-└── tests/                      # 集成测试
+│   └── migrations/             # Database migration files
+├── scripts/                    # Development and deployment scripts
+├── doc/                        # Design documents and research reports
+├── docs/                       # User documentation
+└── tests/                      # Integration tests
 ```
 
-## 快速开始
+## Quick Start
 
-### 方式一：Docker Compose（推荐）
+### Option 1: Docker Compose (Recommended)
 
-**完整部署**（PostgreSQL + Redis + Web + Worker）：
+**Full Deployment** (PostgreSQL + Redis + Web + Worker):
 
 ```bash
 cp .env.example .env
-# 编辑 .env 填入真实配置
+# Edit .env with your configuration
 docker compose up -d
 ```
 
-**仅基础组件**（只启动 PostgreSQL + Redis，Web/Worker 在宿主机开发）：
+**Development Only** (Only start PostgreSQL + Redis, run Web/Worker on host):
 
 ```bash
 docker compose -f docker-compose.dev.yml up -d
 ```
 
-### 方式二：本地开发（pnpm）
+### Option 2: Local Development (pnpm)
 
-前置条件：PostgreSQL 和 Redis 已启动（可用上面的 `docker compose -f docker-compose.dev.yml up -d`）。
-
-```bash
-cp .env.example .env          # 首次需要
-pnpm run setup                # 安装依赖
-pnpm run dev                  # 同时启动 web + worker
-```
-
-单独启动：
+Prerequisites: PostgreSQL and Redis are running (you can use `docker compose -f docker-compose.dev.yml up -d`).
 
 ```bash
-pnpm run dev:web              # 只启动 Web (localhost:3000)
-pnpm run dev:worker           # 只启动 Worker
+cp .env.example .env          # First time setup
+pnpm run setup                # Install dependencies
+pnpm run dev                  # Start web + worker together
 ```
 
-### 环境变量
+Start individually:
 
-| 变量 | 默认值 | 说明 |
+```bash
+pnpm run dev:web              # Start Web only (localhost:3000)
+pnpm run dev:worker           # Start Worker only
+```
+
+### Environment Variables
+
+| Variable | Default | Description |
 | --- | --- | --- |
-| `DATABASE_URL` | - | PostgreSQL 连接串，必填 |
-| `REDIS_URL` | `redis://127.0.0.1:6379` | Redis 连接串 |
-| `REVIEW_QUEUE_NAME` | `review-jobs` | BullMQ 队列名 |
-| `DEFAULT_MODEL_PROVIDER` | - | 默认 AI 提供商（anthropic/openai） |
-| `DEFAULT_MODEL_NAME` | - | 默认模型名称 |
+| `DATABASE_URL` | - | PostgreSQL connection string, required |
+| `REDIS_URL` | `redis://127.0.0.1:6379` | Redis connection string |
+| `REVIEW_QUEUE_NAME` | `review-jobs` | BullMQ queue name |
+| `DEFAULT_MODEL_PROVIDER` | - | Default AI provider (anthropic/openai) |
+| `DEFAULT_MODEL_NAME` | - | Default model name |
 
-> Webhook 签名密钥已下放为仓库级：每个接入仓库在 onboarding 时由后端生成独立 secret，通过 Web UI 管理。
+> Webhook signing secrets are repository-scoped: each onboarded repository generates its own secret during onboarding, managed via the Web UI.
 
-## 使用流程
+## Usage Flow
 
-1. **注册账号** - 访问 `http://localhost:3000/register`
-2. **配置 AI Provider** - 在设置页面添加 Anthropic 或 OpenAI 的 API Key
-3. **添加仓库** - 在仓库管理页面添加要审查的代码仓库
-4. **配置 Webhook** - 在 Git 平台配置 Webhook 指向本系统
-5. **提交 PR** - 系统自动触发审查并评论到 PR
+1. **Register Account** - Visit `http://localhost:3000/register`
+2. **Configure AI Provider** - Add Anthropic or OpenAI API Key in settings
+3. **Add Repository** - Add code repository to review in repository management
+4. **Configure Webhook** - Configure Webhook in Git platform to point to this system
+5. **Submit PR** - System automatically triggers review and comments on PR
 
-详细使用说明请参考 [用户指南](docs/user-guide.md)。
+For detailed usage instructions, please refer to the [User Guide](docs/user-guide.en.md).
 
-## 文档
+## Documentation
 
-- [用户指南](docs/user-guide.md) - 详细的使用说明
-- [PR 审查流程](docs/pr-review-flow.md) - 审查流水线技术细节
-- [启动与部署](doc/startup-and-deployment.md) - 部署文档
+- [User Guide](docs/user-guide.en.md) - Detailed usage instructions
+- [PR Review Flow](docs/pr-review-flow.md) - Review pipeline technical details
+- [Startup and Deployment](doc/startup-and-deployment.md) - Deployment documentation
 
-## 开发
+## Development
 
 ```bash
-# 安装依赖
+# Install dependencies
 pnpm run setup
 
-# 启动开发环境
+# Start development environment
 pnpm run dev
 
-# 构建
+# Build
 pnpm run build
 
-# 运行测试
+# Run tests
 pnpm run test
 
-# 代码检查
+# Lint
 pnpm run lint
 ```
 

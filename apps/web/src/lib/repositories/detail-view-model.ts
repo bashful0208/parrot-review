@@ -13,6 +13,11 @@ export interface RepositoryDetailItem {
   createdAtLabel: string;
   webhookUrl: string;
   webhookSecret: string;
+  webhook: {
+    mode: "auto" | "manual";
+    hookId: string | null;
+    lastError: { code: string; message: string } | null;
+  };
 }
 
 export interface RepositoryDetailViewModel {
@@ -35,6 +40,11 @@ export function buildRepositoryDetailViewModel(
     createdAtLabel: new Date(row.created_at).toISOString().slice(0, 10),
     webhookUrl,
     webhookSecret: row.webhook_secret,
+    webhook: {
+      mode: row.webhook_mode ?? "manual",
+      hookId: row.webhook_hook_id,
+      lastError: row.webhook_last_error,
+    },
   };
 }
 

@@ -1,11 +1,13 @@
 import type { Logger } from "@reviewer/core";
 import type { ErrorContext } from "@reviewer/core";
 import type {
+  CreateWebhookInput,
   FileDiff,
   Installation,
   PostedComment,
   ProviderPullRequest,
   ProviderRepository,
+  ProviderWebhook,
   ReviewCommentInput,
 } from "../domain/models.js";
 import type { NormalizedWebhookEvent } from "../domain/webhook.js";
@@ -321,6 +323,102 @@ export class GitHubProvider implements IProvider {
       logger,
       context({ operation: "postPullRequestComment", repository: fullName })
     );
+  }
+
+  async listWebhooks(
+    fullName: string,
+    credential: ProviderCredential,
+    logger?: Logger
+  ): Promise<ProviderWebhook[]> {
+    const [owner, repo] = fullName.split("/");
+    const octokit = await buildOctokit(credential);
+    return withGitPlatformErrorBoundary(
+      async () => {
+        const { data } = await (octokit as Awaited<ReturnType<typeof getPatOctokit>>).request(
+          "GET /repos/{owner}/{repo}/hooks",
+          { owner, repo, per_page: 100 }
+        );
+        logger?.debug("Fetched GitHub webhooks", { fullName, count: data.length });
+        return data.map((h) => ({
+          hookId: String(h.id),
+          url: String(h.config?.url ?? ""),
+          active: Boolean(h.active),
+        }));
+      },
+      PROVIDER,
+      logger,
+      context({ operation: "listWebhooks", repository: fullName })
+    );
+  }
+
+  async createWebhook(
+    fullName: string,
+    input: CreateWebhookInput,
+    credential: ProviderCredential,
+    logger?: Logger
+  ): Promise<ProviderWebhook> {
+    const [owner, repo] = fullName.split("/");
+    const octokit = await buildOctokit(credential);
+    return withGitPlatformErrorBoundary(
+      async () => {
+        const { data } = await (octokit as Awaited<ReturnType<typeof getPatOctokit>>).request(
+          "POST /repos/{owner}/{repo}/hooks",
+          {
+            owner,
+            repo,
+            name: "web",
+            active: true,
+            events: input.events,
+            config: {
+              url: input.url,
+              content_type: "json",
+              secret: input.secret,
+              insecure_ssl: "0",
+            },
+          }
+        );
+        logger?.info("Created GitHub webhook", { fullName, hookId: data.id });
+        return {
+          hookId: String(data.id),
+          url: String(data.config?.url ?? input.url),
+          active: Boolean(data.active),
+        };
+      },
+      PROVIDER,
+      logger,
+      context({ operation: "createWebhook", repository: fullName })
+    );
+  }
+
+  async deleteWebhook(
+    fullName: string,
+    hookId: string,
+    credential: ProviderCredential,
+    logger?: Logger
+  ): Promise<void> {
+    const [owner, repo] = fullName.split("/");
+    const octokit = await buildOctokit(credential);
+    try {
+      await withGitPlatformErrorBoundary(
+        async () => {
+          await (octokit as Awaited<ReturnType<typeof getPatOctokit>>).request(
+            "DELETE /repos/{owner}/{repo}/hooks/{hook_id}",
+            { owner, repo, hook_id: Number(hookId) }
+          );
+          logger?.info("Deleted GitHub webhook", { fullName, hookId });
+        },
+        PROVIDER,
+        logger,
+        context({ operation: "deleteWebhook", repository: fullName })
+      );
+    } catch (err) {
+      const status = (err as { providerStatusCode?: number }).providerStatusCode;
+      if (status === 404) {
+        logger?.warn("GitHub webhook already gone", { fullName, hookId });
+        return;
+      }
+      throw err;
+    }
   }
 
   async getRepositoryFile(

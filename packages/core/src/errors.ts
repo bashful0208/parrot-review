@@ -43,6 +43,12 @@ export const ErrorCode = {
   DependencyDatabaseConnection: "DEPENDENCY_DATABASE_CONNECTION_ERROR",
   DependencyApiTimeout: "DEPENDENCY_API_TIMEOUT",
   DependencyApiRateLimit: "DEPENDENCY_API_RATE_LIMIT",
+
+  // Webhook 自动注册错误（接入时调 provider 注册 webhook 用）
+  WebhookPermissionDenied: "WEBHOOK_PERMISSION_DENIED",
+  WebhookAlreadyExists: "WEBHOOK_ALREADY_EXISTS",
+  WebhookProviderUnavailable: "WEBHOOK_PROVIDER_UNAVAILABLE",
+  WebhookUnsupported: "WEBHOOK_UNSUPPORTED",
 } as const;
 
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];
@@ -77,6 +83,10 @@ const ERROR_CATEGORY_BY_CODE: Record<ErrorCode, ErrorCategory> = {
   [ErrorCode.DependencyDatabaseConnection]: "dependency",
   [ErrorCode.DependencyApiTimeout]: "dependency",
   [ErrorCode.DependencyApiRateLimit]: "dependency",
+  [ErrorCode.WebhookPermissionDenied]: "user",
+  [ErrorCode.WebhookAlreadyExists]: "platform",
+  [ErrorCode.WebhookProviderUnavailable]: "platform",
+  [ErrorCode.WebhookUnsupported]: "user",
 };
 
 export interface ErrorContext {

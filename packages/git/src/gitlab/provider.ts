@@ -1,9 +1,11 @@
 import type {
+  CreateWebhookInput,
   FileDiff,
   Installation,
   PostedComment,
   ProviderPullRequest,
   ProviderRepository,
+  ProviderWebhook,
   ReviewCommentInput,
 } from "../domain/models.js";
 import type { NormalizedWebhookEvent } from "../domain/webhook.js";
@@ -89,6 +91,29 @@ export class GitLabProvider implements IProvider {
     return Promise.reject(
       new GitProviderNotImplementedError("gitlab", "postPullRequestComment")
     );
+  }
+
+  listWebhooks(
+    _fullName: string,
+    _credential: ProviderCredential
+  ): Promise<ProviderWebhook[]> {
+    return Promise.reject(new GitProviderNotImplementedError("gitlab", "listWebhooks"));
+  }
+
+  createWebhook(
+    _fullName: string,
+    _input: CreateWebhookInput,
+    _credential: ProviderCredential
+  ): Promise<ProviderWebhook> {
+    return Promise.reject(new GitProviderNotImplementedError("gitlab", "createWebhook"));
+  }
+
+  deleteWebhook(
+    _fullName: string,
+    _hookId: string,
+    _credential: ProviderCredential
+  ): Promise<void> {
+    return Promise.reject(new GitProviderNotImplementedError("gitlab", "deleteWebhook"));
   }
 
   async getRepositoryFile(

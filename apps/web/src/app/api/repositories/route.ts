@@ -3,18 +3,34 @@ import { type NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
 import {
+  AppError,
   AUTH_SESSION_COOKIE,
   createLogger,
+  ErrorCode,
   getOrgIdForUser,
   getSessionUser,
   insertRepositoryWithIntegration,
+  registerRepoWebhook,
+  updateIntegrationWebhookMetadata,
+  type WebhookRegistrationMeta,
 } from "@reviewer/core";
+import { GiteeProvider, GitHubProvider, type IProvider, type ProviderCredential } from "@reviewer/git";
 
 export const runtime = "nodejs";
 
 const logger = createLogger({ component: "api" });
 
 type SupportedProvider = "github" | "gitee";
+
+function buildProvider(provider: SupportedProvider): IProvider {
+  return provider === "github" ? new GitHubProvider() : new GiteeProvider();
+}
+
+function buildCredential(provider: SupportedProvider, token: string): ProviderCredential {
+  return provider === "github"
+    ? { type: "github_pat", token }
+    : { type: "gitee_pat", token };
+}
 
 function isSupportedProvider(value: unknown): value is SupportedProvider {
   return value === "github" || value === "gitee";
@@ -100,11 +116,79 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       provider,
     });
 
+    // 自动注册 webhook；失败不阻塞接入，前端按 webhookRegistration 状态显示横幅
+    const providerImpl = buildProvider(provider);
+    const credential = buildCredential(provider, token);
+    let webhookRegistration: {
+      status: "auto" | "manual";
+      hookId?: string;
+      errorCode?: string;
+      errorMessage?: string;
+    };
+    let metaToWrite: WebhookRegistrationMeta;
+    try {
+      const reg = await registerRepoWebhook({
+        provider: providerImpl,
+        fullName,
+        webhookUrl,
+        secret: webhookSecret,
+        credential,
+      });
+      webhookRegistration = { status: "auto", hookId: reg.hookId };
+      metaToWrite = {
+        hook_id: reg.hookId,
+        mode: "auto",
+        registered_at: new Date().toISOString(),
+        last_error: null,
+      };
+      logger.info("Webhook auto-registered", {
+        repository_id: result.repositoryId,
+        provider,
+        hook_id: reg.hookId,
+        status: reg.status,
+      });
+    } catch (err) {
+      const appErr =
+        err instanceof AppError
+          ? err
+          : new AppError(
+              ErrorCode.WebhookProviderUnavailable,
+              err instanceof Error ? err.message : String(err),
+            );
+      webhookRegistration = {
+        status: "manual",
+        errorCode: appErr.code,
+        errorMessage: appErr.message,
+      };
+      metaToWrite = {
+        hook_id: null,
+        mode: "manual",
+        registered_at: null,
+        last_error: { code: appErr.code, message: appErr.message },
+      };
+      logger.warn("Webhook auto-registration failed; falling back to manual", {
+        repository_id: result.repositoryId,
+        provider,
+        error_code: appErr.code,
+        error_message: appErr.message,
+      });
+    }
+
+    try {
+      await updateIntegrationWebhookMetadata(result.integrationId, metaToWrite);
+    } catch (err) {
+      logger.warn("Failed to persist webhook metadata; continuing", {
+        integration_id: result.integrationId,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+
     return NextResponse.json({
       ok: true,
       repositoryId: result.repositoryId,
       webhookUrl,
       webhookSecret,
+      webhookRegistration,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
